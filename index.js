@@ -1,6 +1,6 @@
 // index.js
 // Corre o bot com: npm start
-// Antes disso corre uma vez: npm install  e  npm run deploy
+// Os slash commands são registados automaticamente quando o bot liga.
 
 require('dotenv').config();
 const express = require('express');
@@ -8,6 +8,9 @@ const Stripe = require('stripe');
 const {
   Client,
   GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -23,6 +26,94 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
+
+// ---------------------------------------------------------------------------
+// Slash commands — registados no Discord quando o bot liga
+// ---------------------------------------------------------------------------
+
+const slashCommands = [
+  new SlashCommandBuilder()
+    .setName('produto-criar')
+    .setDescription('Cria um novo produto na loja')
+    .addStringOption((opt) =>
+      opt.setName('nome').setDescription('Nome do produto').setRequired(true)
+    )
+    .addNumberOption((opt) =>
+      opt.setName('preco').setDescription('Preço do produto').setRequired(true)
+    )
+    .addStringOption((opt) =>
+      opt.setName('descricao').setDescription('Descrição do produto').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName('moeda')
+        .setDescription('Moeda (eur, usd, ...)')
+        .setRequired(false)
+    )
+    .addRoleOption((opt) =>
+      opt
+        .setName('cargo')
+        .setDescription('Cargo atribuído após a compra')
+        .setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('chave-adicionar')
+    .setDescription('Adiciona chaves em massa a um produto a partir de um ficheiro .txt')
+    .addIntegerOption((opt) =>
+      opt.setName('produto_id').setDescription('ID do produto').setRequired(true)
+    )
+    .addAttachmentOption((opt) =>
+      opt
+        .setName('ficheiro')
+        .setDescription('Ficheiro .txt com uma chave por linha')
+        .setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('produtos')
+    .setDescription('Lista os produtos ativos e o stock atual')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('loja')
+    .setDescription('Publica a loja neste canal'),
+].map((cmd) => cmd.toJSON());
+
+async function registerSlashCommands() {
+  const token = process.env.DISCORD_TOKEN;
+  const clientId = process.env.CLIENT_ID || process.env.DISCORD_CLIENT_ID;
+
+  if (!token) {
+    console.error('❌ Falta DISCORD_TOKEN no .env.');
+    return;
+  }
+  if (!clientId) {
+    console.error(
+      '❌ Falta CLIENT_ID no .env — vai ao Developer Portal > General Information.'
+    );
+    return;
+  }
+
+  const rest = new REST({ version: '10' }).setToken(token);
+
+  if (process.env.GUILD_ID) {
+    await rest.put(
+      Routes.applicationGuildCommands(clientId, process.env.GUILD_ID),
+      { body: slashCommands }
+    );
+    console.log(
+      `✅ ${slashCommands.length} comandos registados no servidor ${process.env.GUILD_ID}.`
+    );
+  } else {
+    await rest.put(Routes.applicationCommands(clientId), { body: slashCommands });
+    console.log(
+      `✅ ${slashCommands.length} comandos registados globalmente (pode demorar até 1h a aparecer).`
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -279,8 +370,13 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`Bot ligado como ${client.user.tag}`);
+  try {
+    await registerSlashCommands();
+  } catch (err) {
+    console.error('❌ Erro ao registar comandos:', err);
+  }
 });
 
 client.login(process.env.DISCORD_TOKEN);
