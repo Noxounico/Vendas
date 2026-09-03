@@ -17,7 +17,6 @@ const {
 
 const db = require('./db');
 
-const PREFIX = process.env.PREFIX || '!';
 // Texto mostrado ao comprador com os dados para onde deve enviar o pagamento.
 // Define isto no .env, ex: PAYMENT_INSTRUCTIONS="MB WAY 912345678 ou IBAN PT50..."
 const PAYMENT_INSTRUCTIONS =
@@ -27,11 +26,7 @@ const STORE_BANNER_URL = process.env.STORE_BANNER_URL || null;
 const STORE_NAME = process.env.STORE_NAME || 'Loja de Jogos';
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // necessário para ler comandos com "!"
-  ],
+  intents: [GatewayIntentBits.Guilds],
   partials: [Partials.Channel],
 });
 
@@ -70,15 +65,8 @@ async function avisarThread(orderId, payload) {
   }
 }
 
-function isAdmin(memberOrMessage) {
-  const member = memberOrMessage.member ?? memberOrMessage;
+function isAdmin(member) {
   return member?.permissions?.has(PermissionFlagsBits.Administrator);
-}
-
-// Faz parsing de argumentos respeitando texto entre aspas: !cmd "texto com espaços" 10 @cargo
-function parseArgs(content) {
-  const matches = [...content.matchAll(/"([^"]+)"|(\S+)/g)];
-  return matches.map((m) => m[1] ?? m[2]);
 }
 
 // ---------------------------------------------------------------------------
@@ -297,90 +285,87 @@ async function entregarPedido(orderId) {
 }
 
 // ---------------------------------------------------------------------------
-// Comandos com prefixo "!"
+// Slash commands + menu de seleção da loja + botões do carrinho + staff
 // ---------------------------------------------------------------------------
 
-client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.guild) return;
-  if (!message.content.startsWith(PREFIX)) return;
-
-  const args = parseArgs(message.content.slice(PREFIX.length).trim());
-  const command = args.shift()?.toLowerCase();
-
-  try {
-    if (command === 'produto-criar') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const [nome, precoStr, descricao] = args;
-      const preco = Number(precoStr);
-      if (!nome || !precoStr || Number.isNaN(preco)) {
-        return message.reply(
-          `Uso: \`${PREFIX}produto-criar "Nome do Jogo" 19.99 "Descrição opcional" @Cargo(opcional)\``
-        );
-      }
-      const cargoId = message.mentions.roles.first()?.id;
-      const id = db.addProduct({ name: nome, description: descricao || '', priceEur: preco, roleId: cargoId });
-      return message.reply(
-        `Produto criado! **${nome}** (ID: ${id}). Agora usa \`${PREFIX}chave-adicionar ${id}\` (anexando um .txt) para carregares as chaves.`
-      );
-    }
-
-    if (command === 'chave-adicionar') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const [produtoIdStr] = args;
-      const productId = Number(produtoIdStr);
-      const attachment = message.attachments.first();
-      if (!productId || !attachment) {
-        return message.reply(
-          `Uso: \`${PREFIX}chave-adicionar <id_do_produto>\` e anexa um ficheiro .txt com uma chave por linha.`
-        );
-      }
-      const product = db.getProduct(productId);
-      if (!product) return message.reply('Não existe nenhum produto com esse ID.');
-
-      const res = await fetch(attachment.url);
-      const text = await res.text();
-      const added = db.addKeysBulk(productId, text.split('\n'));
-      return message.reply(
-        `Foram adicionadas **${added}** chaves ao produto **${product.name}**. Stock atual: ${db.countAvailableKeys(
-          productId
-        )}.`
-      );
-    }
-
-    if (command === 'produtos') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const products = db.listActiveProducts();
-      if (products.length === 0) return message.reply('Ainda não há produtos criados.');
-      const linhas = products.map(
-        (p) => `**#${p.id} ${p.name}** — ${formatPriceEUR(p.price_eur)} — stock: ${db.countAvailableKeys(p.id)}`
-      );
-      return message.reply(linhas.join('\n'));
-    }
-
-    if (command === 'loja') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const products = db.listActiveProducts();
-      const { embed, rows } = buildLojaEmbedAndRow(products);
-      return message.channel.send({ embeds: [embed], components: rows });
-    }
-
-    // Alternativa em texto ao botão "Confirmar pagamento", útil se o pedido já rolou no canal
-    if (command === 'confirmar') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const orderId = Number(args[0]);
-      if (!orderId) return message.reply(`Uso: \`${PREFIX}confirmar <id_do_pedido>\``);
-      const result = await entregarPedido(orderId);
-      return message.reply(result.ok ? `Pedido #${orderId} confirmado e entregue.` : result.reason);
-    }
-  } catch (err) {
-    console.error(err);
-    message.reply('Ocorreu um erro ao processar esse comando.');
-  }
-});
-
-// Menu de seleção da loja + botões do carrinho + botões de confirmar/cancelar (staff)
 client.on('interactionCreate', async (interaction) => {
   try {
+    if (interaction.isChatInputCommand()) {
+      const { commandName } = interaction;
+
+      if (commandName === 'produto-criar') {
+        if (!isAdmin(interaction.member)) {
+          return interaction.reply({ content: 'Só administradores podem usar este comando.', ephemeral: true });
+        }
+        const nome = interaction.options.getString('nome');
+        const preco = interaction.options.getNumber('preco');
+        const descricao = interaction.options.getString('descricao') || '';
+        const cargo = interaction.options.getRole('cargo');
+
+        const id = db.addProduct({ name: nome, description: descricao, priceEur: preco, roleId: cargo?.id });
+        return interaction.reply({
+          content: `Produto criado! **${nome}** (ID: ${id}). Agora usa \`/chave-adicionar produto_id:${id}\` para carregares as chaves.`,
+          ephemeral: true,
+        });
+      }
+
+      if (commandName === 'chave-adicionar') {
+        if (!isAdmin(interaction.member)) {
+          return interaction.reply({ content: 'Só administradores podem usar este comando.', ephemeral: true });
+        }
+        const productId = interaction.options.getInteger('produto_id');
+        const attachment = interaction.options.getAttachment('ficheiro');
+        const product = db.getProduct(productId);
+        if (!product) return interaction.reply({ content: 'Não existe nenhum produto com esse ID.', ephemeral: true });
+
+        await interaction.deferReply({ ephemeral: true });
+        const res = await fetch(attachment.url);
+        const text = await res.text();
+        const added = db.addKeysBulk(productId, text.split('\n'));
+        return interaction.editReply(
+          `Foram adicionadas **${added}** chaves ao produto **${product.name}**. Stock atual: ${db.countAvailableKeys(
+            productId
+          )}.`
+        );
+      }
+
+      if (commandName === 'produtos') {
+        if (!isAdmin(interaction.member)) {
+          return interaction.reply({ content: 'Só administradores podem usar este comando.', ephemeral: true });
+        }
+        const products = db.listActiveProducts();
+        if (products.length === 0) return interaction.reply({ content: 'Ainda não há produtos criados.', ephemeral: true });
+        const linhas = products.map(
+          (p) => `**#${p.id} ${p.name}** — ${formatPriceEUR(p.price_eur)} — stock: ${db.countAvailableKeys(p.id)}`
+        );
+        return interaction.reply({ content: linhas.join('\n'), ephemeral: true });
+      }
+
+      if (commandName === 'loja') {
+        if (!isAdmin(interaction.member)) {
+          return interaction.reply({ content: 'Só administradores podem usar este comando.', ephemeral: true });
+        }
+        const products = db.listActiveProducts();
+        const { embed, rows } = buildLojaEmbedAndRow(products);
+        await interaction.channel.send({ embeds: [embed], components: rows });
+        return interaction.reply({ content: 'Painel publicado!', ephemeral: true });
+      }
+
+      if (commandName === 'confirmar') {
+        if (!isAdmin(interaction.member)) {
+          return interaction.reply({ content: 'Só administradores podem usar este comando.', ephemeral: true });
+        }
+        const orderId = interaction.options.getInteger('pedido_id');
+        const result = await entregarPedido(orderId);
+        return interaction.reply({
+          content: result.ok ? `Pedido #${orderId} confirmado e entregue.` : result.reason,
+          ephemeral: true,
+        });
+      }
+
+      return;
+    }
+
     if (interaction.isStringSelectMenu() && interaction.customId === 'comprar_select') {
       const productId = Number(interaction.values[0]);
       await criarPedido(interaction, productId);
