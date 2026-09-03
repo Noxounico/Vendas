@@ -6,6 +6,7 @@ const {
   Client,
   GatewayIntentBits,
   Partials,
+  ChannelType,
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
@@ -21,6 +22,9 @@ const PREFIX = process.env.PREFIX || '!';
 // Define isto no .env, ex: PAYMENT_INSTRUCTIONS="MB WAY 912345678 ou IBAN PT50..."
 const PAYMENT_INSTRUCTIONS =
   process.env.PAYMENT_INSTRUCTIONS || 'Contacta um membro da staff para combinares o pagamento.';
+// Banner opcional mostrado no topo do painel da loja. Define STORE_BANNER_URL no .env.
+const STORE_BANNER_URL = process.env.STORE_BANNER_URL || null;
+const STORE_NAME = process.env.STORE_NAME || 'Loja de Jogos';
 
 const client = new Client({
   intents: [
@@ -30,6 +34,10 @@ const client = new Client({
   ],
   partials: [Partials.Channel],
 });
+
+// Mapeia orderId -> threadId enquanto o bot está a correr, só para conseguirmos
+// avisar o "carrinho" do cliente quando a staff confirma/cancela.
+const orderThreads = new Map();
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,6 +58,18 @@ async function logToChannel(payload) {
   return null;
 }
 
+async function avisarThread(orderId, payload) {
+  const threadId = orderThreads.get(orderId);
+  if (!threadId) return;
+  try {
+    const thread = await client.channels.fetch(threadId);
+    if (thread?.isTextBased()) await thread.send(payload);
+    if (thread?.setArchived) await thread.setArchived(true).catch(() => {});
+  } catch (err) {
+    console.error('Falha ao avisar o tópico do pedido:', err.message);
+  }
+}
+
 function isAdmin(memberOrMessage) {
   const member = memberOrMessage.member ?? memberOrMessage;
   return member?.permissions?.has(PermissionFlagsBits.Administrator);
@@ -61,32 +81,46 @@ function parseArgs(content) {
   return matches.map((m) => m[1] ?? m[2]);
 }
 
+// ---------------------------------------------------------------------------
+// Painel principal da loja (embed + menu de seleção)
+// ---------------------------------------------------------------------------
+
 function buildLojaEmbedAndRow(products) {
   const embed = new EmbedBuilder()
-    .setTitle('🎮 Loja de Jogos')
-    .setColor(0x5865f2)
+    .setTitle(`🛍️ ${STORE_NAME}`)
+    .setColor(0x9b59b6)
     .setDescription(
       products.length
-        ? 'Escolhe um jogo abaixo para comprar. Depois de pedires, a staff confirma o pagamento e a chave chega automaticamente por DM.'
+        ? '**Como funciona:**\n' +
+            '• Escolhe o jogo no menu abaixo.\n' +
+            '• Abre-se um tópico privado só teu com o resumo do pedido.\n' +
+            '• Confirmas, pagas, e a staff liberta a chave automaticamente por DM.\n\n' +
+            '**Produtos disponíveis:**'
         : 'Não há produtos disponíveis de momento.'
     );
+
+  if (STORE_BANNER_URL) embed.setImage(STORE_BANNER_URL);
 
   for (const p of products) {
     const stock = db.countAvailableKeys(p.id);
     embed.addFields({
-      name: `${p.name} — ${formatPriceEUR(p.price_eur)}`,
-      value: `${p.description || 'Sem descrição.'}\nStock: **${stock}** ${
+      name: `🎮 ${p.name} — ${formatPriceEUR(p.price_eur)}`,
+      value: `${p.description || 'Sem descrição.'}\n📦 Stock: **${stock}** ${
         stock === 0 ? '(esgotado)' : ''
       }`,
     });
   }
+
+  embed.setFooter({ text: 'Seleciona um produto para iniciares o teu pedido' });
 
   const options = products
     .filter((p) => db.countAvailableKeys(p.id) > 0)
     .slice(0, 25)
     .map((p) => ({
       label: `${p.name} — ${formatPriceEUR(p.price_eur)}`,
+      description: (p.description || 'Comprar este jogo').slice(0, 100),
       value: String(p.id),
+      emoji: '🎮',
     }));
 
   const rows = [];
@@ -95,7 +129,7 @@ function buildLojaEmbedAndRow(products) {
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('comprar_select')
-          .setPlaceholder('Seleciona o jogo que queres comprar')
+          .setPlaceholder('🛒 Selecione o produto que deseja comprar')
           .addOptions(options)
       )
     );
@@ -105,7 +139,7 @@ function buildLojaEmbedAndRow(products) {
 }
 
 // ---------------------------------------------------------------------------
-// Pedido: cria o pedido pendente e avisa a staff para confirmar manualmente
+// Pedido: abre um tópico privado tipo "carrinho" com a revisão do pedido
 // ---------------------------------------------------------------------------
 
 async function criarPedido(interaction, productId) {
@@ -117,21 +151,94 @@ async function criarPedido(interaction, productId) {
     return interaction.reply({ content: 'Este produto está esgotado no momento.', ephemeral: true });
   }
 
+  await interaction.deferReply({ ephemeral: true });
+
   const orderId = db.createOrder({
     productId: product.id,
     discordUserId: interaction.user.id,
     paymentMethod: 'manual',
   });
 
-  await interaction.reply({
-    content:
-      `Pedido **#${orderId}** criado: **${product.name}** — ${formatPriceEUR(product.price_eur)}\n\n` +
-      `${PAYMENT_INSTRUCTIONS}\n\n` +
-      `Depois de pagares, aguarda que a staff confirme — a chave chega automaticamente aqui por DM.`,
-    ephemeral: true,
+  let thread;
+  try {
+    thread = await interaction.channel.threads.create({
+      name: `pedido-${interaction.user.username}-${orderId}`,
+      type: ChannelType.PrivateThread,
+      reason: `Pedido #${orderId}`,
+    });
+  } catch (err) {
+    // Tópicos privados exigem boost nível 2 — se falhar, usa um tópico normal.
+    thread = await interaction.channel.threads.create({
+      name: `pedido-${interaction.user.username}-${orderId}`,
+      type: ChannelType.PublicThread,
+      reason: `Pedido #${orderId}`,
+    });
+  }
+
+  await thread.members.add(interaction.user.id).catch(() => {});
+  orderThreads.set(orderId, thread.id);
+
+  const revisaoEmbed = new EmbedBuilder()
+    .setTitle('🛒 Revisão do Pedido')
+    .setColor(0x9b59b6)
+    .addFields(
+      { name: 'Produto', value: product.name, inline: true },
+      { name: 'Quantidade', value: '1', inline: true },
+      { name: 'Valor', value: formatPriceEUR(product.price_eur), inline: true }
+    )
+    .setFooter({ text: `Pedido #${orderId}` });
+
+  const rowRevisao = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`revisao_confirmar_${orderId}`)
+      .setLabel('Ir para o Pagamento')
+      .setEmoji('✅')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`revisao_cancelar_${orderId}`)
+      .setLabel('Cancelar')
+      .setEmoji('🗑️')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  await thread.send({
+    content: `${interaction.user}, aqui está o resumo do teu pedido:`,
+    embeds: [revisaoEmbed],
+    components: [rowRevisao],
   });
 
-  const row = new ActionRowBuilder().addComponents(
+  await interaction.editReply(`Abri o teu pedido em ${thread}. Continua por lá!`);
+}
+
+async function irParaPagamento(interaction, orderId) {
+  const order = db.getOrder(orderId);
+  if (!order || order.status !== 'pending') {
+    return interaction.reply({ content: 'Este pedido já não está disponível.', ephemeral: true });
+  }
+  const product = db.getProduct(order.product_id);
+
+  const pagamentoEmbed = new EmbedBuilder()
+    .setTitle('💳 Pagamento')
+    .setColor(0xf1c40f)
+    .setDescription(
+      `**${product.name}** — ${formatPriceEUR(product.price_eur)}\n\n${PAYMENT_INSTRUCTIONS}\n\n` +
+        'Depois de pagares, aguarda que a staff confirme aqui mesmo — a chave chega automaticamente por DM.'
+    )
+    .setFooter({ text: `Pedido #${orderId}` });
+
+  await interaction.update({ embeds: [pagamentoEmbed], components: [] });
+
+  const staffEmbed = new EmbedBuilder()
+    .setTitle(`Novo pedido #${orderId}`)
+    .setColor(0xf1c40f)
+    .addFields(
+      { name: 'Produto', value: product.name, inline: true },
+      { name: 'Valor', value: formatPriceEUR(product.price_eur), inline: true },
+      { name: 'Comprador', value: `<@${order.discord_user_id}>`, inline: true }
+    )
+    .setDescription('Confirma aqui assim que receberes o pagamento.');
+
+  const rowStaff = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`confirmar_${orderId}`)
       .setLabel('Confirmar pagamento')
@@ -142,17 +249,13 @@ async function criarPedido(interaction, productId) {
       .setStyle(ButtonStyle.Danger)
   );
 
-  const embed = new EmbedBuilder()
-    .setTitle(`Novo pedido #${orderId}`)
-    .setColor(0xf1c40f)
-    .addFields(
-      { name: 'Produto', value: product.name, inline: true },
-      { name: 'Valor', value: formatPriceEUR(product.price_eur), inline: true },
-      { name: 'Comprador', value: `<@${interaction.user.id}>`, inline: true }
-    )
-    .setDescription('Confirma aqui assim que receberes o pagamento.');
+  await logToChannel({ embeds: [staffEmbed], components: [rowStaff] });
+}
 
-  await logToChannel({ embeds: [embed], components: [row] });
+async function cancelarPedidoCliente(interaction, orderId) {
+  db.markOrderStatus(orderId, 'cancelado');
+  const embed = new EmbedBuilder().setTitle('❌ Pedido cancelado').setColor(0xe74c3c);
+  await interaction.update({ embeds: [embed], components: [] });
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +302,8 @@ async function entregarPedido(orderId) {
       console.error('Falha ao atribuir cargo:', err.message);
     }
   }
+
+  await avisarThread(order.id, `✅ Pagamento confirmado! A tua chave foi enviada por DM. Obrigado pela compra!`);
 
   return { ok: true };
 }
@@ -285,12 +390,24 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-// Menu de seleção da loja + botões de confirmar/cancelar pedido
+// Menu de seleção da loja + botões do carrinho + botões de confirmar/cancelar (staff)
 client.on('interactionCreate', async (interaction) => {
   try {
     if (interaction.isStringSelectMenu() && interaction.customId === 'comprar_select') {
       const productId = Number(interaction.values[0]);
       await criarPedido(interaction, productId);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('revisao_confirmar_')) {
+      const orderId = Number(interaction.customId.replace('revisao_confirmar_', ''));
+      await irParaPagamento(interaction, orderId);
+      return;
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('revisao_cancelar_')) {
+      const orderId = Number(interaction.customId.replace('revisao_cancelar_', ''));
+      await cancelarPedidoCliente(interaction, orderId);
       return;
     }
 
@@ -318,6 +435,7 @@ client.on('interactionCreate', async (interaction) => {
       }
       const orderId = Number(interaction.customId.replace('cancelar_', ''));
       db.markOrderStatus(orderId, 'cancelado');
+      await avisarThread(orderId, '❌ O teu pedido foi cancelado pela staff.');
       await interaction.update({
         content: `❌ Pedido #${orderId} cancelado por <@${interaction.user.id}>.`,
         embeds: [],
