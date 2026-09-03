@@ -87,31 +87,19 @@ function parseArgs(content) {
 
 function buildLojaEmbedAndRow(products) {
   const embed = new EmbedBuilder()
-    .setTitle(`🛍️ ${STORE_NAME}`)
-    .setColor(0x9b59b6)
+    .setTitle('🛍️ Loja')
+    .setColor(0x2b1a1a)
     .setDescription(
       products.length
-        ? '**Como funciona:**\n' +
-            '• Escolhe o jogo no menu abaixo.\n' +
-            '• Abre-se um tópico privado só teu com o resumo do pedido.\n' +
-            '• Confirmas, pagas, e a staff liberta a chave automaticamente por DM.\n\n' +
-            '**Produtos disponíveis:**'
+        ? `Seja bem-vindo(a) à loja da **${STORE_NAME}**!\n\n` +
+            '> Utilize o menu abaixo para escolher o produto desejado. A nossa equipa de staff irá confirmar o seu pagamento o mais rápido possível.\n\n' +
+            '> Lembre-se de ter o pagamento pronto antes de finalizar o pedido.\n\n' +
+            'Ao selecionar, um canal privado será criado para finalizares a compra.'
         : 'Não há produtos disponíveis de momento.'
     );
 
   if (STORE_BANNER_URL) embed.setImage(STORE_BANNER_URL);
-
-  for (const p of products) {
-    const stock = db.countAvailableKeys(p.id);
-    embed.addFields({
-      name: `🎮 ${p.name} — ${formatPriceEUR(p.price_eur)}`,
-      value: `${p.description || 'Sem descrição.'}\n📦 Stock: **${stock}** ${
-        stock === 0 ? '(esgotado)' : ''
-      }`,
-    });
-  }
-
-  embed.setFooter({ text: 'Seleciona um produto para iniciares o teu pedido' });
+  embed.setFooter({ text: `${STORE_NAME} ${new Date().getFullYear()} ©` });
 
   const options = products
     .filter((p) => db.countAvailableKeys(p.id) > 0)
@@ -129,7 +117,7 @@ function buildLojaEmbedAndRow(products) {
       new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('comprar_select')
-          .setPlaceholder('🛒 Selecione o produto que deseja comprar')
+          .setPlaceholder('Selecione o produto que deseja comprar...')
           .addOptions(options)
       )
     );
