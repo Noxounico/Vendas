@@ -28,6 +28,7 @@ const CONFIG = {
     CATEGORIA_TICKETS_ID: process.env.TICKETS_CATEGORY_ID,
     CARGO_STAFF_TICKETS_ID: process.env.STAFF_ROLE_ID,
     AUTOROLE_ID: process.env.AUTOROLE_ID,
+    CARGO_VERIFICACAO_ID: process.env.VERIFICACAO_ROLE_ID || process.env.AUTOROLE_ID,
     BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
@@ -143,7 +144,32 @@ function anexoBanner() {
     };
 }
 
-function payloadPainelLoja() {
+function botaoVerificar() {
+    return new ButtonBuilder()
+        .setCustomId('btn_verificar')
+        .setLabel('Verificar')
+        .setEmoji('✅')
+        .setStyle(ButtonStyle.Secondary);
+}
+
+function textoPainelVerificacao() {
+    return (
+        '## VERIFICAÇÃO\n' +
+        '• Clique no botão para se verificar\n' +
+        '• Libera o acesso aos canais do servidor\n' +
+        '• Verificação imediata, só um clique\n\n' +
+        '```ansi\n\u001b[2;32m✅ Verifique-se agora!\u001b[0m\n```'
+    );
+}
+
+function rodapePainelVerificacao() {
+    return (
+        'Acesso ao servidor\n' +
+        'Clique no botão **"Verificar"**'
+    );
+}
+
+function montarPainelV2(texto, rodape, botao) {
     const container = new ContainerBuilder().setAccentColor(0x2b2d31);
     const anexo = anexoBanner();
     const imageUrl = anexo?.imageUrl || CONFIG.BANNER_LOJA || undefined;
@@ -157,13 +183,13 @@ function payloadPainelLoja() {
     }
 
     container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(textoPainelLoja())
+        new TextDisplayBuilder().setContent(texto)
     );
 
     container.addSectionComponents(
         new SectionBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(rodapePainelLoja()))
-            .setButtonAccessory(botaoComprar())
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(rodape))
+            .setButtonAccessory(botao)
     );
 
     const payload = {
@@ -172,6 +198,14 @@ function payloadPainelLoja() {
     };
     if (anexo) payload.files = anexo.files;
     return payload;
+}
+
+function payloadPainelLoja() {
+    return montarPainelV2(textoPainelLoja(), rodapePainelLoja(), botaoComprar());
+}
+
+function payloadPainelVerificacao() {
+    return montarPainelV2(textoPainelVerificacao(), rodapePainelVerificacao(), botaoVerificar());
 }
 
 function payloadLojaClassico() {
@@ -216,6 +250,50 @@ async function publicarPainelLoja(channel) {
     }
 }
 
+function payloadVerificacaoClassico() {
+    const embed = new EmbedBuilder()
+        .setTitle('VERIFICAÇÃO')
+        .setDescription(
+            '• Clique no botão para se verificar\n' +
+            '• Libera o acesso aos canais do servidor\n' +
+            '• Verificação imediata, só um clique\n\n' +
+            '```ansi\n\u001b[2;32m✅ Verifique-se agora!\u001b[0m\n```\n' +
+            'Clique no botão **"Verificar"**'
+        )
+        .setColor(0x2b2d31);
+
+    const payload = {
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(botaoVerificar())]
+    };
+
+    const anexo = anexoBanner();
+    if (anexo) {
+        embed.setImage(anexo.imageUrl);
+        payload.files = anexo.files;
+    } else if (CONFIG.BANNER_LOJA) {
+        embed.setImage(CONFIG.BANNER_LOJA);
+    }
+    return payload;
+}
+
+async function publicarPainelVerificacao(channel) {
+    await garantirBanner();
+    try {
+        return await channel.send(payloadPainelVerificacao());
+    } catch (error) {
+        console.warn('Painel V2 de verificação falhou, a usar embed:', error.message);
+        return channel.send(payloadVerificacaoClassico());
+    }
+}
+
+function nomeComando(texto) {
+    return String(texto || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
 client.once('clientReady', aoFicarOnline);
 client.once('ready', aoFicarOnline);
 
@@ -232,10 +310,17 @@ async function aoFicarOnline() {
     try {
         for (const guild of client.guilds.cache.values()) {
             const cmds = await guild.commands.fetch();
-            if (![...cmds.values()].some((c) => c.name === 'loja')) {
+            const nomes = new Set([...cmds.values()].map((c) => c.name));
+            if (!nomes.has('loja')) {
                 await guild.commands.create({
                     name: 'loja',
                     description: 'Publica o painel da loja neste canal'
+                });
+            }
+            if (!nomes.has('verificacao')) {
+                await guild.commands.create({
+                    name: 'verificacao',
+                    description: 'Publica o painel de verificação neste canal'
                 });
             }
         }
@@ -262,7 +347,7 @@ client.on('messageCreate', async (message) => {
     if (!texto.startsWith(CONFIG.PREFIXO)) return;
 
     const args = texto.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
-    const commandName = (args.shift() || '').toLowerCase();
+    const commandName = nomeComando(args.shift() || '');
 
     if (commandName === 'loja') {
         try {
@@ -271,6 +356,17 @@ client.on('messageCreate', async (message) => {
         } catch (error) {
             console.error('Erro no !loja:', error);
             await message.channel.send({ content: `Não consegui publicar a loja: \`${error.message}\`` }).catch(() => {});
+        }
+        return;
+    }
+
+    if (commandName === 'verificacao' || commandName === 'verificar') {
+        try {
+            await publicarPainelVerificacao(message.channel);
+            message.delete().catch(() => {});
+        } catch (error) {
+            console.error('Erro no !verificacao:', error);
+            await message.channel.send({ content: `Não consegui publicar a verificação: \`${error.message}\`` }).catch(() => {});
         }
         return;
     }
@@ -320,6 +416,19 @@ client.on('messageCreate', async (message) => {
 });
 
 client.on('interactionCreate', async (interaction) => {
+    if (interaction.isChatInputCommand() && interaction.commandName === 'verificacao') {
+        try {
+            await interaction.deferReply({ flags: 64 });
+            await publicarPainelVerificacao(interaction.channel);
+            return interaction.editReply({ content: 'Painel de verificação publicado neste canal.' });
+        } catch (error) {
+            console.error('Erro no /verificacao:', error);
+            const msg = `Não consegui publicar a verificação: \`${error.message}\``;
+            if (interaction.deferred || interaction.replied) return interaction.editReply({ content: msg });
+            return interaction.reply({ content: msg, flags: 64 });
+        }
+    }
+
     if (interaction.isChatInputCommand() && interaction.commandName === 'loja') {
         try {
             await interaction.deferReply({ flags: 64 });
@@ -394,6 +503,35 @@ client.on('interactionCreate', async (interaction) => {
         ticketsAbertos.delete(chaveTicket);
         await interaction.reply({ content: 'O ticket será fechado e apagado em 5 segundos...' });
         setTimeout(() => interaction.channel.delete().catch(() => null), 5000);
+    }
+
+    if (interaction.isButton() && interaction.customId === 'btn_verificar') {
+        const cargoId = CONFIG.CARGO_VERIFICACAO_ID;
+        if (!cargoId) {
+            return interaction.reply({
+                content: 'Falta definir o cargo. No `.env` mete `VERIFICACAO_ROLE_ID=id_do_cargo`.',
+                flags: 64
+            });
+        }
+
+        try {
+            const member = interaction.member || await interaction.guild.members.fetch(interaction.user.id);
+            const cargo = interaction.guild.roles.cache.get(cargoId);
+            if (!cargo) {
+                return interaction.reply({ content: 'O cargo de verificação não existe neste servidor.', flags: 64 });
+            }
+            if (member.roles.cache.has(cargoId)) {
+                return interaction.reply({ content: 'Já estás verificado.', flags: 64 });
+            }
+            await member.roles.add(cargo);
+            return interaction.reply({ content: '✅ Verificado com sucesso. Já tens acesso ao servidor.', flags: 64 });
+        } catch (error) {
+            console.error('Erro no btn_verificar:', error);
+            return interaction.reply({
+                content: 'Não consegui verificar. Confirma que o bot tem permissão **Gerir Cargos** e que o cargo dele está acima do cargo de membro.',
+                flags: 64
+            });
+        }
     }
 
     if (interaction.isButton() && interaction.customId === 'btn_comprar') {
