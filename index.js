@@ -63,7 +63,7 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
-// --- Comandos (!loja, !tickets, !feedback) ---
+// --- Comandos (!loja, !tickets, !feedback, !verificacao) ---
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.content.startsWith(CONFIG.PREFIXO)) return;
 
@@ -100,8 +100,7 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle('Central de Atendimento')
             .setDescription('- Após solicitar atendimento, aguarde até que um integrante da equipa responda à sua solicitação.\n\n- O atendimento é realizado de forma privada; apenas membros autorizados terão acesso.\n\n- Ressaltamos que nossa equipa não está disponível 24 horas por dia.')
-            // Se quiser colocar o banner roxo da imagem, insira o link aqui dentro das aspas:
-            .setImage('https://i.imgur.com/link_da_imagem.png') 
+            .setImage('https://i.imgur.com/your-banner.png') // Mude o link aqui se quiser um banner no ticket
             .setColor(0x2b2d31);
 
         const selectMenu = new StringSelectMenuBuilder()
@@ -119,7 +118,30 @@ client.on('messageCreate', async (message) => {
         await message.channel.send({ embeds: [embed], components: [row] });
     }
 
-    // Comando 3: Feedback
+    // Comando 3: Painel de Verificação (Backup)
+    if (commandName === 'verificacao') {
+        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
+        message.delete().catch(()=>{});
+
+        const embed = new EmbedBuilder()
+            .setTitle('Verifique-se')
+            .setDescription('Se verifique abaixo para ter acesso ao servidor completo!\nCaso o servidor caia vamos te puxar!')
+            // A imagem que enviou na print do painel de verificação
+            .setImage('https://i.postimg.cc/mZh4H36h/Screenshot-2.png') 
+            .setColor(0x2b2d31);
+
+        const btn = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setLabel('Verificar')
+                .setEmoji('✔')
+                .setStyle(ButtonStyle.Link) // Botão de link
+                .setURL('https://seu-link-de-autorizacao-oauth2-aqui.com') // MUDE ISTO PARA O SEU LINK OAUTH2
+        );
+
+        await message.channel.send({ content: '🔗 Clique para verificar sua conta', embeds: [embed], components: [btn] });
+    }
+
+    // Comando 4: Feedback
     if (commandName === 'feedback') {
         message.delete().catch(()=>{});
         const review = args.join(' ');
@@ -227,4 +249,5 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
+// AQUI USA O DISCORD_TOKEN COMO DEFINIU NO RAILWAY
 client.login(process.env.DISCORD_TOKEN);
