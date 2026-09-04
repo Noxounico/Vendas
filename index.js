@@ -31,7 +31,8 @@ const CONFIG = {
     CARGO_VERIFICACAO_ID: process.env.VERIFICACAO_ROLE_ID || process.env.AUTOROLE_ID,
     // Troca a imagem: mete o ficheiro em assets/banner.jpg (ou .png)
     // OU cola um link aqui e apaga o ficheiro antigo em assets/
-    BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
+    BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545538781308915863/content.png?ex=6a9c82a8&is=6a9b3128&hm=034a3261aa3c0971f60b238bb04911c98fb91eb100f9d2171eb613992a0cddf0',
+    BANNER_VERIFICACAO: process.env.VERIFICACAO_BANNER || process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
         { id_menu: 'ticket_receber', nome: 'Receber Produto', desc: 'Abra um ticket para receber seu produto', emoji: '🛒' },
@@ -40,16 +41,8 @@ const CONFIG = {
 };
 
 const PASTA_ASSETS = path.join(__dirname, 'assets');
-const FICHEIRO_BANNER_DOWNLOAD = path.join(PASTA_ASSETS, 'banner.png');
-
-function ficheiroBannerLocal() {
-    const nomes = ['banner.png', 'banner.jpg', 'banner.jpeg', 'banner.webp', 'banner.gif'];
-    for (const nome of nomes) {
-        const ficheiro = path.join(PASTA_ASSETS, nome);
-        if (fs.existsSync(ficheiro) && fs.statSync(ficheiro).size > 1000) return ficheiro;
-    }
-    return null;
-}
+const FICHEIRO_BANNER_LOJA = path.join(PASTA_ASSETS, 'banner-loja.png');
+const FICHEIRO_BANNER_VERIFICACAO = path.join(PASTA_ASSETS, 'banner.png');
 
 let db = null;
 try {
@@ -124,26 +117,28 @@ function baixarFicheiro(url, destino) {
     });
 }
 
-async function garantirBanner() {
+async function garantirBanner(url, destino) {
     fs.mkdirSync(PASTA_ASSETS, { recursive: true });
-    if (CONFIG.BANNER_LOJA && /^https?:\/\//i.test(CONFIG.BANNER_LOJA)) {
+    if (url && /^https?:\/\//i.test(url)) {
         try {
-            await baixarFicheiro(CONFIG.BANNER_LOJA, FICHEIRO_BANNER_DOWNLOAD);
+            await baixarFicheiro(url, destino);
         } catch (error) {
             console.warn('Não foi possível descarregar o banner:', error.message);
         }
     }
-    return ficheiroBannerLocal();
+    return fs.existsSync(destino) ? destino : null;
 }
 
-function anexoBanner() {
-    const local = ficheiroBannerLocal();
-    if (!local) return null;
-    const nome = path.basename(local);
-    return {
-        imageUrl: `attachment://${nome}`,
-        files: [new AttachmentBuilder(local, { name: nome })]
-    };
+function anexoBanner(ficheiro, urlFallback) {
+    if (ficheiro && fs.existsSync(ficheiro) && fs.statSync(ficheiro).size > 1000) {
+        const nome = path.basename(ficheiro);
+        return {
+            imageUrl: `attachment://${nome}`,
+            files: [new AttachmentBuilder(ficheiro, { name: nome })]
+        };
+    }
+    if (urlFallback) return { imageUrl: urlFallback, files: null };
+    return null;
 }
 
 function botaoVerificar() {
@@ -171,10 +166,9 @@ function rodapePainelVerificacao() {
     );
 }
 
-function montarPainelV2(texto, rodape, botao) {
+function montarPainelV2(texto, rodape, botao, anexo, urlFallback) {
     const container = new ContainerBuilder().setAccentColor(0x2b2d31);
-    const anexo = anexoBanner();
-    const imageUrl = anexo?.imageUrl || CONFIG.BANNER_LOJA || undefined;
+    const imageUrl = anexo?.imageUrl || urlFallback || undefined;
 
     if (imageUrl) {
         container.addMediaGalleryComponents(
@@ -198,16 +192,28 @@ function montarPainelV2(texto, rodape, botao) {
         flags: MessageFlags.IsComponentsV2,
         components: [container]
     };
-    if (anexo) payload.files = anexo.files;
+    if (anexo?.files) payload.files = anexo.files;
     return payload;
 }
 
 function payloadPainelLoja() {
-    return montarPainelV2(textoPainelLoja(), rodapePainelLoja(), botaoComprar());
+    return montarPainelV2(
+        textoPainelLoja(),
+        rodapePainelLoja(),
+        botaoComprar(),
+        anexoBanner(FICHEIRO_BANNER_LOJA, CONFIG.BANNER_LOJA),
+        CONFIG.BANNER_LOJA
+    );
 }
 
 function payloadPainelVerificacao() {
-    return montarPainelV2(textoPainelVerificacao(), rodapePainelVerificacao(), botaoVerificar());
+    return montarPainelV2(
+        textoPainelVerificacao(),
+        rodapePainelVerificacao(),
+        botaoVerificar(),
+        anexoBanner(FICHEIRO_BANNER_VERIFICACAO, CONFIG.BANNER_VERIFICACAO),
+        CONFIG.BANNER_VERIFICACAO
+    );
 }
 
 function payloadLojaClassico() {
@@ -232,8 +238,8 @@ function payloadLojaClassico() {
         components: [new ActionRowBuilder().addComponents(botaoComprar())]
     };
 
-    const anexo = anexoBanner();
-    if (anexo) {
+    const anexo = anexoBanner(FICHEIRO_BANNER_LOJA, CONFIG.BANNER_LOJA);
+    if (anexo?.files) {
         embed.setImage(anexo.imageUrl);
         payload.files = anexo.files;
     } else if (CONFIG.BANNER_LOJA) {
@@ -243,7 +249,7 @@ function payloadLojaClassico() {
 }
 
 async function publicarPainelLoja(channel) {
-    await garantirBanner();
+    await garantirBanner(CONFIG.BANNER_LOJA, FICHEIRO_BANNER_LOJA);
     try {
         return await channel.send(payloadPainelLoja());
     } catch (error) {
@@ -269,18 +275,18 @@ function payloadVerificacaoClassico() {
         components: [new ActionRowBuilder().addComponents(botaoVerificar())]
     };
 
-    const anexo = anexoBanner();
-    if (anexo) {
+    const anexo = anexoBanner(FICHEIRO_BANNER_VERIFICACAO, CONFIG.BANNER_VERIFICACAO);
+    if (anexo?.files) {
         embed.setImage(anexo.imageUrl);
         payload.files = anexo.files;
-    } else if (CONFIG.BANNER_LOJA) {
-        embed.setImage(CONFIG.BANNER_LOJA);
+    } else if (CONFIG.BANNER_VERIFICACAO) {
+        embed.setImage(CONFIG.BANNER_VERIFICACAO);
     }
     return payload;
 }
 
 async function publicarPainelVerificacao(channel) {
-    await garantirBanner();
+    await garantirBanner(CONFIG.BANNER_VERIFICACAO, FICHEIRO_BANNER_VERIFICACAO);
     try {
         return await channel.send(payloadPainelVerificacao());
     } catch (error) {
@@ -304,7 +310,8 @@ async function aoFicarOnline() {
     client.user.__lojaReady = true;
     console.log(`🤖 Bot ${client.user.tag} Online e pronto para vender!`);
     try {
-        await garantirBanner();
+        await garantirBanner(CONFIG.BANNER_LOJA, FICHEIRO_BANNER_LOJA);
+        await garantirBanner(CONFIG.BANNER_VERIFICACAO, FICHEIRO_BANNER_VERIFICACAO);
         console.log(`📁 Pasta do banner: ${PASTA_ASSETS}`);
     } catch (error) {
         console.warn('Não foi possível criar a pasta assets:', error.message);
