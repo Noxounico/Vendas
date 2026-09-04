@@ -30,7 +30,7 @@ const CONFIG = {
     AUTOROLE_ID: process.env.AUTOROLE_ID,
     // Troca a imagem: mete o ficheiro em assets/banner.jpg (ou .png)
     // OU cola um link aqui e apaga o ficheiro antigo em assets/
-    BANNER_LOJA: process.env.LOJA_BANNER || 'https://raw.githubusercontent.com/Noxounico/Vendas/cursor/loja-banner-topo-5c04/assets/banner.jpg',
+    BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
         { id_menu: 'ticket_receber', nome: 'Receber Produto', desc: 'Abra um ticket para receber seu produto', emoji: '🛒' },
@@ -39,7 +39,7 @@ const CONFIG = {
 };
 
 const PASTA_ASSETS = path.join(__dirname, 'assets');
-const FICHEIRO_BANNER_DOWNLOAD = path.join(PASTA_ASSETS, 'banner.jpg');
+const FICHEIRO_BANNER_DOWNLOAD = path.join(PASTA_ASSETS, 'banner.png');
 
 function ficheiroBannerLocal() {
     const nomes = ['banner.jpg', 'banner.jpeg', 'banner.png', 'banner.webp', 'banner.gif'];
