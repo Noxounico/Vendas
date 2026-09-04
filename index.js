@@ -13,6 +13,7 @@ const {
     AttachmentBuilder
 } = require('discord.js');
 const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
 const path = require('path');
 
 // --- Configurações Iniciais ---
@@ -48,8 +49,64 @@ const client = new Client({
 
 const ticketsAbertos = new Set();
 
-client.once('ready', () => {
+function podePublicarPainel(member, guild) {
+    if (!member || !guild) return false;
+    if (member.id === guild.ownerId) return true;
+    return member.permissions.has(PermissionFlagsBits.Administrator)
+        || member.permissions.has(PermissionFlagsBits.ManageGuild);
+}
+
+function payloadPainelLoja() {
+    const embed = new EmbedBuilder()
+        .setTitle('Nitradas')
+        .setDescription(
+            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+            '• Contas com Nitro Gaming\n' +
+            '• Contas Nitradas Possui Nitro.\n' +
+            '• Nitradas Na Melhor Qualidade.\n\n' +
+            '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
+            'Preço: **De R$ 2,55 a R$ 7,99**\n' +
+            'Clique no botão **"Comprar"**'
+        )
+        .setColor(0x2b2d31);
+
+    const components = [
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('btn_comprar')
+                .setLabel('Comprar')
+                .setEmoji('🛒')
+                .setStyle(ButtonStyle.Secondary)
+        )
+    ];
+
+    const bannerFonte = process.env.LOJA_BANNER || path.join(__dirname, 'assets', 'banner.png');
+    const payload = { embeds: [embed], components };
+
+    if (fs.existsSync(bannerFonte) || /^https?:\/\//i.test(bannerFonte)) {
+        payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
+    } else {
+        console.warn(`[loja] Banner não encontrado em: ${bannerFonte} — o painel vai sem imagem.`);
+    }
+
+    return payload;
+}
+
+async function publicarPainelLoja(channel) {
+    return channel.send(payloadPainelLoja());
+}
+
+client.once('ready', async () => {
     console.log(`🤖 Bot ${client.user.tag} Online e pronto para vender!`);
+    try {
+        const cmds = [{ name: 'loja', description: 'Publica o painel da loja neste canal' }];
+        for (const guild of client.guilds.cache.values()) {
+            await guild.commands.set(cmds);
+        }
+        console.log('Comando /loja registado. Se o !loja não responder, usa /loja.');
+    } catch (error) {
+        console.error('Não foi possível registar o /loja:', error);
+    }
 });
 
 // --- Sistema de Autorole ---
@@ -66,41 +123,30 @@ client.on('guildMemberAdd', async (member) => {
 
 // --- Comandos (!loja, !tickets, !feedback) ---
 client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.guild || !message.content.startsWith(CONFIG.PREFIXO)) return;
+    if (message.author.bot || !message.guild) return;
 
-    const args = message.content.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
-    const commandName = args.shift().toLowerCase();
+    const texto = (message.content || '').trim();
+    if (!texto.startsWith(CONFIG.PREFIXO)) return;
+
+    const args = texto.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
+    const commandName = (args.shift() || '').toLowerCase();
     
     // Comando 1: Painel de Loja (Comprar) — banner como ficheiro no topo (não .setImage)
     if (commandName === 'loja') {
-        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
-        message.delete().catch(()=>{});
+        try {
+            const member = message.member || await message.guild.members.fetch(message.author.id);
+            if (!podePublicarPainel(member, message.guild)) {
+                const aviso = await message.reply({ content: 'Não tens permissão para publicar a loja (precisa de Administrador ou Gerir Servidor).' });
+                return setTimeout(() => aviso.delete().catch(()=>{}), 8000);
+            }
 
-        const bannerFonte = process.env.LOJA_BANNER || path.join(__dirname, 'assets', 'banner.png');
-        const bannerImagem = new AttachmentBuilder(bannerFonte, { name: 'banner.png' });
-
-        const embed = new EmbedBuilder()
-            .setTitle('Nitradas')
-            .setDescription(
-                '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
-                '• Contas com Nitro Gaming\n' +
-                '• Contas Nitradas Possui Nitro.\n' +
-                '• Nitradas Na Melhor Qualidade.\n\n' +
-                '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-                'Preço: **De R$ 2,55 a R$ 7,99**\n' +
-                'Clique no botão **"Comprar"**'
-            )
-            .setColor(0x2b2d31);
-
-        const btn = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('btn_comprar')
-                .setLabel('Comprar')
-                .setEmoji('🛒')
-                .setStyle(ButtonStyle.Secondary)
-        );
-
-        await message.channel.send({ files: [bannerImagem], embeds: [embed], components: [btn] });
+            await publicarPainelLoja(message.channel);
+            message.delete().catch(()=>{});
+        } catch (error) {
+            console.error('Erro no !loja:', error);
+            await message.channel.send({ content: `Não consegui publicar a loja: \`${error.message}\`` }).catch(()=>{});
+        }
+        return;
     }
 
     // Comando 2: Painel de Tickets (Central de Atendimento)
@@ -152,6 +198,23 @@ client.on('messageCreate', async (message) => {
 
 // --- Interações (Menus, Botões) ---
 client.on('interactionCreate', async (interaction) => {
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'loja') {
+        try {
+            const member = interaction.member || await interaction.guild.members.fetch(interaction.user.id);
+            if (!podePublicarPainel(member, interaction.guild)) {
+                return interaction.reply({ content: 'Não tens permissão para publicar a loja (precisa de Administrador ou Gerir Servidor).', flags: 64 });
+            }
+            await interaction.deferReply({ flags: 64 });
+            await publicarPainelLoja(interaction.channel);
+            return interaction.editReply({ content: 'Painel da loja publicado neste canal.' });
+        } catch (error) {
+            console.error('Erro no /loja:', error);
+            const msg = `Não consegui publicar a loja: \`${error.message}\``;
+            if (interaction.deferred || interaction.replied) return interaction.editReply({ content: msg });
+            return interaction.reply({ content: msg, flags: 64 });
+        }
+    }
     
     // Lógica do Menu de Tickets
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_abrir_ticket') {
