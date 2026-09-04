@@ -15,6 +15,7 @@ const {
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
+const { v2 } = require('./utils/v2.js');
 
 // --- Configurações Iniciais ---
 const CONFIG = {
@@ -71,35 +72,37 @@ function resolverBanner(usarFicheiroLocal = false) {
 }
 
 function payloadPainelLoja(usarFicheiroLocal = false) {
-    const embed = new EmbedBuilder()
-        .setTitle('Nitradas')
-        .setDescription(
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('btn_comprar')
+            .setLabel('Comprar')
+            .setEmoji('🛒')
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    const bannerFonte = resolverBanner(usarFicheiroLocal);
+    const imageUrl = !bannerFonte
+        ? undefined
+        : (/^https?:\/\//i.test(bannerFonte) ? bannerFonte : 'attachment://banner.png');
+
+    const payload = v2({
+        content:
+            '## Nitradas\n' +
             '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
             '• Contas com Nitro Gaming\n' +
             '• Contas Nitradas Possui Nitro.\n' +
             '• Nitradas Na Melhor Qualidade.\n\n' +
             '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
             'Preço: **De R$ 2,55 a R$ 7,99**\n' +
-            'Clique no botão **"Comprar"**'
-        )
-        .setColor(0x120c0c);
+            'Clique no botão **"Comprar"**',
+        imageUrl,
+        accentColor: 0x120c0c
+    }, [row]);
 
-    const components = [
-        new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('btn_comprar')
-                .setLabel('Comprar')
-                .setEmoji('🛒')
-                .setStyle(ButtonStyle.Secondary)
-        )
-    ];
-
-    // Imagem como ficheiro (não .setImage) + embed + botão = 1 mensagem, banner em cima
-    const bannerFonte = resolverBanner(usarFicheiroLocal);
-    const payload = { embeds: [embed], components };
-    if (bannerFonte) {
+    if (bannerFonte && !/^https?:\/\//i.test(bannerFonte)) {
         payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
     }
+
     return payload;
 }
 
@@ -160,6 +163,8 @@ client.on('messageCreate', async (message) => {
 
             await publicarPainelLoja(message.channel);
             message.delete().catch(()=>{});
+            const ok = await message.channel.send({ content: 'Painel da loja enviado com sucesso!' });
+            setTimeout(() => ok.delete().catch(()=>{}), 3000);
         } catch (error) {
             console.error('Erro no !loja:', error);
             await message.channel.send({ content: `Não consegui publicar a loja: \`${error.message}\`` }).catch(()=>{});
