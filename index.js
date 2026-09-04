@@ -31,7 +31,7 @@ const CONFIG = {
     CARGO_VERIFICACAO_ID: process.env.VERIFICACAO_ROLE_ID || process.env.AUTOROLE_ID,
     // Troca a imagem: mete o ficheiro em assets/banner.jpg (ou .png)
     // OU cola um link aqui e apaga o ficheiro antigo em assets/
-    BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545538781308915863/content.png?ex=6a9c82a8&is=6a9b3128&hm=034a3261aa3c0971f60b238bb04911c98fb91eb100f9d2171eb613992a0cddf0',
+    BANNER_LOJA: process.env.LOJA_BANNER || '',
     BANNER_VERIFICACAO: process.env.VERIFICACAO_BANNER || process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
@@ -76,21 +76,18 @@ function botaoComprar() {
 
 function textoPainelLoja() {
     return (
-        '## NITRO GIFT GAMING\n' +
-        '• Só clicar em resgatar\n' +
-        '• Pega em todas as contas que já teve nitro\n' +
-        '• Entrega automática no seu privado\n' +
-        '• Chances bem minimas do nitro cair, quase nunca cai, compre ciente\n' +
-        '• Não é necessário de cartão para ativar\n' +
-        '• Nitro gift não possui garantia, apenas que vai ser entregue funcionando!\n\n' +
-        'Pedimos que grave o processo da compra do início ao fim recebendo e resgatando no privado do bot, para que caso ocorra algum erro, possamos trocar o nitro, caso não tenha gravação,não será possível realizar a troca.\n\n' +
+        '## Nitradas\n' +
+        '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+        '• Contas com Nitro Gaming\n' +
+        '• Contas Nitradas Possui Nitro.\n' +
+        '• Nitradas Na Melhor Qualidade.\n\n' +
         '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```'
     );
 }
 
 function rodapePainelLoja() {
     return (
-        'Preço: **De R$ 8,99 a R$ 21,99**\n' +
+        'Preço: **De R$ 2,55 a R$ 7,99**\n' +
         'Clique no botão **"Comprar"**'
     );
 }
@@ -119,6 +116,7 @@ function baixarFicheiro(url, destino) {
 
 async function garantirBanner(url, destino) {
     fs.mkdirSync(PASTA_ASSETS, { recursive: true });
+    if (fs.existsSync(destino) && fs.statSync(destino).size > 1000) return destino;
     if (url && /^https?:\/\//i.test(url)) {
         try {
             await baixarFicheiro(url, destino);
@@ -218,17 +216,14 @@ function payloadPainelVerificacao() {
 
 function payloadLojaClassico() {
     const embed = new EmbedBuilder()
-        .setTitle('NITRO GIFT GAMING')
+        .setTitle('Nitradas')
         .setDescription(
-            '• Só clicar em resgatar\n' +
-            '• Pega em todas as contas que já teve nitro\n' +
-            '• Entrega automática no seu privado\n' +
-            '• Chances bem minimas do nitro cair, quase nunca cai, compre ciente\n' +
-            '• Não é necessário de cartão para ativar\n' +
-            '• Nitro gift não possui garantia, apenas que vai ser entregue funcionando!\n\n' +
-            'Pedimos que grave o processo da compra do início ao fim recebendo e resgatando no privado do bot, para que caso ocorra algum erro, possamos trocar o nitro, caso não tenha gravação,não será possível realizar a troca.\n\n' +
+            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+            '• Contas com Nitro Gaming\n' +
+            '• Contas Nitradas Possui Nitro.\n' +
+            '• Nitradas Na Melhor Qualidade.\n\n' +
             '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-            'Preço: **De R$ 8,99 a R$ 21,99**\n' +
+            'Preço: **De R$ 2,55 a R$ 7,99**\n' +
             'Clique no botão **"Comprar"**'
         )
         .setColor(0x2b2d31);
