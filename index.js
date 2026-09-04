@@ -70,17 +70,15 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
     
-    // Comando 1: Painel de Loja (Comprar)
+    // Comando 1: Painel de Loja (Comprar) -> COM IMAGEM EM CIMA (Unfurled link)
     if (commandName === 'loja') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         message.delete().catch(()=>{});
 
-        // Único embed para evitar bugs (a imagem vai automaticamente para baixo do texto no Discord)
+        // O Embed apenas com o texto
         const embed = new EmbedBuilder()
             .setTitle('Nitradas')
             .setDescription('• Conta Full Acesso, Muda Email, Senha Etc...\n• Contas com Nitro Gaming\n• Contas Nitradas Possui Nitro.\n• Nitradas Na Melhor Qualidade.\n\n⚡ **Entrega Automática!**\n\nPreço: **De R$ 2,55 a R$ 7,99**\nClique no botão **"Comprar"**')
-            // Se preferir outra imagem, basta mudar este link
-            .setImage('https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa&') 
             .setColor(0x2b2d31);
 
         const btn = new ActionRowBuilder().addComponents(
@@ -91,7 +89,11 @@ client.on('messageCreate', async (message) => {
                 .setStyle(ButtonStyle.Secondary)
         );
 
-        await message.channel.send({ embeds: [embed], components: [btn] });
+        // AQUI ESTÁ O SEGREDO: Enviamos o link da imagem no "content" da mensagem.
+        // O Discord vai abrir esse link como um banner gigante em cima do Embed!
+        const linkImagem = 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa&';
+        
+        await message.channel.send({ content: linkImagem, embeds: [embed], components: [btn] });
     }
 
     // Comando 2: Painel de Tickets (Central de Atendimento)
