@@ -1,20 +1,26 @@
 require('dotenv').config();
-const { 
-    Client, 
-    GatewayIntentBits, 
+const {
+    Client,
+    GatewayIntentBits,
     ChannelType,
-    ActionRowBuilder, 
-    ButtonBuilder, 
-    ButtonStyle, 
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder,
-    EmbedBuilder, 
+    EmbedBuilder,
     PermissionFlagsBits,
-    AttachmentBuilder
+    AttachmentBuilder,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    MediaGalleryBuilder,
+    MediaGalleryItemBuilder,
+    SectionBuilder,
+    MessageFlags
 } = require('discord.js');
-const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
 const CONFIG = {
     PREFIXO: process.env.PREFIX || '!',
@@ -22,7 +28,7 @@ const CONFIG = {
     CATEGORIA_TICKETS_ID: process.env.TICKETS_CATEGORY_ID,
     CARGO_STAFF_TICKETS_ID: process.env.STAFF_ROLE_ID,
     AUTOROLE_ID: process.env.AUTOROLE_ID,
-    BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
+    BANNER_LOJA: process.env.LOJA_BANNER || 'https://raw.githubusercontent.com/Noxounico/Vendas/cursor/loja-banner-topo-5c04/assets/banner.jpg',
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
         { id_menu: 'ticket_receber', nome: 'Receber Produto', desc: 'Abra um ticket para receber seu produto', emoji: '🛒' },
@@ -30,10 +36,19 @@ const CONFIG = {
     ]
 };
 
-const db = new sqlite3.Database(path.join(__dirname, 'database.sqlite'));
-db.serialize(() => {
-    db.run("CREATE TABLE IF NOT EXISTS compras (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, produto TEXT, status TEXT, data DATETIME DEFAULT CURRENT_TIMESTAMP)");
-});
+const PASTA_ASSETS = path.join(__dirname, 'assets');
+const FICHEIRO_BANNER = path.join(PASTA_ASSETS, 'banner.jpg');
+
+let db = null;
+try {
+    const sqlite3 = require('sqlite3').verbose();
+    db = new sqlite3.Database(path.join(__dirname, 'database.sqlite'));
+    db.serialize(() => {
+        db.run('CREATE TABLE IF NOT EXISTS compras (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, produto TEXT, status TEXT, data DATETIME DEFAULT CURRENT_TIMESTAMP)');
+    });
+} catch (error) {
+    console.warn('SQLite indisponível, o bot continua sem base de dados:', error.message);
+}
 
 const client = new Client({
     intents: [
@@ -46,76 +61,181 @@ const client = new Client({
 
 const ticketsAbertos = new Set();
 
-function podePublicarPainel(member, guild) {
-    if (!member || !guild) return false;
-    if (member.id === guild.ownerId) return true;
-    return member.permissions.has(PermissionFlagsBits.Administrator)
-        || member.permissions.has(PermissionFlagsBits.ManageGuild);
+function botaoComprar() {
+    return new ButtonBuilder()
+        .setCustomId('btn_comprar')
+        .setLabel('Comprar')
+        .setEmoji('🛒')
+        .setStyle(ButtonStyle.Secondary);
 }
 
-function resolverBanner(usarFicheiroLocal = false) {
-    const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
-    const bannerFonte = CONFIG.BANNER_LOJA;
-    if (usarFicheiroLocal && fs.existsSync(bannerLocal)) return bannerLocal;
-    if (fs.existsSync(bannerLocal)) return bannerLocal;
-    if (bannerFonte && /^https?:\/\//i.test(bannerFonte)) return bannerFonte;
-    if (bannerFonte && fs.existsSync(bannerFonte)) return bannerFonte;
-    return null;
+function textoPainelLoja() {
+    return (
+        '## NITRO GIFT GAMING\n' +
+        '• Só clicar em resgatar\n' +
+        '• Pega em todas as contas que já teve nitro\n' +
+        '• Entrega automática no seu privado\n' +
+        '• Chances bem minimas do nitro cair, quase nunca cai, compre ciente\n' +
+        '• Não é necessário de cartão para ativar\n' +
+        '• Nitro gift não possui garantia, apenas que vai ser entregue funcionando!\n\n' +
+        'Pedimos que grave o processo da compra do início ao fim recebendo e resgatando no privado do bot, para que caso ocorra algum erro, possamos trocar o nitro, caso não tenha gravação,não será possível realizar a troca.\n\n' +
+        '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```'
+    );
 }
 
-function payloadPainelLoja(usarFicheiroLocal = false) {
+function rodapePainelLoja() {
+    return (
+        'Preço: **De R$ 8,99 a R$ 21,99**\n' +
+        'Clique no botão **"Comprar"**'
+    );
+}
+
+function baixarFicheiro(url, destino) {
+    return new Promise((resolve, reject) => {
+        const pedir = (alvo) => {
+            https.get(alvo, (res) => {
+                if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                    return pedir(res.headers.location);
+                }
+                if (res.statusCode !== 200) {
+                    res.resume();
+                    return reject(new Error(`HTTP ${res.statusCode}`));
+                }
+                fs.mkdirSync(path.dirname(destino), { recursive: true });
+                const ficheiro = fs.createWriteStream(destino);
+                res.pipe(ficheiro);
+                ficheiro.on('finish', () => ficheiro.close(() => resolve(destino)));
+                ficheiro.on('error', reject);
+            }).on('error', reject);
+        };
+        pedir(url);
+    });
+}
+
+async function garantirBanner() {
+    fs.mkdirSync(PASTA_ASSETS, { recursive: true });
+    if (fs.existsSync(FICHEIRO_BANNER) && fs.statSync(FICHEIRO_BANNER).size > 1000) {
+        return FICHEIRO_BANNER;
+    }
+    if (CONFIG.BANNER_LOJA && /^https?:\/\//i.test(CONFIG.BANNER_LOJA)) {
+        try {
+            await baixarFicheiro(CONFIG.BANNER_LOJA, FICHEIRO_BANNER);
+        } catch (error) {
+            console.warn('Não foi possível descarregar o banner:', error.message);
+        }
+    }
+    return fs.existsSync(FICHEIRO_BANNER) ? FICHEIRO_BANNER : null;
+}
+
+function urlBanner() {
+    if (fs.existsSync(FICHEIRO_BANNER) && fs.statSync(FICHEIRO_BANNER).size > 1000) {
+        return 'attachment://banner.jpg';
+    }
+    return CONFIG.BANNER_LOJA || undefined;
+}
+
+function payloadPainelLoja() {
+    const container = new ContainerBuilder().setAccentColor(0x2b2d31);
+    const imageUrl = urlBanner();
+
+    if (imageUrl) {
+        container.addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+                new MediaGalleryItemBuilder().setURL(imageUrl)
+            )
+        );
+    }
+
+    container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(textoPainelLoja())
+    );
+
+    container.addSectionComponents(
+        new SectionBuilder()
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(rodapePainelLoja()))
+            .setButtonAccessory(botaoComprar())
+    );
+
+    const payload = {
+        flags: MessageFlags.IsComponentsV2,
+        components: [container]
+    };
+
+    if (imageUrl === 'attachment://banner.jpg') {
+        payload.files = [new AttachmentBuilder(FICHEIRO_BANNER, { name: 'banner.jpg' })];
+    }
+    return payload;
+}
+
+function payloadLojaClassico() {
     const embed = new EmbedBuilder()
-        .setTitle('Nitradas')
+        .setTitle('NITRO GIFT GAMING')
         .setDescription(
-            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
-            '• Contas com Nitro Gaming\n' +
-            '• Contas Nitradas Possui Nitro.\n' +
-            '• Nitradas Na Melhor Qualidade.\n\n' +
+            '• Só clicar em resgatar\n' +
+            '• Pega em todas as contas que já teve nitro\n' +
+            '• Entrega automática no seu privado\n' +
+            '• Chances bem minimas do nitro cair, quase nunca cai, compre ciente\n' +
+            '• Não é necessário de cartão para ativar\n' +
+            '• Nitro gift não possui garantia, apenas que vai ser entregue funcionando!\n\n' +
+            'Pedimos que grave o processo da compra do início ao fim recebendo e resgatando no privado do bot, para que caso ocorra algum erro, possamos trocar o nitro, caso não tenha gravação,não será possível realizar a troca.\n\n' +
             '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-            'Preço: **De R$ 2,55 a R$ 7,99**\n' +
+            'Preço: **De R$ 8,99 a R$ 21,99**\n' +
             'Clique no botão **"Comprar"**'
         )
-        .setColor(0x120c0c);
+        .setColor(0x2b2d31);
 
-    const components = [
-        new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('btn_comprar')
-                .setLabel('Comprar')
-                .setEmoji('🛒')
-                .setStyle(ButtonStyle.Secondary)
-        )
-    ];
+    const payload = {
+        embeds: [embed],
+        components: [new ActionRowBuilder().addComponents(botaoComprar())]
+    };
 
-    const bannerFonte = resolverBanner(usarFicheiroLocal);
-    const payload = { embeds: [embed], components };
-    if (bannerFonte) {
-        payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
+    const imageUrl = urlBanner();
+    if (imageUrl === 'attachment://banner.jpg') {
+        embed.setImage('attachment://banner.jpg');
+        payload.files = [new AttachmentBuilder(FICHEIRO_BANNER, { name: 'banner.jpg' })];
+    } else if (imageUrl) {
+        embed.setImage(imageUrl);
     }
     return payload;
 }
 
 async function publicarPainelLoja(channel) {
+    await garantirBanner();
     try {
-        return await channel.send(payloadPainelLoja(false));
+        return await channel.send(payloadPainelLoja());
     } catch (error) {
-        const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
-        if (!fs.existsSync(bannerLocal)) throw error;
-        return channel.send(payloadPainelLoja(true));
+        console.warn('Painel V2 falhou, a usar embed:', error.message);
+        return channel.send(payloadLojaClassico());
     }
 }
 
-client.once('ready', async () => {
+client.once('clientReady', aoFicarOnline);
+client.once('ready', aoFicarOnline);
+
+async function aoFicarOnline() {
+    if (client.user.__lojaReady) return;
+    client.user.__lojaReady = true;
     console.log(`🤖 Bot ${client.user.tag} Online e pronto para vender!`);
     try {
-        const cmds = [{ name: 'loja', description: 'Publica o painel da loja neste canal' }];
+        await garantirBanner();
+        console.log(`📁 Pasta do banner: ${PASTA_ASSETS}`);
+    } catch (error) {
+        console.warn('Não foi possível criar a pasta assets:', error.message);
+    }
+    try {
         for (const guild of client.guilds.cache.values()) {
-            await guild.commands.set(cmds);
+            const cmds = await guild.commands.fetch();
+            if (![...cmds.values()].some((c) => c.name === 'loja')) {
+                await guild.commands.create({
+                    name: 'loja',
+                    description: 'Publica o painel da loja neste canal'
+                });
+            }
         }
     } catch (error) {
         console.error('Não foi possível registar o /loja:', error);
     }
-});
+}
 
 client.on('guildMemberAdd', async (member) => {
     if (CONFIG.AUTOROLE_ID) {
@@ -136,37 +256,32 @@ client.on('messageCreate', async (message) => {
 
     const args = texto.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = (args.shift() || '').toLowerCase();
-    
+
     if (commandName === 'loja') {
         try {
-            const member = message.member || await message.guild.members.fetch(message.author.id);
-            if (!podePublicarPainel(member, message.guild)) {
-                const aviso = await message.reply({ content: 'Não tens permissão para publicar a loja (precisa de Administrador ou Gerir Servidor).' });
-                return setTimeout(() => aviso.delete().catch(()=>{}), 8000);
-            }
             await publicarPainelLoja(message.channel);
-            message.delete().catch(()=>{});
+            message.delete().catch(() => {});
         } catch (error) {
             console.error('Erro no !loja:', error);
-            await message.channel.send({ content: `Não consegui publicar a loja: \`${error.message}\`` }).catch(()=>{});
+            await message.channel.send({ content: `Não consegui publicar a loja: \`${error.message}\`` }).catch(() => {});
         }
         return;
     }
 
     if (commandName === 'tickets') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
-        message.delete().catch(()=>{});
+        message.delete().catch(() => {});
 
         const embed = new EmbedBuilder()
             .setTitle('Central de Atendimento')
             .setDescription('- Após solicitar atendimento, aguarde até que um integrante da equipa responda à sua solicitação.\n\n- O atendimento é realizado de forma privada; apenas membros autorizados terão acesso.\n\n- Ressaltamos que nossa equipa não está disponível 24 horas por dia.')
-            .setImage('https://i.imgur.com/link_da_imagem.png') 
+            .setImage('https://i.imgur.com/link_da_imagem.png')
             .setColor(0x2b2d31);
 
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('menu_abrir_ticket')
             .setPlaceholder('Selecione o tipo de atendimento')
-            .addOptions(CONFIG.TIPOS_TICKET.map(t => 
+            .addOptions(CONFIG.TIPOS_TICKET.map((t) =>
                 new StringSelectMenuOptionBuilder()
                     .setLabel(t.nome)
                     .setDescription(t.desc)
@@ -179,32 +294,27 @@ client.on('messageCreate', async (message) => {
     }
 
     if (commandName === 'feedback') {
-        message.delete().catch(()=>{});
+        message.delete().catch(() => {});
         const review = args.join(' ');
         if (!review) {
             const msgErro = await message.channel.send({ content: 'Uso incorreto. Tenta: `!feedback Gostei muito do serviço!`' });
-            return setTimeout(() => msgErro.delete().catch(()=>{}), 5000);
+            return setTimeout(() => msgErro.delete().catch(() => {}), 5000);
         }
-        
+
         const embed = new EmbedBuilder()
             .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
             .setTitle('🌟 Novo Feedback Recebido!')
             .setDescription(`**Avaliação do Cliente:**\n${review}`)
             .setColor(0xFEE75C)
             .setTimestamp();
-        
+
         await message.channel.send({ embeds: [embed] });
     }
 });
 
 client.on('interactionCreate', async (interaction) => {
-
     if (interaction.isChatInputCommand() && interaction.commandName === 'loja') {
         try {
-            const member = interaction.member || await interaction.guild.members.fetch(interaction.user.id);
-            if (!podePublicarPainel(member, interaction.guild)) {
-                return interaction.reply({ content: 'Não tens permissão para publicar a loja (precisa de Administrador ou Gerir Servidor).', flags: 64 });
-            }
             await interaction.deferReply({ flags: 64 });
             await publicarPainelLoja(interaction.channel);
             return interaction.editReply({ content: 'Painel da loja publicado neste canal.' });
@@ -215,11 +325,11 @@ client.on('interactionCreate', async (interaction) => {
             return interaction.reply({ content: msg, flags: 64 });
         }
     }
-    
+
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_abrir_ticket') {
         const tipoId = interaction.values[0];
-        const tipo = CONFIG.TIPOS_TICKET.find(t => t.id_menu === tipoId);
-        
+        const tipo = CONFIG.TIPOS_TICKET.find((t) => t.id_menu === tipoId);
+
         const chaveTicket = `${interaction.user.id}_${tipoId}`;
         if (ticketsAbertos.has(chaveTicket)) {
             return interaction.reply({ content: 'Já tens um ticket aberto para este assunto.', flags: 64 });
@@ -233,7 +343,7 @@ client.on('interactionCreate', async (interaction) => {
                 { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
                 { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] }
             ];
-            
+
             if (CONFIG.CARGO_STAFF_TICKETS_ID) {
                 overwrites.push({ id: CONFIG.CARGO_STAFF_TICKETS_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
             }
@@ -263,11 +373,20 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
+    if (interaction.isStringSelectMenu() && interaction.customId === 'menu_loja_produto') {
+        const btnCredito = new ButtonBuilder().setCustomId('pay_credito').setLabel('Crédito/Débito').setEmoji('💳').setStyle(ButtonStyle.Primary);
+        const btnLtc = new ButtonBuilder().setCustomId('pay_ltc').setLabel('Litecoin').setEmoji('1301292023914856488').setStyle(ButtonStyle.Secondary);
+        const btnBtc = new ButtonBuilder().setCustomId('pay_btc').setLabel('Bitcoin').setEmoji('1301292040432291901').setStyle(ButtonStyle.Secondary);
+        const btnCancelar = new ButtonBuilder().setCustomId('pay_cancel').setLabel('Cancelar').setEmoji('🗑️').setStyle(ButtonStyle.Danger);
+        const row = new ActionRowBuilder().addComponents(btnCredito, btnLtc, btnBtc, btnCancelar);
+        return interaction.reply({ content: 'Selecione uma forma de pagamento:', components: [row], flags: 64 });
+    }
+
     if (interaction.isButton() && interaction.customId.startsWith('fechar_ticket_')) {
         const chaveTicket = interaction.customId.replace('fechar_ticket_', '');
         ticketsAbertos.delete(chaveTicket);
         await interaction.reply({ content: 'O ticket será fechado e apagado em 5 segundos...' });
-        setTimeout(() => interaction.channel.delete().catch(()=>null), 5000);
+        setTimeout(() => interaction.channel.delete().catch(() => null), 5000);
     }
 
     if (interaction.isButton() && interaction.customId === 'btn_comprar') {
@@ -282,7 +401,7 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.isButton() && interaction.customId.startsWith('pay_')) {
         const type = interaction.customId.replace('pay_', '');
-        
+
         if (type === 'cancel') {
             return interaction.update({ content: 'A compra foi cancelada com sucesso.', components: [] });
         }
@@ -291,9 +410,9 @@ client.on('interactionCreate', async (interaction) => {
             .setTitle('Aguardando Pagamento')
             .setDescription(`Foi escolhido o método: **${type.toUpperCase()}**.\n\n*Nesta secção, integrará o link final para a Stripe/Coinbase/Cryptomus dependendo de como processará as moedas no futuro.*`)
             .setColor(0x2b2d31);
-        
+
         await interaction.update({ content: '', embeds: [embed], components: [] });
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN || process.env.TOKEN);
