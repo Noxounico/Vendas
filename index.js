@@ -67,9 +67,9 @@ const CONFIG = {
     PREFIXO: '!',
 
     // Categoria (canal-pai) onde os canais de ticket são criados. Substitui pelo ID real.
-    CATEGORIA_TICKETS_ID: 'COLOCA_AQUI_O_ID_DA_CATEGORIA',
+    CATEGORIA_TICKETS_ID: '1545383446208315422',
     // Cargo de staff que deve conseguir ver todos os tickets. Substitui pelo ID real.
-    CARGO_STAFF_TICKETS_ID: 'COLOCA_AQUI_O_ID_DO_CARGO_DE_STAFF',
+    CARGO_STAFF_TICKETS_ID: '1545383480232378379',
 
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abrir um ticket de suporte geral', emoji: '🎫' },
