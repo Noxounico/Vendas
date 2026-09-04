@@ -42,7 +42,7 @@ const PASTA_ASSETS = path.join(__dirname, 'assets');
 const FICHEIRO_BANNER_DOWNLOAD = path.join(PASTA_ASSETS, 'banner.png');
 
 function ficheiroBannerLocal() {
-    const nomes = ['banner.jpg', 'banner.jpeg', 'banner.png', 'banner.webp', 'banner.gif'];
+    const nomes = ['banner.png', 'banner.jpg', 'banner.jpeg', 'banner.webp', 'banner.gif'];
     for (const nome of nomes) {
         const ficheiro = path.join(PASTA_ASSETS, nome);
         if (fs.existsSync(ficheiro) && fs.statSync(ficheiro).size > 1000) return ficheiro;
@@ -125,8 +125,6 @@ function baixarFicheiro(url, destino) {
 
 async function garantirBanner() {
     fs.mkdirSync(PASTA_ASSETS, { recursive: true });
-    const local = ficheiroBannerLocal();
-    if (local) return local;
     if (CONFIG.BANNER_LOJA && /^https?:\/\//i.test(CONFIG.BANNER_LOJA)) {
         try {
             await baixarFicheiro(CONFIG.BANNER_LOJA, FICHEIRO_BANNER_DOWNLOAD);
