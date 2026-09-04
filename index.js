@@ -1,4 +1,5 @@
 require('dotenv').config();
+const discord = require('discord.js');
 const { 
     Client, 
     GatewayIntentBits, 
@@ -11,11 +12,60 @@ const {
     EmbedBuilder, 
     PermissionFlagsBits,
     AttachmentBuilder
-} = require('discord.js');
+} = discord;
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
-const { v2 } = require('./utils/v2.js');
+
+function v2({ content, imageUrl, footer, accentColor, thumbnailRight } = {}, extraRows = []) {
+    const {
+        ContainerBuilder,
+        TextDisplayBuilder,
+        MediaGalleryBuilder,
+        MediaGalleryItemBuilder,
+        SectionBuilder,
+        ThumbnailBuilder,
+        MessageFlags
+    } = discord;
+
+    if (!ContainerBuilder || !MessageFlags?.IsComponentsV2) {
+        throw new Error('Atualiza o discord.js: npm install discord.js@14.27.0');
+    }
+
+    const container = new ContainerBuilder();
+    if (accentColor != null) container.setAccentColor(accentColor);
+
+    const texto = footer ? `${content}\n\n${footer}` : content;
+
+    if (imageUrl && !thumbnailRight) {
+        container.addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+                new MediaGalleryItemBuilder().setURL(imageUrl)
+            )
+        );
+    }
+
+    if (imageUrl && thumbnailRight) {
+        container.addSectionComponents(
+            new SectionBuilder()
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(texto))
+                .setThumbnailAccessory(new ThumbnailBuilder().setURL(imageUrl))
+        );
+    } else {
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(texto)
+        );
+    }
+
+    for (const row of extraRows) {
+        container.addActionRowComponents(row);
+    }
+
+    return {
+        flags: MessageFlags.IsComponentsV2,
+        components: [container]
+    };
+}
 
 // --- Configurações Iniciais ---
 const CONFIG = {
@@ -71,33 +121,40 @@ function resolverBanner(usarFicheiroLocal = false) {
     return null;
 }
 
-function payloadPainelLoja(usarFicheiroLocal = false) {
-    const row = new ActionRowBuilder().addComponents(
+function botaoComprar() {
+    return new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId('btn_comprar')
             .setLabel('Comprar')
             .setEmoji('🛒')
             .setStyle(ButtonStyle.Secondary)
     );
+}
 
+function textoLoja() {
+    return (
+        '## Nitradas\n' +
+        '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+        '• Contas com Nitro Gaming\n' +
+        '• Contas Nitradas Possui Nitro.\n' +
+        '• Nitradas Na Melhor Qualidade.\n\n' +
+        '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
+        'Preço: **De R$ 2,55 a R$ 7,99**\n' +
+        'Clique no botão **"Comprar"**'
+    );
+}
+
+function payloadPainelLoja(usarFicheiroLocal = false) {
     const bannerFonte = resolverBanner(usarFicheiroLocal);
     const imageUrl = !bannerFonte
         ? undefined
         : (/^https?:\/\//i.test(bannerFonte) ? bannerFonte : 'attachment://banner.png');
 
     const payload = v2({
-        content:
-            '## Nitradas\n' +
-            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
-            '• Contas com Nitro Gaming\n' +
-            '• Contas Nitradas Possui Nitro.\n' +
-            '• Nitradas Na Melhor Qualidade.\n\n' +
-            '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-            'Preço: **De R$ 2,55 a R$ 7,99**\n' +
-            'Clique no botão **"Comprar"**',
+        content: textoLoja(),
         imageUrl,
         accentColor: 0x120c0c
-    }, [row]);
+    }, [botaoComprar()]);
 
     if (bannerFonte && !/^https?:\/\//i.test(bannerFonte)) {
         payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
@@ -106,18 +163,52 @@ function payloadPainelLoja(usarFicheiroLocal = false) {
     return payload;
 }
 
+function payloadLojaClassico(usarFicheiroLocal = false) {
+    const embed = new EmbedBuilder()
+        .setTitle('Nitradas')
+        .setDescription(
+            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+            '• Contas com Nitro Gaming\n' +
+            '• Contas Nitradas Possui Nitro.\n' +
+            '• Nitradas Na Melhor Qualidade.\n\n' +
+            '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
+            'Preço: **De R$ 2,55 a R$ 7,99**\n' +
+            'Clique no botão **"Comprar"**'
+        )
+        .setColor(0x120c0c);
+
+    const payload = { embeds: [embed], components: [botaoComprar()] };
+    const bannerFonte = resolverBanner(usarFicheiroLocal);
+    if (bannerFonte) {
+        payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
+    }
+    return payload;
+}
+
 async function publicarPainelLoja(channel) {
     try {
         return await channel.send(payloadPainelLoja(false));
-    } catch (error) {
-        const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
-        if (!fs.existsSync(bannerLocal)) throw error;
-        console.warn('Falha ao enviar o banner pelo link, a usar assets/banner.png:', error.message);
-        return channel.send(payloadPainelLoja(true));
+    } catch (erroV2) {
+        console.warn('Painel V2 falhou, a tentar fallback:', erroV2.message);
+        try {
+            return await channel.send(payloadPainelLoja(true));
+        } catch (erroLocal) {
+            console.warn('V2 com ficheiro local falhou, a usar embed clássico:', erroLocal.message);
+            try {
+                return await channel.send(payloadLojaClassico(true));
+            } catch (erroClassico) {
+                return channel.send(payloadLojaClassico(false));
+            }
+        }
     }
 }
 
-client.once('ready', async () => {
+client.once('clientReady', aoFicarOnline);
+client.once('ready', aoFicarOnline);
+
+async function aoFicarOnline() {
+    if (client.user.__lojaReady) return;
+    client.user.__lojaReady = true;
     console.log(`🤖 Bot ${client.user.tag} Online e pronto para vender!`);
     try {
         const cmds = [{ name: 'loja', description: 'Publica o painel da loja neste canal' }];
@@ -128,7 +219,7 @@ client.once('ready', async () => {
     } catch (error) {
         console.error('Não foi possível registar o /loja:', error);
     }
-});
+}
 
 // --- Sistema de Autorole ---
 client.on('guildMemberAdd', async (member) => {
@@ -154,6 +245,7 @@ client.on('messageCreate', async (message) => {
     
     // Comando 1: Painel de Loja (Comprar) — banner como ficheiro no topo (não .setImage)
     if (commandName === 'loja') {
+        console.log(`[loja] pedido de ${message.author.tag} em #${message.channel.name}`);
         try {
             const member = message.member || await message.guild.members.fetch(message.author.id);
             if (!podePublicarPainel(member, message.guild)) {
@@ -324,4 +416,4 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN || process.env.TOKEN);
