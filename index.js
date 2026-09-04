@@ -70,19 +70,20 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
     
-    // Comando 1: Painel de Loja (Comprar) - CORRIGIDO PARA IMAGEM EM CIMA
+    // Comando 1: Painel de Loja (Comprar)
     if (commandName === 'loja') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         message.delete().catch(()=>{});
 
-        // Primeiro bloco: APENAS A IMAGEM (Fica no topo)
+        // O truque: Usamos .setURL('https://discord.gg') nos dois para o Discord os "colar" num só bloco!
         const embed1 = new EmbedBuilder()
+            .setURL('https://discord.gg')
             .setImage('https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa&')
             .setColor(0x2b2d31);
 
-        // Segundo bloco: O TÍTULO E O TEXTO (Fica colado por baixo da imagem)
         const embed2 = new EmbedBuilder()
             .setTitle('Nitradas')
+            .setURL('https://discord.gg') // Tem de ter o mesmo URL que o de cima
             .setDescription('• Conta Full Acesso, Muda Email, Senha Etc...\n• Contas com Nitro Gaming\n• Contas Nitradas Possui Nitro.\n• Nitradas Na Melhor Qualidade.\n\n⚡ **Entrega Automática!**\n\nPreço: **De R$ 2,55 a R$ 7,99**\nClique no botão **"Comprar"**')
             .setColor(0x2b2d31);
 
@@ -94,7 +95,6 @@ client.on('messageCreate', async (message) => {
                 .setStyle(ButtonStyle.Secondary)
         );
 
-        // Enviamos os dois embeds juntos [embed1, embed2] para eles se colarem
         await message.channel.send({ embeds: [embed1, embed2], components: [btn] });
     }
 
