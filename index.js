@@ -9,7 +9,8 @@ const {
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder,
     EmbedBuilder, 
-    PermissionFlagsBits
+    PermissionFlagsBits,
+    AttachmentBuilder // <--- O segredo para forçar a imagem no topo
 } = require('discord.js');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
@@ -70,12 +71,15 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
     
-    // Comando 1: Painel de Loja (Comprar) -> COM IMAGEM EM CIMA (Unfurled link)
+    // Comando 1: Painel de Loja (Comprar) -> COM IMAGEM COMO FICHEIRO NO TOPO
     if (commandName === 'loja') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         message.delete().catch(()=>{});
 
-        // O Embed apenas com o texto
+        // 1. Criamos a imagem como um Ficheiro (Assim o Discord é obrigado a mostrá-la gigante no topo)
+        const bannerImagem = new AttachmentBuilder('https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png', { name: 'banner.png' });
+
+        // 2. O Embed com o texto (Ficará colado por baixo da imagem)
         const embed = new EmbedBuilder()
             .setTitle('Nitradas')
             .setDescription('• Conta Full Acesso, Muda Email, Senha Etc...\n• Contas com Nitro Gaming\n• Contas Nitradas Possui Nitro.\n• Nitradas Na Melhor Qualidade.\n\n⚡ **Entrega Automática!**\n\nPreço: **De R$ 2,55 a R$ 7,99**\nClique no botão **"Comprar"**')
@@ -88,12 +92,9 @@ client.on('messageCreate', async (message) => {
                 .setEmoji('🛒')
                 .setStyle(ButtonStyle.Secondary)
         );
-
-        // AQUI ESTÁ O SEGREDO: Enviamos o link da imagem no "content" da mensagem.
-        // O Discord vai abrir esse link como um banner gigante em cima do Embed!
-        const linkImagem = 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa&';
         
-        await message.channel.send({ content: linkImagem, embeds: [embed], components: [btn] });
+        // 3. Enviamos os dois juntos: O ficheiro (files) vai para cima, o embed para baixo!
+        await message.channel.send({ files: [bannerImagem], embeds: [embed], components: [btn] });
     }
 
     // Comando 2: Painel de Tickets (Central de Atendimento)
@@ -104,7 +105,7 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle('Central de Atendimento')
             .setDescription('- Após solicitar atendimento, aguarde até que um integrante da equipa responda à sua solicitação.\n\n- O atendimento é realizado de forma privada; apenas membros autorizados terão acesso.\n\n- Ressaltamos que nossa equipa não está disponível 24 horas por dia.')
-            .setImage('https://i.imgur.com/your-banner.png') // Mude o link aqui se quiser um banner no ticket
+            .setImage('https://i.imgur.com/your-banner.png')
             .setColor(0x2b2d31);
 
         const selectMenu = new StringSelectMenuBuilder()
