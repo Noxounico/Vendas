@@ -1,448 +1,459 @@
-// index.js
-// Corre o bot com: npm install   (uma vez)   e depois   npm start
-
 require('dotenv').config();
-const {
-  Client,
-  GatewayIntentBits,
-  Partials,
-  ChannelType,
-  EmbedBuilder,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  PermissionFlagsBits,
+const { 
+    Client, 
+    GatewayIntentBits, 
+    ChannelType,
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    StringSelectMenuBuilder,
+    StringSelectMenuOptionBuilder,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    EmbedBuilder, 
+    PermissionFlagsBits,
+    REST,
+    Routes,
+    SlashCommandBuilder
 } = require('discord.js');
 
-const db = require('./db');
+const { v2 } = require('./utils/v2.js');
+const fs = require('fs');
+const path = require('path');
 
-const PREFIX = process.env.PREFIX || '!';
-// Texto mostrado ao comprador com os dados para onde deve enviar o pagamento.
-// Define isto no .env, ex: PAYMENT_INSTRUCTIONS="MB WAY 912345678 ou IBAN PT50..."
-const PAYMENT_INSTRUCTIONS =
-  process.env.PAYMENT_INSTRUCTIONS || 'Contacta um membro da staff para combinares o pagamento.';
-// Banner opcional mostrado no topo do painel da loja. Define STORE_BANNER_URL no .env.
-const STORE_BANNER_URL = process.env.STORE_BANNER_URL || null;
-const STORE_NAME = process.env.STORE_NAME || 'Loja de Jogos';
+// ---- Proteção contra instâncias duplicadas do bot ----
+const LOCK_FILE = path.join(__dirname, 'bot.lock');
+
+function verificarInstanciaUnica() {
+    if (fs.existsSync(LOCK_FILE)) {
+        const pidAntigo = parseInt(fs.readFileSync(LOCK_FILE, 'utf8'), 10);
+        try {
+            process.kill(pidAntigo, 0);
+            console.error(`❌ Já existe uma instância deste bot a correr (PID ${pidAntigo}).`);
+            console.error(`   Fecha essa janela/processo antes de abrir uma nova, ou apaga "bot.lock" se tiveres a certeza que não há nenhum a correr.`);
+            process.exit(1);
+        } catch (e) {}
+    }
+    fs.writeFileSync(LOCK_FILE, String(process.pid), 'utf8');
+}
+
+function limparLock() {
+    try {
+        if (fs.existsSync(LOCK_FILE)) {
+            const pidNoLock = parseInt(fs.readFileSync(LOCK_FILE, 'utf8'), 10);
+            if (pidNoLock === process.pid) fs.unlinkSync(LOCK_FILE);
+        }
+    } catch (e) {}
+}
+
+verificarInstanciaUnica();
+process.on('exit', limparLock);
+process.on('SIGINT', () => { limparLock(); process.exit(); });
+process.on('SIGTERM', () => { limparLock(); process.exit(); });
+// ---- Fim da proteção ----
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent, // necessário para ler comandos com "!"
-  ],
-  partials: [Partials.Channel],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.MessageContent
+    ]
 });
 
-// Mapeia orderId -> threadId enquanto o bot está a correr, só para conseguirmos
-// avisar o "carrinho" do cliente quando a staff confirma/cancela.
-const orderThreads = new Map();
+const CONFIG = {
+    CANAL_LOGS_ID: '1532011317882519592', 
+    PREFIXO: '!',
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+    // Categoria (canal-pai) onde os canais de ticket são criados. Substitui pelo ID real.
+    CATEGORIA_TICKETS_ID: 'COLOCA_AQUI_O_ID_DA_CATEGORIA',
+    // Cargo de staff que deve conseguir ver todos os tickets. Substitui pelo ID real.
+    CARGO_STAFF_TICKETS_ID: 'COLOCA_AQUI_O_ID_DO_CARGO_DE_STAFF',
 
-function formatPriceEUR(value) {
-  return `${Number(value).toFixed(2)} €`;
-}
+    TIPOS_TICKET: [
+        { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abrir um ticket de suporte geral', emoji: '🎫' },
+        { id_menu: 'ticket_duvidas', nome: 'Dúvidas', desc: 'Tirar uma dúvida com a Staff', emoji: '❓' },
+        { id_menu: 'ticket_denuncia', nome: 'Denúncia', desc: 'Denunciar uma situação à Staff', emoji: '🚨' }
+    ],
 
-async function logToChannel(payload) {
-  if (!process.env.LOG_CHANNEL_ID) return null;
-  try {
-    const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
-    if (channel?.isTextBased()) return channel.send(payload);
-  } catch (err) {
-    console.error('Falha ao escrever no canal de logs:', err.message);
-  }
-  return null;
-}
+    CATEGORIAS_HIERARQUIA: [
+        { titulo: 'HIERARQUIA MÁFIA', cargos: ['1527000274038947890'], grupo: 'gestao' },
+        { titulo: 'ADM', cargos: ['1527000248982175764'], grupo: 'gestao' },
+        { titulo: 'AUX', cargos: ['1527000221089796236'], grupo: 'gestao' },
+        { titulo: 'LID', cargos: ['1527001475652522267'], grupo: 'gestao' },
+        { titulo: 'SUB', cargos: ['1527000194548502632'], grupo: 'gestao' },
+        { titulo: 'MEMBRO-E', cargos: ['1527000169537605703'], grupo: 'membros' },
+        { titulo: 'MEMBRO', cargos: ['1527000128953516052'], grupo: 'membros' }
+    ],
 
-async function avisarThread(orderId, payload) {
-  const threadId = orderThreads.get(orderId);
-  if (!threadId) return;
-  try {
-    const thread = await client.channels.fetch(threadId);
-    if (thread?.isTextBased()) await thread.send(payload);
-    if (thread?.setArchived) await thread.setArchived(true).catch(() => {});
-  } catch (err) {
-    console.error('Falha ao avisar o tópico do pedido:', err.message);
-  }
-}
-
-function isAdmin(memberOrMessage) {
-  const member = memberOrMessage.member ?? memberOrMessage;
-  return member?.permissions?.has(PermissionFlagsBits.Administrator);
-}
-
-// Faz parsing de argumentos respeitando texto entre aspas: !cmd "texto com espaços" 10 @cargo
-function parseArgs(content) {
-  const matches = [...content.matchAll(/"([^"]+)"|(\S+)/g)];
-  return matches.map((m) => m[1] ?? m[2]);
-}
-
-// ---------------------------------------------------------------------------
-// Painel principal da loja (embed + menu de seleção)
-// ---------------------------------------------------------------------------
-
-function buildLojaEmbedAndRow(products) {
-  const embed = new EmbedBuilder()
-    .setTitle('🛍️ Loja')
-    .setColor(0x2b1a1a)
-    .setDescription(
-      products.length
-        ? `Seja bem-vindo(a) à loja da **${STORE_NAME}**!\n\n` +
-            '> Utilize o menu abaixo para escolher o produto desejado. A nossa equipa de staff irá confirmar o seu pagamento o mais rápido possível.\n\n' +
-            '> Lembre-se de ter o pagamento pronto antes de finalizar o pedido.\n\n' +
-            'Ao selecionar, um canal privado será criado para finalizares a compra.'
-        : 'Não há produtos disponíveis de momento.'
-    );
-
-  if (STORE_BANNER_URL) embed.setImage(STORE_BANNER_URL);
-  embed.setFooter({ text: `${STORE_NAME} ${new Date().getFullYear()} ©` });
-
-  const options = products
-    .filter((p) => db.countAvailableKeys(p.id) > 0)
-    .slice(0, 25)
-    .map((p) => ({
-      label: `${p.name} — ${formatPriceEUR(p.price_eur)}`,
-      description: (p.description || 'Comprar este jogo').slice(0, 100),
-      value: String(p.id),
-      emoji: '🎮',
-    }));
-
-  const rows = [];
-  if (options.length > 0) {
-    rows.push(
-      new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('comprar_select')
-          .setPlaceholder('Selecione o produto que deseja comprar...')
-          .addOptions(options)
-      )
-    );
-  }
-
-  return { embed, rows };
-}
-
-// ---------------------------------------------------------------------------
-// Pedido: abre um tópico privado tipo "carrinho" com a revisão do pedido
-// ---------------------------------------------------------------------------
-
-async function criarPedido(interaction, productId) {
-  const product = db.getProduct(productId);
-  if (!product || !product.active) {
-    return interaction.reply({ content: 'Este produto já não está disponível.', ephemeral: true });
-  }
-  if (db.countAvailableKeys(product.id) <= 0) {
-    return interaction.reply({ content: 'Este produto está esgotado no momento.', ephemeral: true });
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  const orderId = db.createOrder({
-    productId: product.id,
-    discordUserId: interaction.user.id,
-    paymentMethod: 'manual',
-  });
-
-  let thread;
-  try {
-    thread = await interaction.channel.threads.create({
-      name: `pedido-${interaction.user.username}-${orderId}`,
-      type: ChannelType.PrivateThread,
-      reason: `Pedido #${orderId}`,
-    });
-  } catch (err) {
-    // Tópicos privados exigem boost nível 2 — se falhar, usa um tópico normal.
-    thread = await interaction.channel.threads.create({
-      name: `pedido-${interaction.user.username}-${orderId}`,
-      type: ChannelType.PublicThread,
-      reason: `Pedido #${orderId}`,
-    });
-  }
-
-  await thread.members.add(interaction.user.id).catch(() => {});
-  orderThreads.set(orderId, thread.id);
-
-  const revisaoEmbed = new EmbedBuilder()
-    .setTitle('🛒 Revisão do Pedido')
-    .setColor(0x9b59b6)
-    .addFields(
-      { name: 'Produto', value: product.name, inline: true },
-      { name: 'Quantidade', value: '1', inline: true },
-      { name: 'Valor', value: formatPriceEUR(product.price_eur), inline: true }
-    )
-    .setFooter({ text: `Pedido #${orderId}` });
-
-  const rowRevisao = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`revisao_confirmar_${orderId}`)
-      .setLabel('Ir para o Pagamento')
-      .setEmoji('✅')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`revisao_cancelar_${orderId}`)
-      .setLabel('Cancelar')
-      .setEmoji('🗑️')
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  await thread.send({
-    content: `${interaction.user}, aqui está o resumo do teu pedido:`,
-    embeds: [revisaoEmbed],
-    components: [rowRevisao],
-  });
-
-  await interaction.editReply(`Abri o teu pedido em ${thread}. Continua por lá!`);
-}
-
-async function irParaPagamento(interaction, orderId) {
-  const order = db.getOrder(orderId);
-  if (!order || order.status !== 'pending') {
-    return interaction.reply({ content: 'Este pedido já não está disponível.', ephemeral: true });
-  }
-  const product = db.getProduct(order.product_id);
-
-  const pagamentoEmbed = new EmbedBuilder()
-    .setTitle('💳 Pagamento')
-    .setColor(0xf1c40f)
-    .setDescription(
-      `**${product.name}** — ${formatPriceEUR(product.price_eur)}\n\n${PAYMENT_INSTRUCTIONS}\n\n` +
-        'Depois de pagares, aguarda que a staff confirme aqui mesmo — a chave chega automaticamente por DM.'
-    )
-    .setFooter({ text: `Pedido #${orderId}` });
-
-  await interaction.update({ embeds: [pagamentoEmbed], components: [] });
-
-  const staffEmbed = new EmbedBuilder()
-    .setTitle(`Novo pedido #${orderId}`)
-    .setColor(0xf1c40f)
-    .addFields(
-      { name: 'Produto', value: product.name, inline: true },
-      { name: 'Valor', value: formatPriceEUR(product.price_eur), inline: true },
-      { name: 'Comprador', value: `<@${order.discord_user_id}>`, inline: true }
-    )
-    .setDescription('Confirma aqui assim que receberes o pagamento.');
-
-  const rowStaff = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`confirmar_${orderId}`)
-      .setLabel('Confirmar pagamento')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`cancelar_${orderId}`)
-      .setLabel('Cancelar pedido')
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  await logToChannel({ embeds: [staffEmbed], components: [rowStaff] });
-}
-
-async function cancelarPedidoCliente(interaction, orderId) {
-  db.markOrderStatus(orderId, 'cancelado');
-  const embed = new EmbedBuilder().setTitle('❌ Pedido cancelado').setColor(0xe74c3c);
-  await interaction.update({ embeds: [embed], components: [] });
-}
-
-// ---------------------------------------------------------------------------
-// Entrega: chamado quando um membro da staff confirma o pagamento
-// ---------------------------------------------------------------------------
-
-async function entregarPedido(orderId) {
-  const order = db.getOrder(orderId);
-  if (!order) return { ok: false, reason: 'Esse pedido não existe.' };
-  if (order.status === 'delivered') return { ok: false, reason: 'Esse pedido já foi entregue.' };
-  if (order.status === 'cancelado') return { ok: false, reason: 'Esse pedido foi cancelado.' };
-
-  const product = db.getProduct(order.product_id);
-  const keyId = db.allocateKeyTxn(order.product_id, order.discord_user_id);
-
-  if (!keyId) {
-    db.markOrderStatus(order.id, 'paid');
-    await logToChannel(
-      `⚠️ Pedido #${order.id} (${product?.name}) foi confirmado mas **não há chaves em stock**. Entrega manual necessária para <@${order.discord_user_id}>.`
-    );
-    return { ok: false, reason: 'Sem chaves em stock — avisei o canal de logs para entrega manual.' };
-  }
-
-  const keyValue = db.getKeyValue(keyId);
-  db.markOrderDelivered(order.id, keyId);
-
-  try {
-    const user = await client.users.fetch(order.discord_user_id);
-    await user.send(
-      `✅ Pagamento confirmado! Aqui está a tua chave de **${product.name}**:\n\`\`\`${keyValue}\`\`\`\nObrigado pela compra!`
-    );
-  } catch (err) {
-    await logToChannel(
-      `⚠️ Pedido #${order.id}: pagamento confirmado mas não consegui enviar DM a <@${order.discord_user_id}> (tem as DMs fechadas?). Chave: \`${keyValue}\``
-    );
-  }
-
-  if (product.role_id) {
-    try {
-      const guild = await client.guilds.fetch(process.env.GUILD_ID);
-      const member = await guild.members.fetch(order.discord_user_id);
-      await member.roles.add(product.role_id);
-    } catch (err) {
-      console.error('Falha ao atribuir cargo:', err.message);
+    EMOJIS: {
+        sucesso: '<:sucess:1520249613901103135>',
+        aviso: '<:192440warningicon:1533451130049265704>',
+        info: '<:info:1520249612542279780>',
+        cancelar: '<:cancel:1520249621589524571>',
+        ticket: '<:ticket:1520278432687325195>',
+        auth: '<:272410anonymous:1533449386594664509>',
+        // Emojis decorativos usados antes e depois de cada nome no !hierarquia.
+        hierarquiaEsq: '<:272410anonymous:1534181186216132688>',
+        hierarquiaDir: '<:272410anonymous:1534181186216132688>',
+        coroa: '👑'
     }
-  }
+};
 
-  await avisarThread(order.id, `✅ Pagamento confirmado! A tua chave foi enviada por DM. Obrigado pela compra!`);
+const pedidosPendentes = new Set();
+// Guarda "userId_tipoTicket" enquanto o ticket estiver aberto, para não deixar abrir duplicados.
+const ticketsAbertos = new Set();
 
-  return { ok: true };
+async function responderETemporizar(interactionOrMessage, conteudo, ephemeral = true) {
+    if (interactionOrMessage.replied || interactionOrMessage.deferred) {
+        const msg = await interactionOrMessage.followUp({ content: conteudo, ephemeral });
+        setTimeout(() => msg.delete().catch(() => {}), 3000);
+    } else if (interactionOrMessage.isChatInputCommand || interactionOrMessage.isButton || interactionOrMessage.isStringSelectMenu) {
+        await interactionOrMessage.reply({ content: conteudo, ephemeral });
+        setTimeout(() => interactionOrMessage.deleteReply().catch(() => {}), 3000);
+    } else {
+        const rep = await interactionOrMessage.channel.send(conteudo);
+        setTimeout(() => rep.delete().catch(() => {}), 3000);
+    }
 }
 
-// ---------------------------------------------------------------------------
-// Comandos com prefixo "!"
-// ---------------------------------------------------------------------------
+client.once('clientReady', async () => {
+    console.log(`🤖 ${client.user.tag} está online e pronto a funcionar com comandos por prefixo (${CONFIG.PREFIXO})!`);
+
+    try {
+        const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+        await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+        console.log('🗑️ Comandos de barra (/) antigos removidos.');
+    } catch (error) {
+        console.error('Erro ao remover comandos de barra antigos:', error);
+    }
+
+});
 
 client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.guild) return;
-  if (!message.content.startsWith(PREFIX)) return;
+    if (message.author.bot || !message.guild) return;
+    if (!message.content.startsWith(CONFIG.PREFIXO)) return;
 
-  const args = parseArgs(message.content.slice(PREFIX.length).trim());
-  const command = args.shift()?.toLowerCase();
+    const args = message.content.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
+    const commandName = args.shift().toLowerCase();
 
-  try {
-    if (command === 'produto-criar') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const [nome, precoStr, descricao] = args;
-      const preco = Number(precoStr);
-      if (!nome || !precoStr || Number.isNaN(preco)) {
-        return message.reply(
-          `Uso: \`${PREFIX}produto-criar "Nome do Jogo" 19.99 "Descrição opcional" @Cargo(opcional)\``
+    message.delete().catch(() => {});
+
+    async function responderEApagar(payloadOptions) {
+        const rep = await message.channel.send(payloadOptions);
+        setTimeout(() => rep.delete().catch(() => {}), 3000);
+        return rep;
+    }
+
+    if (commandName === 'pedirset') {
+        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return responderEApagar({ content: `${CONFIG.EMOJIS.cancelar} Apenas Administradores podem usar este comando.` });
+        }
+
+        // Identifica sozinho os cargos disponíveis no servidor (sem lista fixa a manter):
+        // pega em todos os cargos "normais" abaixo do cargo mais alto do bot.
+        const meuCargoTopo = message.guild.members.me.roles.highest;
+        const cargosDisponiveis = message.guild.roles.cache
+            .filter(r => r.id !== message.guild.id && !r.managed && r.position < meuCargoTopo.position)
+            .sort((a, b) => b.position - a.position)
+            .first(25);
+
+        if (!cargosDisponiveis.length) {
+            return responderEApagar({ content: `${CONFIG.EMOJIS.aviso} Não encontrei nenhum cargo que o bot possa atribuir (verifica a posição do cargo do bot na hierarquia).` });
+        }
+
+        const optionsMenu = cargosDisponiveis.map(role =>
+            new StringSelectMenuOptionBuilder()
+                .setLabel(`· ${role.name}`)
+                .setDescription(`Solicitar o cargo ${role.name}`.slice(0, 100))
+                .setValue(role.id)
         );
-      }
-      const cargoId = message.mentions.roles.first()?.id;
-      const id = db.addProduct({ name: nome, description: descricao || '', priceEur: preco, roleId: cargoId });
-      return message.reply(
-        `Produto criado! **${nome}** (ID: ${id}). Agora usa \`${PREFIX}chave-adicionar ${id}\` (anexando um .txt) para carregares as chaves.`
-      );
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('menu_pedir_set')
+            .setPlaceholder('Selecione o Set que desejas pedir...')
+            .addOptions(optionsMenu);
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+        const payload = v2({
+            content: `## ${CONFIG.EMOJIS.auth} Solicitação de Set / Cargos\nSeja bem-vindo(a) ao sistema de solicitação da nossa cidade!\n\n> Utilize o menu abaixo para selecionar o cargo desejado. A nossa equipa de Staff irá analisar o seu pedido o mais rápido possível.\n> \n> Lembre-se de ter os seus requisitos prontos ao abrir o ticket.\n\n-# Ao selecionar, um canal privado será criado para análise da Staff.`,
+            imageUrl: 'https://i.postimg.cc/VNPjBpps/Design-sem-nome-(2).png',
+            footer: '-# NoxAssistant 2026 ©',
+            accentColor: 0x2F3136
+        }, [row]);
+
+        await message.channel.send(payload);
+        return responderEApagar({ content: `${CONFIG.EMOJIS.sucesso} Painel de sets enviado com sucesso!` });
     }
 
-    if (command === 'chave-adicionar') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const [produtoIdStr] = args;
-      const productId = Number(produtoIdStr);
-      const attachment = message.attachments.first();
-      if (!productId || !attachment) {
-        return message.reply(
-          `Uso: \`${PREFIX}chave-adicionar <id_do_produto>\` e anexa um ficheiro .txt com uma chave por linha.`
+    if (commandName === 'tickets') {
+        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return responderEApagar({ content: `${CONFIG.EMOJIS.cancelar} Apenas Administradores podem usar este comando.` });
+        }
+        const optionsMenu = CONFIG.TIPOS_TICKET.map(tipo =>
+            new StringSelectMenuOptionBuilder()
+                .setLabel(`· ${tipo.nome}`)
+                .setDescription(tipo.desc)
+                .setValue(tipo.id_menu)
+                .setEmoji(tipo.emoji)
         );
-      }
-      const product = db.getProduct(productId);
-      if (!product) return message.reply('Não existe nenhum produto com esse ID.');
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('menu_abrir_ticket')
+            .setPlaceholder('Selecione o tipo de ticket que deseja abrir...')
+            .addOptions(optionsMenu);
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+        const payload = v2({
+            content: `## ${CONFIG.EMOJIS.ticket} Central de Atendimento\nPrecisas de falar com a Staff?\n\n> Utilize o menu abaixo para escolher o tipo de ticket. Vai ser criado um canal privado só teu para tratares do assunto com a equipa.\n\n-# Ao selecionar, um canal privado será criado para análise da Staff.`,
+            imageUrl: 'https://i.postimg.cc/VNPjBpps/Design-sem-nome-(2).png',
+            footer: '-# NoxAssistant 2026 ©',
+            accentColor: 0x2F3136
+        }, [row]);
 
-      const res = await fetch(attachment.url);
-      const text = await res.text();
-      const added = db.addKeysBulk(productId, text.split('\n'));
-      return message.reply(
-        `Foram adicionadas **${added}** chaves ao produto **${product.name}**. Stock atual: ${db.countAvailableKeys(
-          productId
-        )}.`
-      );
+        await message.channel.send(payload);
+        return responderEApagar({ content: `${CONFIG.EMOJIS.sucesso} Painel de tickets enviado com sucesso!` });
     }
 
-    if (command === 'produtos') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const products = db.listActiveProducts();
-      if (products.length === 0) return message.reply('Ainda não há produtos criados.');
-      const linhas = products.map(
-        (p) => `**#${p.id} ${p.name}** — ${formatPriceEUR(p.price_eur)} — stock: ${db.countAvailableKeys(p.id)}`
-      );
-      return message.reply(linhas.join('\n'));
+    if (commandName === 'clear') {
+        if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+            return responderEApagar({ content: `${CONFIG.EMOJIS.cancelar} Não tens permissão para limpar mensagens.` });
+        }
+        const amount = parseInt(args[0], 10);
+        if (!amount || amount < 1 || amount > 99) {
+            return responderEApagar({ content: `${CONFIG.EMOJIS.aviso} Usa \`!clear <1-99>\`, ex: \`!clear 20\`.` });
+        }
+        await message.channel.bulkDelete(amount, true);
+        return responderEApagar({ content: `${CONFIG.EMOJIS.sucesso} **${amount}** mensagens limpas com sucesso!` });
     }
 
-    if (command === 'loja') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const products = db.listActiveProducts();
-      const { embed, rows } = buildLojaEmbedAndRow(products);
-      return message.channel.send({ embeds: [embed], components: rows });
-    }
-
-    // Alternativa em texto ao botão "Confirmar pagamento", útil se o pedido já rolou no canal
-    if (command === 'confirmar') {
-      if (!isAdmin(message)) return message.reply('Só administradores podem usar este comando.');
-      const orderId = Number(args[0]);
-      if (!orderId) return message.reply(`Uso: \`${PREFIX}confirmar <id_do_pedido>\``);
-      const result = await entregarPedido(orderId);
-      return message.reply(result.ok ? `Pedido #${orderId} confirmado e entregue.` : result.reason);
-    }
-  } catch (err) {
-    console.error(err);
-    message.reply('Ocorreu um erro ao processar esse comando.');
-  }
 });
 
-// Menu de seleção da loja + botões do carrinho + botões de confirmar/cancelar (staff)
 client.on('interactionCreate', async (interaction) => {
-  try {
-    if (interaction.isStringSelectMenu() && interaction.customId === 'comprar_select') {
-      const productId = Number(interaction.values[0]);
-      await criarPedido(interaction, productId);
-      return;
+    if (!interaction.isMessageComponent() && !interaction.isModalSubmit()) return;
+
+    if (interaction.isStringSelectMenu()) {
+        if (interaction.customId === 'menu_pedir_set') {
+            if (pedidosPendentes.has(interaction.user.id)) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.aviso} Sua ficha já está em revisão, aguarde uma resposta.`, flags: 64 });
+            }
+
+            const roleId = interaction.values[0];
+            const role = interaction.guild.roles.cache.get(roleId);
+
+            if (!role) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.aviso} Esse cargo já não existe no servidor.`, flags: 64 });
+            }
+
+            const modal = new ModalBuilder()
+                .setCustomId(`modal_set_${role.id}`)
+                .setTitle(`Solicitar Set: ${role.name}`.slice(0, 45));
+
+            const nomeInput = new TextInputBuilder().setCustomId('input_nome').setLabel('Nome in Game').setStyle(TextInputStyle.Short).setRequired(true);
+            const idInput = new TextInputBuilder().setCustomId('input_passaporte').setLabel('Passaporte / ID na cidade').setStyle(TextInputStyle.Short).setRequired(true);
+            const recrutadorInput = new TextInputBuilder().setCustomId('input_recrutador').setLabel('Quem lhe recrutou?').setStyle(TextInputStyle.Short).setRequired(true);
+
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(nomeInput),
+                new ActionRowBuilder().addComponents(idInput),
+                new ActionRowBuilder().addComponents(recrutadorInput)
+            );
+
+            await interaction.showModal(modal);
+            return;
+        }
+
+        if (interaction.customId === 'menu_abrir_ticket') {
+            const tipo = CONFIG.TIPOS_TICKET.find(t => t.id_menu === interaction.values[0]);
+            if (!tipo) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.aviso} Tipo de ticket inválido.`, flags: 64 });
+            }
+
+            const chaveTicket = `${interaction.user.id}_${tipo.id_menu}`;
+            if (ticketsAbertos.has(chaveTicket)) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.aviso} Já tens um ticket de **${tipo.nome}** aberto.`, flags: 64 });
+            }
+
+            await interaction.deferReply({ flags: 64 });
+
+            const overwrites = [
+                { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+                { id: interaction.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+                { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels] }
+            ];
+            if (CONFIG.CARGO_STAFF_TICKETS_ID && interaction.guild.roles.cache.has(CONFIG.CARGO_STAFF_TICKETS_ID)) {
+                overwrites.push({ id: CONFIG.CARGO_STAFF_TICKETS_ID, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+            }
+
+            let canalTicket;
+            try {
+                canalTicket = await interaction.guild.channels.create({
+                    name: `ticket-${tipo.nome.toLowerCase()}-${interaction.user.username}`.slice(0, 90),
+                    type: ChannelType.GuildText,
+                    parent: interaction.guild.channels.cache.has(CONFIG.CATEGORIA_TICKETS_ID) ? CONFIG.CATEGORIA_TICKETS_ID : undefined,
+                    permissionOverwrites: overwrites,
+                    reason: `Ticket de ${tipo.nome} aberto por ${interaction.user.tag}`
+                });
+            } catch (err) {
+                console.error('Erro ao criar canal de ticket:', err);
+                return interaction.editReply({ content: `${CONFIG.EMOJIS.cancelar} Não consegui criar o canal do ticket. Verifica as permissões do bot.` });
+            }
+
+            ticketsAbertos.add(chaveTicket);
+
+            const rowFechar = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`fechar_ticket_${chaveTicket}`)
+                    .setLabel('Fechar Ticket')
+                    .setEmoji('🔒')
+                    .setStyle(ButtonStyle.Danger)
+            );
+
+            const payloadTicket = v2({
+                content: `## ${tipo.emoji} Ticket de ${tipo.nome}\nOlá ${interaction.user}, a Staff foi notificada e vai atender-te aqui.\n\n> Descreve o teu pedido/situação com o máximo de detalhe possível.\n\n-# Aguarda com calma, a nossa equipa não está disponível 24 horas por dia.`,
+                footer: '-# NoxAssistant 2026 ©',
+                accentColor: 0x2F3136
+            }, [rowFechar]);
+
+            await canalTicket.send(payloadTicket);
+            return interaction.editReply({ content: `${CONFIG.EMOJIS.sucesso} Ticket criado: ${canalTicket}` });
+        }
+
     }
 
-    if (interaction.isButton() && interaction.customId.startsWith('revisao_confirmar_')) {
-      const orderId = Number(interaction.customId.replace('revisao_confirmar_', ''));
-      await irParaPagamento(interaction, orderId);
-      return;
+    if (interaction.isModalSubmit()) {
+        if (interaction.customId.startsWith('modal_set_')) {
+            await interaction.deferReply({ flags: 64 });
+            const roleId = interaction.customId.replace('modal_set_', '');
+            const role = interaction.guild.roles.cache.get(roleId);
+
+            if (!role) {
+                return interaction.editReply({ content: `${CONFIG.EMOJIS.aviso} O cargo solicitado já não existe.` });
+            }
+
+            const nome = interaction.fields.getTextInputValue('input_nome');
+            const passaporte = interaction.fields.getTextInputValue('input_passaporte');
+            const recrutador = interaction.fields.getTextInputValue('input_recrutador');
+
+            const logsChannel = interaction.guild.channels.cache.get(CONFIG.CANAL_LOGS_ID);
+            if (!logsChannel) {
+                return interaction.editReply({ content: `${CONFIG.EMOJIS.cancelar} Erro: O canal de logs não está configurado.` });
+            }
+
+            pedidosPendentes.add(interaction.user.id);
+
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`aprovar_set_${role.id}_${interaction.user.id}_${nome}_${passaporte}`)
+                    .setLabel('Aprovar e Dar Cargo')
+                    .setStyle(ButtonStyle.Success)
+                    .setEmoji('1520249613901103135'),
+                new ButtonBuilder()
+                    .setCustomId(`rejeitar_set_${interaction.user.id}`)
+                    .setLabel('Rejeitar')
+                    .setStyle(ButtonStyle.Danger)
+                    .setEmoji('1520249615318782022')
+            );
+
+            const payloadLog = v2({
+                content: `## ${CONFIG.EMOJIS.ticket} Nova Solicitação de Set\n**Membro:** ${interaction.user} (\`${interaction.user.id}\`)\n**Cargo Solicitado:** ${role}\n\n📌 **Informações Enviadas:**\n${CONFIG.EMOJIS.info} **Nome in Game:** \`${nome}\`\n${CONFIG.EMOJIS.info} **Passaporte / ID:** \`${passaporte}\`\n${CONFIG.EMOJIS.info} **Recrutado por:** \`${recrutador}\``,
+                imageUrl: interaction.user.displayAvatarURL({ extension: 'png', size: 128 }),
+                thumbnailRight: true,
+                footer: '-# NoxAssistant 2026 ©',
+                accentColor: 0x2F3136
+            }, [row]);
+
+            await logsChannel.send(payloadLog);
+            return interaction.editReply({ content: `${CONFIG.EMOJIS.sucesso} A tua solicitação para o cargo **${role.name}** foi enviada para análise da Staff!` });
+        }
+
     }
 
-    if (interaction.isButton() && interaction.customId.startsWith('revisao_cancelar_')) {
-      const orderId = Number(interaction.customId.replace('revisao_cancelar_', ''));
-      await cancelarPedidoCliente(interaction, orderId);
-      return;
-    }
+    if (interaction.isButton()) {
+        if (interaction.customId.startsWith('aprovar_set_')) {
+            if (!interaction.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.cancelar} Apenas membros autorizados podem aprovar sets.`, flags: 64 });
+            }
 
-    if (interaction.isButton() && interaction.customId.startsWith('confirmar_')) {
-      if (!isAdmin(interaction.member)) {
-        return interaction.reply({ content: 'Só a staff pode confirmar pagamentos.', ephemeral: true });
-      }
-      const orderId = Number(interaction.customId.replace('confirmar_', ''));
-      const result = await entregarPedido(orderId);
-      if (result.ok) {
-        await interaction.update({
-          content: `✅ Pedido #${orderId} confirmado por <@${interaction.user.id}> e entregue.`,
-          embeds: [],
-          components: [],
-        });
-      } else {
-        await interaction.reply({ content: result.reason, ephemeral: true });
-      }
-      return;
-    }
+            const [, , roleId, userId, nomeInGame, passaporte] = interaction.customId.split('_');
+            const role = interaction.guild.roles.cache.get(roleId);
+            const targetMember = await interaction.guild.members.fetch(userId).catch(() => null);
 
-    if (interaction.isButton() && interaction.customId.startsWith('cancelar_')) {
-      if (!isAdmin(interaction.member)) {
-        return interaction.reply({ content: 'Só a staff pode cancelar pedidos.', ephemeral: true });
-      }
-      const orderId = Number(interaction.customId.replace('cancelar_', ''));
-      db.markOrderStatus(orderId, 'cancelado');
-      await avisarThread(orderId, '❌ O teu pedido foi cancelado pela staff.');
-      await interaction.update({
-        content: `❌ Pedido #${orderId} cancelado por <@${interaction.user.id}>.`,
-        embeds: [],
-        components: [],
-      });
-      return;
+            if (!pedidosPendentes.has(userId)) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.cancelar} Este pedido já foi processado!`, flags: 64 });
+            }
+
+            if (!targetMember || !role) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.cancelar} Membro ou cargo não encontrado.`, flags: 64 });
+            }
+
+            try {
+                await targetMember.roles.add(role);
+                pedidosPendentes.delete(userId);
+
+                let novoNick = `${role.name} 🎭 | ${nomeInGame} ${passaporte}`;
+                if (novoNick.length > 32) novoNick = novoNick.substring(0, 32);
+
+                await targetMember.setNickname(novoNick).catch(() => {});
+                
+                await interaction.deferUpdate();
+                const mensagemConfirmacao = await interaction.followUp({ 
+                    content: `${CONFIG.EMOJIS.sucesso} O pedido de ${targetMember} foi **aprovado** por ${interaction.user}. Cargo ${role} entregue e alcunha alterada para \`${novoNick}\`!` 
+                });
+
+                setTimeout(() => mensagemConfirmacao.delete().catch(() => {}), 3000);
+
+                const embedDM = new EmbedBuilder()
+                    .setTitle(`${CONFIG.EMOJIS.sucesso} Solicitação Aprovada!`)
+                    .setDescription(`Olá ${targetMember}, a tua solicitação para o cargo **${role.name}** foi **aprovada**! Já recebeste o cargo e o teu nome foi atualizado para **${novoNick}**.`)
+                    .setColor(0x57F287)
+                    .setFooter({ text: 'NoxAssistant 2026 ©' });
+                await targetMember.send({ embeds: [embedDM] }).catch(() => {});
+            } catch (err) {
+                await interaction.reply({ content: `${CONFIG.EMOJIS.aviso} Erro ao dar o cargo. Verifique a hierarquia de cargos do bot.`, flags: 64 });
+            }
+        }
+
+        if (interaction.customId.startsWith('rejeitar_set_')) {
+            if (!interaction.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.cancelar} Apenas membros autorizados podem rejeitar sets.`, flags: 64 });
+            }
+
+            const parts = interaction.customId.split('_');
+            const userId = parts[2];
+            const targetMember = await interaction.guild.members.fetch(userId).catch(() => null);
+            if (!pedidosPendentes.has(userId)) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.cancelar} Este pedido já foi processado!`, flags: 64 });
+            }
+            pedidosPendentes.delete(userId);
+
+            await interaction.deferUpdate();
+            await interaction.followUp({ content: `${CONFIG.EMOJIS.aviso} O pedido de ${targetMember ? targetMember : 'Membro'} foi **rejeitado** por ${interaction.user}.` });
+
+            if (targetMember) {
+                const embedDM = new EmbedBuilder()
+                    .setTitle(`${CONFIG.EMOJIS.cancelar} Solicitação Rejeitada`)
+                    .setDescription(`Olá ${targetMember}, a tua solicitação de Set foi **rejeitada** pela Staff.`)
+                    .setColor(0xED4245)
+                    .setFooter({ text: 'NoxAssistant 2026 ©' });
+                await targetMember.send({ embeds: [embedDM] }).catch(() => {});
+            }
+        }
+
+        if (interaction.customId.startsWith('fechar_ticket_')) {
+            const chaveTicket = interaction.customId.replace('fechar_ticket_', '');
+            const [abertoPorId] = chaveTicket.split('_');
+
+            const ehStaff = interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)
+                || (CONFIG.CARGO_STAFF_TICKETS_ID && interaction.member.roles.cache.has(CONFIG.CARGO_STAFF_TICKETS_ID));
+            const ehDono = interaction.user.id === abertoPorId;
+
+            if (!ehStaff && !ehDono) {
+                return interaction.reply({ content: `${CONFIG.EMOJIS.cancelar} Apenas a Staff ou quem abriu o ticket pode fechá-lo.`, flags: 64 });
+            }
+
+            ticketsAbertos.delete(chaveTicket);
+            await interaction.reply({ content: `${CONFIG.EMOJIS.sucesso} Ticket fechado por ${interaction.user}. Este canal vai ser apagado em 5 segundos...` });
+            setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+        }
     }
-  } catch (err) {
-    console.error(err);
-    if (interaction.isRepliable()) {
-      const msg = { content: 'Ocorreu um erro ao processar isso. Tenta novamente.', ephemeral: true };
-      if (interaction.deferred || interaction.replied) await interaction.followUp(msg);
-      else await interaction.reply(msg);
-    }
-  }
 });
 
-client.once('ready', () => {
-  console.log(`Bot ligado como ${client.user.tag}`);
-});
-
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.TOKEN);
