@@ -1,5 +1,4 @@
 require('dotenv').config();
-const discord = require('discord.js');
 const {
     Client,
     GatewayIntentBits,
@@ -12,47 +11,9 @@ const {
     EmbedBuilder,
     PermissionFlagsBits,
     AttachmentBuilder
-} = discord;
+} = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-
-function v2({ content, imageUrl, accentColor } = {}, extraRows = []) {
-    const {
-        ContainerBuilder,
-        TextDisplayBuilder,
-        MediaGalleryBuilder,
-        MediaGalleryItemBuilder,
-        MessageFlags
-    } = discord;
-
-    if (!ContainerBuilder || !MessageFlags?.IsComponentsV2) {
-        throw new Error('Atualiza o discord.js: npm install discord.js@14.27.0');
-    }
-
-    const container = new ContainerBuilder();
-    if (accentColor != null) container.setAccentColor(accentColor);
-
-    if (imageUrl) {
-        container.addMediaGalleryComponents(
-            new MediaGalleryBuilder().addItems(
-                new MediaGalleryItemBuilder().setURL(imageUrl)
-            )
-        );
-    }
-
-    container.addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(content)
-    );
-
-    for (const row of extraRows) {
-        container.addActionRowComponents(row);
-    }
-
-    return {
-        flags: MessageFlags.IsComponentsV2,
-        components: [container]
-    };
-}
 
 const CONFIG = {
     PREFIXO: process.env.PREFIX || '!',
@@ -60,7 +21,7 @@ const CONFIG = {
     CATEGORIA_TICKETS_ID: process.env.TICKETS_CATEGORY_ID,
     CARGO_STAFF_TICKETS_ID: process.env.STAFF_ROLE_ID,
     AUTOROLE_ID: process.env.AUTOROLE_ID,
-    BANNER_LOJA: process.env.LOJA_BANNER || '',
+    BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
         { id_menu: 'ticket_receber', nome: 'Receber Produto', desc: 'Abra um ticket para receber seu produto', emoji: '🛒' },
@@ -90,16 +51,8 @@ const client = new Client({
 
 const ticketsAbertos = new Set();
 
-function caminhoBanner() {
-    const local = path.join(__dirname, 'assets', 'banner.png');
-    if (fs.existsSync(local)) return local;
-    if (CONFIG.BANNER_LOJA && fs.existsSync(CONFIG.BANNER_LOJA)) return CONFIG.BANNER_LOJA;
-    return null;
-}
-
-function textoNitradas() {
+function descricaoNitradas() {
     return (
-        '## Nitradas\n' +
         '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
         '• Contas com Nitro Gaming\n' +
         '• Contas Nitradas Possui Nitro.\n' +
@@ -120,60 +73,44 @@ function botaoComprar() {
     );
 }
 
-function payloadPainelLoja() {
-    const ficheiro = caminhoBanner();
-    const url = CONFIG.BANNER_LOJA && /^https?:\/\//i.test(CONFIG.BANNER_LOJA)
-        ? CONFIG.BANNER_LOJA
-        : null;
-    const imageUrl = ficheiro ? 'attachment://banner.png' : (url || undefined);
-
-    const payload = v2({
-        content: textoNitradas(),
-        imageUrl,
-        accentColor: 0x120c0c
-    }, [botaoComprar()]);
-
-    if (ficheiro) {
-        payload.files = [new AttachmentBuilder(ficheiro, { name: 'banner.png' })];
+function fonteBanner() {
+    const local = path.join(__dirname, 'assets', 'banner.png');
+    if (fs.existsSync(local)) return { tipo: 'ficheiro', valor: local };
+    if (CONFIG.BANNER_LOJA && fs.existsSync(CONFIG.BANNER_LOJA)) {
+        return { tipo: 'ficheiro', valor: CONFIG.BANNER_LOJA };
     }
-    return payload;
+    if (CONFIG.BANNER_LOJA && /^https?:\/\//i.test(CONFIG.BANNER_LOJA)) {
+        return { tipo: 'url', valor: CONFIG.BANNER_LOJA };
+    }
+    return null;
 }
 
-function payloadLojaClassico() {
-    const embed = new EmbedBuilder()
+function payloadPainelLoja() {
+    const banner = new EmbedBuilder().setColor(0x120c0c);
+    const nitradas = new EmbedBuilder()
         .setTitle('Nitradas')
-        .setDescription(
-            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
-            '• Contas com Nitro Gaming\n' +
-            '• Contas Nitradas Possui Nitro.\n' +
-            '• Nitradas Na Melhor Qualidade.\n\n' +
-            '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-            'Preço: **De R$ 2,55 a R$ 7,99**\n' +
-            'Clique no botão **"Comprar"**'
-        )
+        .setDescription(descricaoNitradas())
         .setColor(0x120c0c);
 
-    const payload = { embeds: [embed], components: [botaoComprar()] };
-    const ficheiro = caminhoBanner();
-    const url = CONFIG.BANNER_LOJA && /^https?:\/\//i.test(CONFIG.BANNER_LOJA)
-        ? CONFIG.BANNER_LOJA
-        : null;
+    const payload = {
+        embeds: [banner, nitradas],
+        components: [botaoComprar()]
+    };
 
-    if (ficheiro) {
-        payload.files = [new AttachmentBuilder(ficheiro, { name: 'banner.png' })];
-    } else if (url) {
-        payload.files = [new AttachmentBuilder(url, { name: 'banner.png' })];
+    const fonte = fonteBanner();
+    if (!fonte) return payload;
+
+    if (fonte.tipo === 'ficheiro') {
+        payload.files = [new AttachmentBuilder(fonte.valor, { name: 'banner.png' })];
+        banner.setImage('attachment://banner.png');
+    } else {
+        banner.setImage(fonte.valor);
     }
     return payload;
 }
 
 async function publicarPainelLoja(channel) {
-    try {
-        return await channel.send(payloadPainelLoja());
-    } catch (erroV2) {
-        console.warn('Painel V2 falhou, a usar embed:', erroV2.message);
-        return channel.send(payloadLojaClassico());
-    }
+    return channel.send(payloadPainelLoja());
 }
 
 client.once('clientReady', aoFicarOnline);
