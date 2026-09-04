@@ -9,7 +9,8 @@ const {
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder,
     EmbedBuilder, 
-    PermissionFlagsBits
+    PermissionFlagsBits,
+    AttachmentBuilder
 } = require('discord.js');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
@@ -70,16 +71,26 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
     
-    // Comando 1: Painel de Loja (Comprar)
+    // Comando 1: Painel de Loja (Comprar) — banner como ficheiro no topo (não .setImage)
     if (commandName === 'loja') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         message.delete().catch(()=>{});
 
+        const bannerFonte = process.env.LOJA_BANNER || path.join(__dirname, 'assets', 'banner.png');
+        const bannerImagem = new AttachmentBuilder(bannerFonte, { name: 'banner.png' });
+
         const embed = new EmbedBuilder()
-            .setTitle('⚡ Entrega Automática!')
-            .setDescription('**Impulsos Automáticos**\n\n- Entrega automática em menos de 1 minuto\n- Os impulsos são entregues apenas com o convite do servidor\n- Entrega instantânea\n\nPreço: **De R$ 2,50 a R$ 25,99**')
-            .setColor(0x2b2d31)
-            .setFooter({ text: 'Clique no botão "Comprar"' });
+            .setTitle('Nitradas')
+            .setDescription(
+                '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+                '• Contas com Nitro Gaming\n' +
+                '• Contas Nitradas Possui Nitro.\n' +
+                '• Nitradas Na Melhor Qualidade.\n\n' +
+                '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
+                'Preço: **De R$ 2,55 a R$ 7,99**\n' +
+                'Clique no botão **"Comprar"**'
+            )
+            .setColor(0x2b2d31);
 
         const btn = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -89,7 +100,7 @@ client.on('messageCreate', async (message) => {
                 .setStyle(ButtonStyle.Secondary)
         );
 
-        await message.channel.send({ embeds: [embed], components: [btn] });
+        await message.channel.send({ files: [bannerImagem], embeds: [embed], components: [btn] });
     }
 
     // Comando 2: Painel de Tickets (Central de Atendimento)
