@@ -76,10 +76,10 @@ client.on('messageCreate', async (message) => {
         message.delete().catch(()=>{});
 
         const embed = new EmbedBuilder()
-            .setTitle('⚡ Entrega Automática!')
-            .setDescription('**Impulsos Automáticos**\n\n- Entrega automática em menos de 1 minuto\n- Os impulsos são entregues apenas com o convite do servidor\n- Entrega instantânea\n\nPreço: **De R$ 2,50 a R$ 25,99**')
-            .setColor(0x2b2d31)
-            .setFooter({ text: 'Clique no botão "Comprar"' });
+            .setImage('https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa&')
+            .setTitle('Nitradas')
+            .setDescription('• Conta Full Acesso, Muda Email, Senha Etc...\n• Contas com Nitro Gaming\n• Contas Nitradas Possui Nitro.\n• Nitradas Na Melhor Qualidade.\n\n⚡ **Entrega Automática!**\n\nPreço: **De R$ 2,55 a R$ 7,99**\nClique no botão **"Comprar"**')
+            .setColor(0x2b2d31);
 
         const btn = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
