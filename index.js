@@ -78,6 +78,10 @@ const CONFIG = {
     // Link do banner no topo do !loja (CDN do Discord). Se o link expirar, o bot usa assets/banner.png
     BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
 
+    PRODUTOS_LOJA: [
+        { id: 'nitradas', nome: 'Nitradas', desc: 'Contas com Nitro · De R$ 2,55 a R$ 7,99', emoji: '🛒' }
+    ],
+
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
         { id_menu: 'ticket_receber', nome: 'Receber Produto', desc: 'Abra um ticket para receber seu produto', emoji: '🛒' },
@@ -121,26 +125,31 @@ function resolverBanner(usarFicheiroLocal = false) {
     return null;
 }
 
-function botaoComprar() {
-    return new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId('btn_comprar')
-            .setLabel('Comprar')
-            .setEmoji('🛒')
-            .setStyle(ButtonStyle.Secondary)
-    );
+function menuLoja() {
+    const select = new StringSelectMenuBuilder()
+        .setCustomId('menu_loja_produto')
+        .setPlaceholder('🛒 · Nitradas')
+        .addOptions(CONFIG.PRODUTOS_LOJA.map(p =>
+            new StringSelectMenuOptionBuilder()
+                .setLabel(`· ${p.nome}`)
+                .setDescription(p.desc)
+                .setValue(p.id)
+                .setEmoji(p.emoji)
+        ));
+    return new ActionRowBuilder().addComponents(select);
 }
 
 function textoLoja() {
     return (
-        '## Nitradas\n' +
-        '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
-        '• Contas com Nitro Gaming\n' +
-        '• Contas Nitradas Possui Nitro.\n' +
-        '• Nitradas Na Melhor Qualidade.\n\n' +
+        '## 🛒 Nitradas\n' +
+        'Seja bem-vindo(a) ao painel de vendas!\n\n' +
+        '> • Conta Full Acesso, Muda Email, Senha Etc...\n' +
+        '> • Contas com Nitro Gaming\n' +
+        '> • Contas Nitradas Possui Nitro.\n' +
+        '> • Nitradas Na Melhor Qualidade.\n\n' +
         '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-        'Preço: **De R$ 2,55 a R$ 7,99**\n' +
-        'Clique no botão **"Comprar"**'
+        'Preço: **De R$ 2,55 a R$ 7,99**\n\n' +
+        '-# Utilize o menu abaixo para selecionar o produto.'
     );
 }
 
@@ -153,8 +162,9 @@ function payloadPainelLoja(usarFicheiroLocal = false) {
     const payload = v2({
         content: textoLoja(),
         imageUrl,
-        accentColor: 0x120c0c
-    }, [botaoComprar()]);
+        footer: '-# NoxAssistant 2026 ©',
+        accentColor: 0x2F3136
+    }, [menuLoja()]);
 
     if (bannerFonte && !/^https?:\/\//i.test(bannerFonte)) {
         payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
@@ -165,22 +175,30 @@ function payloadPainelLoja(usarFicheiroLocal = false) {
 
 function payloadLojaClassico(usarFicheiroLocal = false) {
     const embed = new EmbedBuilder()
-        .setTitle('Nitradas')
+        .setTitle('🛒 Nitradas')
         .setDescription(
-            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
-            '• Contas com Nitro Gaming\n' +
-            '• Contas Nitradas Possui Nitro.\n' +
-            '• Nitradas Na Melhor Qualidade.\n\n' +
+            'Seja bem-vindo(a) ao painel de vendas!\n\n' +
+            '> • Conta Full Acesso, Muda Email, Senha Etc...\n' +
+            '> • Contas com Nitro Gaming\n' +
+            '> • Contas Nitradas Possui Nitro.\n' +
+            '> • Nitradas Na Melhor Qualidade.\n\n' +
             '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-            'Preço: **De R$ 2,55 a R$ 7,99**\n' +
-            'Clique no botão **"Comprar"**'
+            'Preço: **De R$ 2,55 a R$ 7,99**\n\n' +
+            '-# Utilize o menu abaixo para selecionar o produto.'
         )
-        .setColor(0x120c0c);
+        .setColor(0x2F3136)
+        .setFooter({ text: 'NoxAssistant 2026 ©' });
 
-    const payload = { embeds: [embed], components: [botaoComprar()] };
     const bannerFonte = resolverBanner(usarFicheiroLocal);
+    const payload = { embeds: [embed], components: [menuLoja()] };
+
     if (bannerFonte) {
-        payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
+        if (/^https?:\/\//i.test(bannerFonte)) {
+            embed.setImage(bannerFonte);
+        } else {
+            embed.setImage('attachment://banner.png');
+            payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
+        }
     }
     return payload;
 }
@@ -331,6 +349,17 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
     
+    // Menu da loja (igual ao pedir set) → escolhe o produto e abre o pagamento
+    if (interaction.isStringSelectMenu() && interaction.customId === 'menu_loja_produto') {
+        const btnCredito = new ButtonBuilder().setCustomId('pay_credito').setLabel('Crédito/Débito').setEmoji('💳').setStyle(ButtonStyle.Primary);
+        const btnLtc = new ButtonBuilder().setCustomId('pay_ltc').setLabel('Litecoin').setEmoji('1301292023914856488').setStyle(ButtonStyle.Secondary);
+        const btnBtc = new ButtonBuilder().setCustomId('pay_btc').setLabel('Bitcoin').setEmoji('1301292040432291901').setStyle(ButtonStyle.Secondary);
+        const btnCancelar = new ButtonBuilder().setCustomId('pay_cancel').setLabel('Cancelar').setEmoji('🗑️').setStyle(ButtonStyle.Danger);
+        const row = new ActionRowBuilder().addComponents(btnCredito, btnLtc, btnBtc, btnCancelar);
+        await interaction.reply({ content: `Produto: **${interaction.values[0]}**\nSelecione uma forma de pagamento:`, components: [row], flags: 64 });
+        return;
+    }
+
     // Lógica do Menu de Tickets
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_abrir_ticket') {
         const tipoId = interaction.values[0];
