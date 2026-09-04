@@ -10,7 +10,7 @@ const {
     StringSelectMenuOptionBuilder,
     EmbedBuilder, 
     PermissionFlagsBits,
-    AttachmentBuilder // <--- O segredo para forçar a imagem no topo
+    AttachmentBuilder
 } = require('discord.js');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
@@ -64,25 +64,32 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
-// --- Comandos (!loja, !tickets, !feedback, !verificacao) ---
+// --- Comandos (!loja, !tickets, !feedback) ---
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild || !message.content.startsWith(CONFIG.PREFIXO)) return;
 
     const args = message.content.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
     
-    // Comando 1: Painel de Loja (Comprar) -> COM IMAGEM COMO FICHEIRO NO TOPO
+    // Comando 1: Painel de Loja (Comprar) — banner como ficheiro no topo (não .setImage)
     if (commandName === 'loja') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         message.delete().catch(()=>{});
 
-        // 1. Criamos a imagem como um Ficheiro (Assim o Discord é obrigado a mostrá-la gigante no topo)
-        const bannerImagem = new AttachmentBuilder('https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png', { name: 'banner.png' });
+        const bannerFonte = process.env.LOJA_BANNER || path.join(__dirname, 'assets', 'banner.png');
+        const bannerImagem = new AttachmentBuilder(bannerFonte, { name: 'banner.png' });
 
-        // 2. O Embed com o texto (Ficará colado por baixo da imagem)
         const embed = new EmbedBuilder()
             .setTitle('Nitradas')
-            .setDescription('• Conta Full Acesso, Muda Email, Senha Etc...\n• Contas com Nitro Gaming\n• Contas Nitradas Possui Nitro.\n• Nitradas Na Melhor Qualidade.\n\n⚡ **Entrega Automática!**\n\nPreço: **De R$ 2,55 a R$ 7,99**\nClique no botão **"Comprar"**')
+            .setDescription(
+                '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+                '• Contas com Nitro Gaming\n' +
+                '• Contas Nitradas Possui Nitro.\n' +
+                '• Nitradas Na Melhor Qualidade.\n\n' +
+                '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
+                'Preço: **De R$ 2,55 a R$ 7,99**\n' +
+                'Clique no botão **"Comprar"**'
+            )
             .setColor(0x2b2d31);
 
         const btn = new ActionRowBuilder().addComponents(
@@ -92,8 +99,7 @@ client.on('messageCreate', async (message) => {
                 .setEmoji('🛒')
                 .setStyle(ButtonStyle.Secondary)
         );
-        
-        // 3. Enviamos os dois juntos: O ficheiro (files) vai para cima, o embed para baixo!
+
         await message.channel.send({ files: [bannerImagem], embeds: [embed], components: [btn] });
     }
 
@@ -105,7 +111,8 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle('Central de Atendimento')
             .setDescription('- Após solicitar atendimento, aguarde até que um integrante da equipa responda à sua solicitação.\n\n- O atendimento é realizado de forma privada; apenas membros autorizados terão acesso.\n\n- Ressaltamos que nossa equipa não está disponível 24 horas por dia.')
-            .setImage('https://i.imgur.com/your-banner.png')
+            // Se quiser colocar o banner roxo da imagem, insira o link aqui dentro das aspas:
+            .setImage('https://i.imgur.com/link_da_imagem.png') 
             .setColor(0x2b2d31);
 
         const selectMenu = new StringSelectMenuBuilder()
@@ -123,29 +130,7 @@ client.on('messageCreate', async (message) => {
         await message.channel.send({ embeds: [embed], components: [row] });
     }
 
-    // Comando 3: Painel de Verificação (Backup)
-    if (commandName === 'verificacao') {
-        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
-        message.delete().catch(()=>{});
-
-        const embed = new EmbedBuilder()
-            .setTitle('Verifique-se')
-            .setDescription('Se verifique abaixo para ter acesso ao servidor completo!\nCaso o servidor caia vamos te puxar!')
-            .setImage('https://i.postimg.cc/mZh4H36h/Screenshot-2.png') 
-            .setColor(0x2b2d31);
-
-        const btn = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel('Verificar')
-                .setEmoji('✔')
-                .setStyle(ButtonStyle.Link) 
-                .setURL('https://seu-link-de-autorizacao-oauth2-aqui.com') 
-        );
-
-        await message.channel.send({ content: '🔗 Clique para verificar sua conta', embeds: [embed], components: [btn] });
-    }
-
-    // Comando 4: Feedback
+    // Comando 3: Feedback
     if (commandName === 'feedback') {
         message.delete().catch(()=>{});
         const review = args.join(' ');
