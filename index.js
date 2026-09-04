@@ -75,16 +75,12 @@ client.on('messageCreate', async (message) => {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         message.delete().catch(()=>{});
 
-        // O truque: Usamos .setURL('https://discord.gg') nos dois para o Discord os "colar" num só bloco!
-        const embed1 = new EmbedBuilder()
-            .setURL('https://discord.gg')
-            .setImage('https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa&')
-            .setColor(0x2b2d31);
-
-        const embed2 = new EmbedBuilder()
+        // Único embed para evitar bugs (a imagem vai automaticamente para baixo do texto no Discord)
+        const embed = new EmbedBuilder()
             .setTitle('Nitradas')
-            .setURL('https://discord.gg') // Tem de ter o mesmo URL que o de cima
             .setDescription('• Conta Full Acesso, Muda Email, Senha Etc...\n• Contas com Nitro Gaming\n• Contas Nitradas Possui Nitro.\n• Nitradas Na Melhor Qualidade.\n\n⚡ **Entrega Automática!**\n\nPreço: **De R$ 2,55 a R$ 7,99**\nClique no botão **"Comprar"**')
+            // Se preferir outra imagem, basta mudar este link
+            .setImage('https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa&') 
             .setColor(0x2b2d31);
 
         const btn = new ActionRowBuilder().addComponents(
@@ -95,7 +91,7 @@ client.on('messageCreate', async (message) => {
                 .setStyle(ButtonStyle.Secondary)
         );
 
-        await message.channel.send({ embeds: [embed1, embed2], components: [btn] });
+        await message.channel.send({ embeds: [embed], components: [btn] });
     }
 
     // Comando 2: Painel de Tickets (Central de Atendimento)
