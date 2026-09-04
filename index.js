@@ -28,7 +28,7 @@ const CONFIG = {
     CATEGORIA_TICKETS_ID: process.env.TICKETS_CATEGORY_ID,
     CARGO_STAFF_TICKETS_ID: process.env.STAFF_ROLE_ID,
     AUTOROLE_ID: process.env.AUTOROLE_ID,
-    BANNER_LOJA: process.env.LOJA_BANNER || 'https://raw.githubusercontent.com/Noxounico/Vendas/cursor/loja-banner-topo-5c04/assets/banner.jpg',
+    BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
         { id_menu: 'ticket_receber', nome: 'Receber Produto', desc: 'Abra um ticket para receber seu produto', emoji: '🛒' },
@@ -37,7 +37,16 @@ const CONFIG = {
 };
 
 const PASTA_ASSETS = path.join(__dirname, 'assets');
-const FICHEIRO_BANNER = path.join(PASTA_ASSETS, 'banner.jpg');
+const FICHEIRO_BANNER_DOWNLOAD = path.join(PASTA_ASSETS, 'banner.png');
+
+function ficheiroBannerLocal() {
+    const nomes = ['banner.png', 'banner.jpg', 'banner.jpeg', 'banner.webp', 'banner.gif'];
+    for (const nome of nomes) {
+        const ficheiro = path.join(PASTA_ASSETS, nome);
+        if (fs.existsSync(ficheiro) && fs.statSync(ficheiro).size > 1000) return ficheiro;
+    }
+    return null;
+}
 
 let db = null;
 try {
@@ -114,29 +123,30 @@ function baixarFicheiro(url, destino) {
 
 async function garantirBanner() {
     fs.mkdirSync(PASTA_ASSETS, { recursive: true });
-    if (fs.existsSync(FICHEIRO_BANNER) && fs.statSync(FICHEIRO_BANNER).size > 1000) {
-        return FICHEIRO_BANNER;
-    }
     if (CONFIG.BANNER_LOJA && /^https?:\/\//i.test(CONFIG.BANNER_LOJA)) {
         try {
-            await baixarFicheiro(CONFIG.BANNER_LOJA, FICHEIRO_BANNER);
+            await baixarFicheiro(CONFIG.BANNER_LOJA, FICHEIRO_BANNER_DOWNLOAD);
         } catch (error) {
             console.warn('Não foi possível descarregar o banner:', error.message);
         }
     }
-    return fs.existsSync(FICHEIRO_BANNER) ? FICHEIRO_BANNER : null;
+    return ficheiroBannerLocal();
 }
 
-function urlBanner() {
-    if (fs.existsSync(FICHEIRO_BANNER) && fs.statSync(FICHEIRO_BANNER).size > 1000) {
-        return 'attachment://banner.jpg';
-    }
-    return CONFIG.BANNER_LOJA || undefined;
+function anexoBanner() {
+    const local = ficheiroBannerLocal();
+    if (!local) return null;
+    const nome = path.basename(local);
+    return {
+        imageUrl: `attachment://${nome}`,
+        files: [new AttachmentBuilder(local, { name: nome })]
+    };
 }
 
 function payloadPainelLoja() {
     const container = new ContainerBuilder().setAccentColor(0x2b2d31);
-    const imageUrl = urlBanner();
+    const anexo = anexoBanner();
+    const imageUrl = anexo?.imageUrl || CONFIG.BANNER_LOJA || undefined;
 
     if (imageUrl) {
         container.addMediaGalleryComponents(
@@ -160,10 +170,7 @@ function payloadPainelLoja() {
         flags: MessageFlags.IsComponentsV2,
         components: [container]
     };
-
-    if (imageUrl === 'attachment://banner.jpg') {
-        payload.files = [new AttachmentBuilder(FICHEIRO_BANNER, { name: 'banner.jpg' })];
-    }
+    if (anexo) payload.files = anexo.files;
     return payload;
 }
 
@@ -189,12 +196,12 @@ function payloadLojaClassico() {
         components: [new ActionRowBuilder().addComponents(botaoComprar())]
     };
 
-    const imageUrl = urlBanner();
-    if (imageUrl === 'attachment://banner.jpg') {
-        embed.setImage('attachment://banner.jpg');
-        payload.files = [new AttachmentBuilder(FICHEIRO_BANNER, { name: 'banner.jpg' })];
-    } else if (imageUrl) {
-        embed.setImage(imageUrl);
+    const anexo = anexoBanner();
+    if (anexo) {
+        embed.setImage(anexo.imageUrl);
+        payload.files = anexo.files;
+    } else if (CONFIG.BANNER_LOJA) {
+        embed.setImage(CONFIG.BANNER_LOJA);
     }
     return payload;
 }
