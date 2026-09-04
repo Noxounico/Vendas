@@ -24,6 +24,9 @@ const CONFIG = {
     CARGO_STAFF_TICKETS_ID: process.env.STAFF_ROLE_ID,
     AUTOROLE_ID: process.env.AUTOROLE_ID,
 
+    // Link do banner no topo do !loja (CDN do Discord). Se o link expirar, o bot usa assets/banner.png
+    BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
+
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
         { id_menu: 'ticket_receber', nome: 'Receber Produto', desc: 'Abra um ticket para receber seu produto', emoji: '🛒' },
@@ -56,7 +59,7 @@ function podePublicarPainel(member, guild) {
         || member.permissions.has(PermissionFlagsBits.ManageGuild);
 }
 
-function payloadPainelLoja() {
+function payloadPainelLoja(usarFicheiroLocal = false) {
     const embed = new EmbedBuilder()
         .setTitle('Nitradas')
         .setDescription(
@@ -80,20 +83,32 @@ function payloadPainelLoja() {
         )
     ];
 
-    const bannerFonte = process.env.LOJA_BANNER || path.join(__dirname, 'assets', 'banner.png');
+    const bannerFonte = CONFIG.BANNER_LOJA;
+    const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
     const payload = { embeds: [embed], components };
 
-    if (fs.existsSync(bannerFonte) || /^https?:\/\//i.test(bannerFonte)) {
+    if (!usarFicheiroLocal && bannerFonte && /^https?:\/\//i.test(bannerFonte)) {
         payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
+    } else if (bannerFonte && fs.existsSync(bannerFonte)) {
+        payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
+    } else if (fs.existsSync(bannerLocal)) {
+        payload.files = [new AttachmentBuilder(bannerLocal, { name: 'banner.png' })];
     } else {
-        console.warn(`[loja] Banner não encontrado em: ${bannerFonte} — o painel vai sem imagem.`);
+        console.warn('[loja] Banner não encontrado — o painel vai sem imagem.');
     }
 
     return payload;
 }
 
 async function publicarPainelLoja(channel) {
-    return channel.send(payloadPainelLoja());
+    try {
+        return await channel.send(payloadPainelLoja(false));
+    } catch (error) {
+        const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
+        if (!fs.existsSync(bannerLocal)) throw error;
+        console.warn('Falha ao enviar o banner pelo link, a usar assets/banner.png:', error.message);
+        return channel.send(payloadPainelLoja(true));
+    }
 }
 
 client.once('ready', async () => {
