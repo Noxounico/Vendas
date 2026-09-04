@@ -1,5 +1,4 @@
 require('dotenv').config();
-const discord = require('discord.js');
 const { 
     Client, 
     GatewayIntentBits, 
@@ -12,76 +11,18 @@ const {
     EmbedBuilder, 
     PermissionFlagsBits,
     AttachmentBuilder
-} = discord;
+} = require('discord.js');
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
 
-function v2({ content, imageUrl, footer, accentColor, thumbnailRight } = {}, extraRows = []) {
-    const {
-        ContainerBuilder,
-        TextDisplayBuilder,
-        MediaGalleryBuilder,
-        MediaGalleryItemBuilder,
-        SectionBuilder,
-        ThumbnailBuilder,
-        MessageFlags
-    } = discord;
-
-    if (!ContainerBuilder || !MessageFlags?.IsComponentsV2) {
-        throw new Error('Atualiza o discord.js: npm install discord.js@14.27.0');
-    }
-
-    const container = new ContainerBuilder();
-    if (accentColor != null) container.setAccentColor(accentColor);
-
-    const texto = footer ? `${content}\n\n${footer}` : content;
-
-    if (imageUrl && !thumbnailRight) {
-        container.addMediaGalleryComponents(
-            new MediaGalleryBuilder().addItems(
-                new MediaGalleryItemBuilder().setURL(imageUrl)
-            )
-        );
-    }
-
-    if (imageUrl && thumbnailRight) {
-        container.addSectionComponents(
-            new SectionBuilder()
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(texto))
-                .setThumbnailAccessory(new ThumbnailBuilder().setURL(imageUrl))
-        );
-    } else {
-        container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(texto)
-        );
-    }
-
-    for (const row of extraRows) {
-        container.addActionRowComponents(row);
-    }
-
-    return {
-        flags: MessageFlags.IsComponentsV2,
-        components: [container]
-    };
-}
-
-// --- Configurações Iniciais ---
 const CONFIG = {
     PREFIXO: process.env.PREFIX || '!',
     CANAL_LOGS_ID: process.env.LOGS_CHANNEL_ID,
     CATEGORIA_TICKETS_ID: process.env.TICKETS_CATEGORY_ID,
     CARGO_STAFF_TICKETS_ID: process.env.STAFF_ROLE_ID,
     AUTOROLE_ID: process.env.AUTOROLE_ID,
-
-    // Link do banner no topo do !loja (CDN do Discord). Se o link expirar, o bot usa assets/banner.png
     BANNER_LOJA: process.env.LOJA_BANNER || 'https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa',
-
-    PRODUTOS_LOJA: [
-        { id: 'nitradas', nome: 'Nitradas', desc: 'Contas com Nitro · De R$ 2,55 a R$ 7,99', emoji: '🛒' }
-    ],
-
     TIPOS_TICKET: [
         { id_menu: 'ticket_suporte', nome: 'Suporte', desc: 'Abra um ticket de suporte', emoji: '🎫' },
         { id_menu: 'ticket_receber', nome: 'Receber Produto', desc: 'Abra um ticket para receber seu produto', emoji: '🛒' },
@@ -89,13 +30,11 @@ const CONFIG = {
     ]
 };
 
-// --- Base de Dados (SQLite) ---
 const db = new sqlite3.Database(path.join(__dirname, 'database.sqlite'));
 db.serialize(() => {
     db.run("CREATE TABLE IF NOT EXISTS compras (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, produto TEXT, status TEXT, data DATETIME DEFAULT CURRENT_TIMESTAMP)");
 });
 
-// --- Iniciar o Bot ---
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -117,7 +56,6 @@ function podePublicarPainel(member, guild) {
 function resolverBanner(usarFicheiroLocal = false) {
     const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
     const bannerFonte = CONFIG.BANNER_LOJA;
-
     if (usarFicheiroLocal && fs.existsSync(bannerLocal)) return bannerLocal;
     if (fs.existsSync(bannerLocal)) return bannerLocal;
     if (bannerFonte && /^https?:\/\//i.test(bannerFonte)) return bannerFonte;
@@ -125,80 +63,34 @@ function resolverBanner(usarFicheiroLocal = false) {
     return null;
 }
 
-function menuLoja() {
-    const select = new StringSelectMenuBuilder()
-        .setCustomId('menu_loja_produto')
-        .setPlaceholder('🛒 · Nitradas')
-        .addOptions(CONFIG.PRODUTOS_LOJA.map(p =>
-            new StringSelectMenuOptionBuilder()
-                .setLabel(`· ${p.nome}`)
-                .setDescription(p.desc)
-                .setValue(p.id)
-                .setEmoji(p.emoji)
-        ));
-    return new ActionRowBuilder().addComponents(select);
-}
-
-function textoLoja() {
-    return (
-        '## 🛒 Nitradas\n' +
-        'Seja bem-vindo(a) ao painel de vendas!\n\n' +
-        '> • Conta Full Acesso, Muda Email, Senha Etc...\n' +
-        '> • Contas com Nitro Gaming\n' +
-        '> • Contas Nitradas Possui Nitro.\n' +
-        '> • Nitradas Na Melhor Qualidade.\n\n' +
-        '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-        'Preço: **De R$ 2,55 a R$ 7,99**\n\n' +
-        '-# Utilize o menu abaixo para selecionar o produto.'
-    );
-}
-
 function payloadPainelLoja(usarFicheiroLocal = false) {
-    const bannerFonte = resolverBanner(usarFicheiroLocal);
-    const imageUrl = !bannerFonte
-        ? undefined
-        : (/^https?:\/\//i.test(bannerFonte) ? bannerFonte : 'attachment://banner.png');
-
-    const payload = v2({
-        content: textoLoja(),
-        imageUrl,
-        footer: '-# NoxAssistant 2026 ©',
-        accentColor: 0x2F3136
-    }, [menuLoja()]);
-
-    if (bannerFonte && !/^https?:\/\//i.test(bannerFonte)) {
-        payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
-    }
-
-    return payload;
-}
-
-function payloadLojaClassico(usarFicheiroLocal = false) {
     const embed = new EmbedBuilder()
-        .setTitle('🛒 Nitradas')
+        .setTitle('Nitradas')
         .setDescription(
-            'Seja bem-vindo(a) ao painel de vendas!\n\n' +
-            '> • Conta Full Acesso, Muda Email, Senha Etc...\n' +
-            '> • Contas com Nitro Gaming\n' +
-            '> • Contas Nitradas Possui Nitro.\n' +
-            '> • Nitradas Na Melhor Qualidade.\n\n' +
+            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+            '• Contas com Nitro Gaming\n' +
+            '• Contas Nitradas Possui Nitro.\n' +
+            '• Nitradas Na Melhor Qualidade.\n\n' +
             '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```\n' +
-            'Preço: **De R$ 2,55 a R$ 7,99**\n\n' +
-            '-# Utilize o menu abaixo para selecionar o produto.'
+            'Preço: **De R$ 2,55 a R$ 7,99**\n' +
+            'Clique no botão **"Comprar"**'
         )
-        .setColor(0x2F3136)
-        .setFooter({ text: 'NoxAssistant 2026 ©' });
+        .setColor(0x120c0c);
+
+    const components = [
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('btn_comprar')
+                .setLabel('Comprar')
+                .setEmoji('🛒')
+                .setStyle(ButtonStyle.Secondary)
+        )
+    ];
 
     const bannerFonte = resolverBanner(usarFicheiroLocal);
-    const payload = { embeds: [embed], components: [menuLoja()] };
-
+    const payload = { embeds: [embed], components };
     if (bannerFonte) {
-        if (/^https?:\/\//i.test(bannerFonte)) {
-            embed.setImage(bannerFonte);
-        } else {
-            embed.setImage('attachment://banner.png');
-            payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
-        }
+        payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
     }
     return payload;
 }
@@ -206,18 +98,10 @@ function payloadLojaClassico(usarFicheiroLocal = false) {
 async function publicarPainelLoja(channel) {
     try {
         return await channel.send(payloadPainelLoja(false));
-    } catch (erroV2) {
-        console.warn('Painel V2 falhou, a tentar fallback:', erroV2.message);
-        try {
-            return await channel.send(payloadPainelLoja(true));
-        } catch (erroLocal) {
-            console.warn('V2 com ficheiro local falhou, a usar embed clássico:', erroLocal.message);
-            try {
-                return await channel.send(payloadLojaClassico(true));
-            } catch (erroClassico) {
-                return channel.send(payloadLojaClassico(false));
-            }
-        }
+    } catch (error) {
+        const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
+        if (!fs.existsSync(bannerLocal)) throw error;
+        return channel.send(payloadPainelLoja(true));
     }
 }
 
@@ -233,13 +117,11 @@ async function aoFicarOnline() {
         for (const guild of client.guilds.cache.values()) {
             await guild.commands.set(cmds);
         }
-        console.log('Comando /loja registado. Se o !loja não responder, usa /loja.');
     } catch (error) {
         console.error('Não foi possível registar o /loja:', error);
     }
 }
 
-// --- Sistema de Autorole ---
 client.on('guildMemberAdd', async (member) => {
     if (CONFIG.AUTOROLE_ID) {
         try {
@@ -251,7 +133,6 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
-// --- Comandos (!loja, !tickets, !feedback) ---
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
@@ -261,20 +142,15 @@ client.on('messageCreate', async (message) => {
     const args = texto.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = (args.shift() || '').toLowerCase();
     
-    // Comando 1: Painel de Loja (Comprar) — banner como ficheiro no topo (não .setImage)
     if (commandName === 'loja') {
-        console.log(`[loja] pedido de ${message.author.tag} em #${message.channel.name}`);
         try {
             const member = message.member || await message.guild.members.fetch(message.author.id);
             if (!podePublicarPainel(member, message.guild)) {
                 const aviso = await message.reply({ content: 'Não tens permissão para publicar a loja (precisa de Administrador ou Gerir Servidor).' });
                 return setTimeout(() => aviso.delete().catch(()=>{}), 8000);
             }
-
             await publicarPainelLoja(message.channel);
             message.delete().catch(()=>{});
-            const ok = await message.channel.send({ content: 'Painel da loja enviado com sucesso!' });
-            setTimeout(() => ok.delete().catch(()=>{}), 3000);
         } catch (error) {
             console.error('Erro no !loja:', error);
             await message.channel.send({ content: `Não consegui publicar a loja: \`${error.message}\`` }).catch(()=>{});
@@ -282,7 +158,6 @@ client.on('messageCreate', async (message) => {
         return;
     }
 
-    // Comando 2: Painel de Tickets (Central de Atendimento)
     if (commandName === 'tickets') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         message.delete().catch(()=>{});
@@ -290,7 +165,6 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle('Central de Atendimento')
             .setDescription('- Após solicitar atendimento, aguarde até que um integrante da equipa responda à sua solicitação.\n\n- O atendimento é realizado de forma privada; apenas membros autorizados terão acesso.\n\n- Ressaltamos que nossa equipa não está disponível 24 horas por dia.')
-            // Se quiser colocar o banner roxo da imagem, insira o link aqui dentro das aspas:
             .setImage('https://i.imgur.com/link_da_imagem.png') 
             .setColor(0x2b2d31);
 
@@ -309,7 +183,6 @@ client.on('messageCreate', async (message) => {
         await message.channel.send({ embeds: [embed], components: [row] });
     }
 
-    // Comando 3: Feedback
     if (commandName === 'feedback') {
         message.delete().catch(()=>{});
         const review = args.join(' ');
@@ -329,7 +202,6 @@ client.on('messageCreate', async (message) => {
     }
 });
 
-// --- Interações (Menus, Botões) ---
 client.on('interactionCreate', async (interaction) => {
 
     if (interaction.isChatInputCommand() && interaction.commandName === 'loja') {
@@ -349,18 +221,6 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
     
-    // Menu da loja (igual ao pedir set) → escolhe o produto e abre o pagamento
-    if (interaction.isStringSelectMenu() && interaction.customId === 'menu_loja_produto') {
-        const btnCredito = new ButtonBuilder().setCustomId('pay_credito').setLabel('Crédito/Débito').setEmoji('💳').setStyle(ButtonStyle.Primary);
-        const btnLtc = new ButtonBuilder().setCustomId('pay_ltc').setLabel('Litecoin').setEmoji('1301292023914856488').setStyle(ButtonStyle.Secondary);
-        const btnBtc = new ButtonBuilder().setCustomId('pay_btc').setLabel('Bitcoin').setEmoji('1301292040432291901').setStyle(ButtonStyle.Secondary);
-        const btnCancelar = new ButtonBuilder().setCustomId('pay_cancel').setLabel('Cancelar').setEmoji('🗑️').setStyle(ButtonStyle.Danger);
-        const row = new ActionRowBuilder().addComponents(btnCredito, btnLtc, btnBtc, btnCancelar);
-        await interaction.reply({ content: `Produto: **${interaction.values[0]}**\nSelecione uma forma de pagamento:`, components: [row], flags: 64 });
-        return;
-    }
-
-    // Lógica do Menu de Tickets
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_abrir_ticket') {
         const tipoId = interaction.values[0];
         const tipo = CONFIG.TIPOS_TICKET.find(t => t.id_menu === tipoId);
@@ -408,7 +268,6 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    // Lógica do botão Fechar Ticket
     if (interaction.isButton() && interaction.customId.startsWith('fechar_ticket_')) {
         const chaveTicket = interaction.customId.replace('fechar_ticket_', '');
         ticketsAbertos.delete(chaveTicket);
@@ -416,7 +275,6 @@ client.on('interactionCreate', async (interaction) => {
         setTimeout(() => interaction.channel.delete().catch(()=>null), 5000);
     }
 
-    // Lógica do botão inicial de COMPRAR na loja
     if (interaction.isButton() && interaction.customId === 'btn_comprar') {
         const btnCredito = new ButtonBuilder().setCustomId('pay_credito').setLabel('Crédito/Débito').setEmoji('💳').setStyle(ButtonStyle.Primary);
         const btnLtc = new ButtonBuilder().setCustomId('pay_ltc').setLabel('Litecoin').setEmoji('1301292023914856488').setStyle(ButtonStyle.Secondary);
@@ -424,11 +282,9 @@ client.on('interactionCreate', async (interaction) => {
         const btnCancelar = new ButtonBuilder().setCustomId('pay_cancel').setLabel('Cancelar').setEmoji('🗑️').setStyle(ButtonStyle.Danger);
 
         const row = new ActionRowBuilder().addComponents(btnCredito, btnLtc, btnBtc, btnCancelar);
-        
         await interaction.reply({ content: 'Selecione uma forma de pagamento:', components: [row], flags: 64 });
     }
 
-    // Lógica ao clicar num dos métodos de pagamento na loja
     if (interaction.isButton() && interaction.customId.startsWith('pay_')) {
         const type = interaction.customId.replace('pay_', '');
         
