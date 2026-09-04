@@ -1,17 +1,15 @@
 {
-  "name": "game-shop-bot",
-  "version": "2.0.0",
-  "private": true,
-  "type": "commonjs",
+  "name": "store-bot",
+  "version": "1.0.0",
+  "description": "Discord Store Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
-    "discord.js": "^14.15.3",
+    "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "mercadopago": "^2.0.15"
+    "sqlite3": "^5.1.7",
+    "axios": "^1.6.8"
   }
 }
