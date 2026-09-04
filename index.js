@@ -53,8 +53,20 @@ function podePublicarPainel(member, guild) {
         || member.permissions.has(PermissionFlagsBits.ManageGuild);
 }
 
+function resolverBanner(usarFicheiroLocal = false) {
+    const bannerFonte = CONFIG.BANNER_LOJA;
+    const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
+    if (!usarFicheiroLocal && bannerFonte && /^https?:\/\//i.test(bannerFonte)) return bannerFonte;
+    if (bannerFonte && fs.existsSync(bannerFonte)) return bannerFonte;
+    if (fs.existsSync(bannerLocal)) return bannerLocal;
+    return null;
+}
+
 function payloadPainelLoja(usarFicheiroLocal = false) {
-    const embed = new EmbedBuilder()
+    const cor = 0x2b2d31;
+
+    const embedBanner = new EmbedBuilder().setColor(cor);
+    const embedTexto = new EmbedBuilder()
         .setTitle('Nitradas')
         .setDescription(
             '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
@@ -65,7 +77,7 @@ function payloadPainelLoja(usarFicheiroLocal = false) {
             'Preço: **De R$ 2,55 a R$ 7,99**\n' +
             'Clique no botão **"Comprar"**'
         )
-        .setColor(0x2b2d31);
+        .setColor(cor);
 
     const components = [
         new ActionRowBuilder().addComponents(
@@ -77,16 +89,13 @@ function payloadPainelLoja(usarFicheiroLocal = false) {
         )
     ];
 
-    const bannerFonte = CONFIG.BANNER_LOJA;
-    const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
-    const payload = { embeds: [embed], components };
+    const bannerFonte = resolverBanner(usarFicheiroLocal);
+    const payload = { embeds: [embedTexto], components };
 
-    if (!usarFicheiroLocal && bannerFonte && /^https?:\/\//i.test(bannerFonte)) {
+    if (bannerFonte) {
+        embedBanner.setImage('attachment://banner.png');
         payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
-    } else if (bannerFonte && fs.existsSync(bannerFonte)) {
-        payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
-    } else if (fs.existsSync(bannerLocal)) {
-        payload.files = [new AttachmentBuilder(bannerLocal, { name: 'banner.png' })];
+        payload.embeds = [embedBanner, embedTexto];
     }
 
     return payload;
