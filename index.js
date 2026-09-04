@@ -70,13 +70,18 @@ client.on('messageCreate', async (message) => {
     const args = message.content.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = args.shift().toLowerCase();
     
-    // Comando 1: Painel de Loja (Comprar)
+    // Comando 1: Painel de Loja (Comprar) - CORRIGIDO PARA IMAGEM EM CIMA
     if (commandName === 'loja') {
         if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
         message.delete().catch(()=>{});
 
-        const embed = new EmbedBuilder()
+        // Primeiro bloco: APENAS A IMAGEM (Fica no topo)
+        const embed1 = new EmbedBuilder()
             .setImage('https://cdn.discordapp.com/attachments/1534183602764648579/1545405851089768458/E38321D1-EC20-4C1C-853E-49B17BD42B90.png?ex=6a9c06db&is=6a9ab55b&hm=e43d7971bd59b37b93416ad024a948208bebb856eea7e8e9163d93879e6de3fa&')
+            .setColor(0x2b2d31);
+
+        // Segundo bloco: O TÍTULO E O TEXTO (Fica colado por baixo da imagem)
+        const embed2 = new EmbedBuilder()
             .setTitle('Nitradas')
             .setDescription('• Conta Full Acesso, Muda Email, Senha Etc...\n• Contas com Nitro Gaming\n• Contas Nitradas Possui Nitro.\n• Nitradas Na Melhor Qualidade.\n\n⚡ **Entrega Automática!**\n\nPreço: **De R$ 2,55 a R$ 7,99**\nClique no botão **"Comprar"**')
             .setColor(0x2b2d31);
@@ -89,7 +94,8 @@ client.on('messageCreate', async (message) => {
                 .setStyle(ButtonStyle.Secondary)
         );
 
-        await message.channel.send({ embeds: [embed], components: [btn] });
+        // Enviamos os dois embeds juntos [embed1, embed2] para eles se colarem
+        await message.channel.send({ embeds: [embed1, embed2], components: [btn] });
     }
 
     // Comando 2: Painel de Tickets (Central de Atendimento)
@@ -126,7 +132,6 @@ client.on('messageCreate', async (message) => {
         const embed = new EmbedBuilder()
             .setTitle('Verifique-se')
             .setDescription('Se verifique abaixo para ter acesso ao servidor completo!\nCaso o servidor caia vamos te puxar!')
-            // A imagem que enviou na print do painel de verificação
             .setImage('https://i.postimg.cc/mZh4H36h/Screenshot-2.png') 
             .setColor(0x2b2d31);
 
@@ -134,8 +139,8 @@ client.on('messageCreate', async (message) => {
             new ButtonBuilder()
                 .setLabel('Verificar')
                 .setEmoji('✔')
-                .setStyle(ButtonStyle.Link) // Botão de link
-                .setURL('https://seu-link-de-autorizacao-oauth2-aqui.com') // MUDE ISTO PARA O SEU LINK OAUTH2
+                .setStyle(ButtonStyle.Link) 
+                .setURL('https://seu-link-de-autorizacao-oauth2-aqui.com') 
         );
 
         await message.channel.send({ content: '🔗 Clique para verificar sua conta', embeds: [embed], components: [btn] });
@@ -249,5 +254,4 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-// AQUI USA O DISCORD_TOKEN COMO DEFINIU NO RAILWAY
 client.login(process.env.DISCORD_TOKEN);
