@@ -60,23 +60,18 @@ function podePublicarPainel(member, guild) {
 }
 
 function resolverBanner(usarFicheiroLocal = false) {
-    const bannerFonte = CONFIG.BANNER_LOJA;
     const bannerLocal = path.join(__dirname, 'assets', 'banner.png');
+    const bannerFonte = CONFIG.BANNER_LOJA;
 
-    if (!usarFicheiroLocal && bannerFonte && /^https?:\/\//i.test(bannerFonte)) {
-        return bannerFonte;
-    }
-    if (bannerFonte && fs.existsSync(bannerFonte)) return bannerFonte;
+    if (usarFicheiroLocal && fs.existsSync(bannerLocal)) return bannerLocal;
     if (fs.existsSync(bannerLocal)) return bannerLocal;
+    if (bannerFonte && /^https?:\/\//i.test(bannerFonte)) return bannerFonte;
+    if (bannerFonte && fs.existsSync(bannerFonte)) return bannerFonte;
     return null;
 }
 
 function payloadPainelLoja(usarFicheiroLocal = false) {
-    const cor = 0x2b2d31;
-
-    // Embed 1 = só o banner (fica no topo). Embed 2 = texto. Mesma cor = tudo colado na mesma mensagem.
-    const embedBanner = new EmbedBuilder().setColor(cor);
-    const embedTexto = new EmbedBuilder()
+    const embed = new EmbedBuilder()
         .setTitle('Nitradas')
         .setDescription(
             '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
@@ -87,7 +82,7 @@ function payloadPainelLoja(usarFicheiroLocal = false) {
             'Preço: **De R$ 2,55 a R$ 7,99**\n' +
             'Clique no botão **"Comprar"**'
         )
-        .setColor(cor);
+        .setColor(0x120c0c);
 
     const components = [
         new ActionRowBuilder().addComponents(
@@ -99,15 +94,12 @@ function payloadPainelLoja(usarFicheiroLocal = false) {
         )
     ];
 
+    // Imagem como ficheiro (não .setImage) + embed + botão = 1 mensagem, banner em cima
     const bannerFonte = resolverBanner(usarFicheiroLocal);
-    const payload = { embeds: [embedTexto], components };
-
+    const payload = { embeds: [embed], components };
     if (bannerFonte) {
-        embedBanner.setImage('attachment://banner.png');
         payload.files = [new AttachmentBuilder(bannerFonte, { name: 'banner.png' })];
-        payload.embeds = [embedBanner, embedTexto];
     }
-
     return payload;
 }
 
