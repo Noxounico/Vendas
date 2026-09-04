@@ -536,6 +536,8 @@ const client = new Client({
 
 const ticketsAbertos = new Set();
 
+garantirPastaBanner();
+
 function botaoComprar() {
     return new ButtonBuilder()
         .setCustomId('btn_comprar')
@@ -565,8 +567,21 @@ function rodapePainelLoja() {
     );
 }
 
+const PASTA_ASSETS = path.join(__dirname, 'assets');
+const FICHEIRO_BANNER = path.join(PASTA_ASSETS, 'banner.jpg');
+
+function garantirPastaBanner() {
+    if (!fs.existsSync(PASTA_ASSETS)) {
+        fs.mkdirSync(PASTA_ASSETS, { recursive: true });
+    }
+    if (!fs.existsSync(FICHEIRO_BANNER)) {
+        fs.writeFileSync(FICHEIRO_BANNER, BANNER_LOJA_JPEG);
+    }
+    return FICHEIRO_BANNER;
+}
+
 function anexoBanner() {
-    return new AttachmentBuilder(BANNER_LOJA_JPEG, { name: 'banner.jpg' });
+    return new AttachmentBuilder(garantirPastaBanner(), { name: 'banner.jpg' });
 }
 
 function payloadPainelLoja() {
@@ -636,6 +651,12 @@ async function aoFicarOnline() {
     if (client.user.__lojaReady) return;
     client.user.__lojaReady = true;
     console.log(`🤖 Bot ${client.user.tag} Online e pronto para vender!`);
+    try {
+        garantirPastaBanner();
+        console.log(`📁 Pasta do banner: ${PASTA_ASSETS}`);
+    } catch (error) {
+        console.warn('Não foi possível criar a pasta assets:', error.message);
+    }
     try {
         for (const guild of client.guilds.cache.values()) {
             const cmds = await guild.commands.fetch();
