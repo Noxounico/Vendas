@@ -7515,10 +7515,11 @@ const client = new Client({
 
 const ticketsAbertos = new Set();
 
-function criarLoja(id, comandos, titulo, bullets, precoDe, precoAte, produtos, extra, ficheiro) {
+function criarLoja(id, comandos, titulo, bullets, precoDe, precoAte, produtos, extra, ficheiro, canais) {
     return {
         id,
         comandos,
+        canais: canais || [],
         ficheiro: ficheiro || FICHEIRO_BANNER_LOJA,
         texto: (
             `## ${titulo}\n` +
@@ -7542,7 +7543,7 @@ const LOJAS = [
         { id: 'real_mail', nome: '1-REAL Mail', preco: 'R$ 4,99', estoque: 10 },
         { id: 'real_phone', nome: '1-REAL Phone', preco: 'R$ 9,99', estoque: 8 },
         { id: 'real_full', nome: '1-REAL Full', preco: 'R$ 14,99', estoque: 6 }
-    ]),
+    ], null, null, ['1real', '1-real', 'real']),
     criarLoja('impulsos', ['loja2'], 'Impulsos', [
         'Impulso para o teu servidor Discord',
         'Ativação rápida, entrega automática',
@@ -7552,8 +7553,8 @@ const LOJAS = [
         { id: 'impulso_14d', nome: 'Impulso 14 Dias', preco: 'R$ 4,99', estoque: 8 },
         { id: 'impulso_1m', nome: 'Impulso 1 Mês', preco: 'R$ 9,99', estoque: 8 },
         { id: 'impulso_3m', nome: 'Impulso 3 Meses', preco: 'R$ 24,99', estoque: 6 }
-    ], null, FICHEIRO_BANNER_IMPULSOS),
-    criarLoja('nitradas', ['loja', 'loja3'], 'Nitradas', [
+    ], null, FICHEIRO_BANNER_IMPULSOS, ['impulsos', 'impulso', 'boosting']),
+    criarLoja('nitradas', ['loja3'], 'Nitradas', [
         'Conta Full Acesso, Muda Email, Senha Etc...',
         'Contas com Nitro Gaming',
         'Contas Nitradas Possui Nitro.',
@@ -7562,7 +7563,7 @@ const LOJAS = [
         { id: 'nitrada_mensal', nome: 'Nitrada Mensal', preco: 'R$ 2,55', estoque: 6 },
         { id: 'nitrada_trimensal', nome: 'Nitrada Trimensal', preco: 'R$ 6,99', estoque: 12 },
         { id: 'nitrada_anual', nome: 'Nitrada Anual', preco: 'R$ 3,89', estoque: 6 }
-    ]),
+    ], null, null, ['nitradas', 'n1tr4das']),
     criarLoja('trial', ['loja4'], 'Trial', [
         'Nitro trial pra testar a conta',
         'Entrega automática no privado',
@@ -7572,7 +7573,7 @@ const LOJAS = [
         { id: 'trial_3d', nome: 'Trial 3 Dias', preco: 'R$ 1,99', estoque: 12 },
         { id: 'trial_7d', nome: 'Trial 7 Dias', preco: 'R$ 2,99', estoque: 10 },
         { id: 'trial_14d', nome: 'Trial 14 Dias', preco: 'R$ 4,99', estoque: 8 }
-    ]),
+    ], null, null, ['trial', 'tr1al']),
     criarLoja('virgem', ['loja5'], 'Virgem', [
         'Contas virgens, nunca usadas',
         'Sem histórico de Nitro ou tickets',
@@ -7582,7 +7583,7 @@ const LOJAS = [
         { id: 'virgem_mail', nome: 'Virgem Mail', preco: 'R$ 3,99', estoque: 10 },
         { id: 'virgem_phone', nome: 'Virgem Phone', preco: 'R$ 6,99', estoque: 8 },
         { id: 'virgem_full', nome: 'Virgem Full', preco: 'R$ 9,99', estoque: 6 }
-    ]),
+    ], null, null, ['virgem']),
     criarLoja('aged', ['loja6'], 'Aged', [
         'Contas envelhecidas (aged)',
         'Criadas há meses, mais confiança',
@@ -7592,7 +7593,7 @@ const LOJAS = [
         { id: 'aged_3m', nome: 'Aged 3 Meses', preco: 'R$ 6,99', estoque: 8 },
         { id: 'aged_6m', nome: 'Aged 6 Meses', preco: 'R$ 12,99', estoque: 6 },
         { id: 'aged_1a', nome: 'Aged 1 Ano', preco: 'R$ 19,99', estoque: 4 }
-    ]),
+    ], null, null, ['aged', 'ag3d']),
     criarLoja('spotify', ['loja7'], 'Spotify', [
         'Spotify Premium na tua conta',
         'Ativação rápida, entrega no privado',
@@ -7602,7 +7603,7 @@ const LOJAS = [
         { id: 'spot_ind', nome: 'Spotify Individual', preco: 'R$ 4,99', estoque: 10 },
         { id: 'spot_duo', nome: 'Spotify Duo', preco: 'R$ 8,99', estoque: 8 },
         { id: 'spot_fam', nome: 'Spotify Família', preco: 'R$ 14,99', estoque: 6 }
-    ]),
+    ], null, null, ['sptfyx', 'spotify']),
     criarLoja('spotify_link', ['loja8'], 'Link Spotify', [
         'Vaga no plano família Spotify',
         'Só entrar no convite, sem conta nova',
@@ -7612,7 +7613,7 @@ const LOJAS = [
         { id: 'spot_link_1m', nome: 'Link Spotify 1 Mês', preco: 'R$ 2,99', estoque: 12 },
         { id: 'spot_link_3m', nome: 'Link Spotify 3 Meses', preco: 'R$ 5,99', estoque: 8 },
         { id: 'spot_link_1a', nome: 'Link Spotify 1 Ano', preco: 'R$ 7,99', estoque: 6 }
-    ]),
+    ], null, null, ['linksptfyx', 'link-sptfyx', 'linkspotify']),
     criarLoja('mine', ['loja9'], 'Minecraft', [
         'Conta Minecraft Java / original',
         'Full acesso, muda e-mail e senha',
@@ -7622,7 +7623,7 @@ const LOJAS = [
         { id: 'mine_java', nome: 'Minecraft Java', preco: 'R$ 9,99', estoque: 8 },
         { id: 'mine_orig', nome: 'Minecraft Original', preco: 'R$ 19,99', estoque: 6 },
         { id: 'mine_full', nome: 'Minecraft Full', preco: 'R$ 29,99', estoque: 4 }
-    ]),
+    ], null, null, ['minecraft', 'mine']),
     criarLoja('membros', ['loja10'], 'Membros', [
         'Membros para o teu servidor',
         'Entrega automática',
@@ -7632,7 +7633,102 @@ const LOJAS = [
         { id: 'mm_50', nome: '50 Membros', preco: 'R$ 5,99', estoque: 10 },
         { id: 'mm_100', nome: '100 Membros', preco: 'R$ 9,99', estoque: 8 },
         { id: 'mm_250', nome: '250 Membros', preco: 'R$ 19,99', estoque: 6 }
-    ])
+    ], null, null, ['mmbros', 'membros']),
+    criarLoja('accounts', ['loja11'], 'Accounts', [
+        'Contas prontas pra uso',
+        'Full acesso, entrega no privado',
+        'Várias plataformas e gamas de preço',
+        'Suporte após a compra'
+    ], '€ 6,00', '€ 25,00', [
+        { id: 'acc_basic', nome: 'Account Basic', preco: '€ 6,00', estoque: 10 },
+        { id: 'acc_mid', nome: 'Account Mid', preco: '€ 12,00', estoque: 8 },
+        { id: 'acc_full', nome: 'Account Full', preco: '€ 25,00', estoque: 6 }
+    ], null, null, ['accounts', 'account', 'contas']),
+    criarLoja('links', ['loja12'], 'Links', [
+        'Links e convites prontos',
+        'Entrega automática no privado',
+        'Ativação imediata',
+        'Suporte se o link falhar'
+    ], 'R$ 2,99', 'R$ 9,99', [
+        { id: 'link_1', nome: 'Link Básico', preco: 'R$ 2,99', estoque: 12 },
+        { id: 'link_2', nome: 'Link Premium', preco: 'R$ 5,99', estoque: 8 },
+        { id: 'link_3', nome: 'Link Full', preco: 'R$ 9,99', estoque: 6 }
+    ], null, null, ['l1nks', 'links']),
+    criarLoja('streamings', ['loja13'], 'Streamings', [
+        'Contas de streaming prontas',
+        'Full acesso, entrega no privado',
+        'Netflix, Prime, Disney e mais',
+        'Troca de e-mail e senha'
+    ], 'R$ 4,99', 'R$ 14,99', [
+        { id: 'stream_mes', nome: 'Streaming 1 Mês', preco: 'R$ 4,99', estoque: 10 },
+        { id: 'stream_3m', nome: 'Streaming 3 Meses', preco: 'R$ 9,99', estoque: 8 },
+        { id: 'stream_ano', nome: 'Streaming 1 Ano', preco: 'R$ 14,99', estoque: 6 }
+    ], null, null, ['strmngs', 'streamings', 'streaming']),
+    criarLoja('rockstar', ['loja14'], 'Rockstar', [
+        'Contas Rockstar / GTA prontas',
+        'Full acesso, entrega no privado',
+        'Muda e-mail e senha',
+        'Pronto pra jogar'
+    ], 'R$ 9,99', 'R$ 29,99', [
+        { id: 'rstar_basic', nome: 'Rockstar Basic', preco: 'R$ 9,99', estoque: 8 },
+        { id: 'rstar_mid', nome: 'Rockstar Mid', preco: 'R$ 19,99', estoque: 6 },
+        { id: 'rstar_full', nome: 'Rockstar Full', preco: 'R$ 29,99', estoque: 4 }
+    ], null, null, ['rckstar', 'rockstar']),
+    criarLoja('trampo', ['loja15'], 'Trampo', [
+        'Contas e acessos pra trampo',
+        'Entrega automática no privado',
+        'Full acesso',
+        'Suporte após a compra'
+    ], 'R$ 4,99', 'R$ 14,99', [
+        { id: 'trampo_1', nome: 'Trampo Basic', preco: 'R$ 4,99', estoque: 10 },
+        { id: 'trampo_2', nome: 'Trampo Mid', preco: 'R$ 9,99', estoque: 8 },
+        { id: 'trampo_3', nome: 'Trampo Full', preco: 'R$ 14,99', estoque: 6 }
+    ], null, null, ['trampo', 'tr4mp0']),
+    criarLoja('roblox', ['loja16'], 'Roblox', [
+        'Contas Roblox full access',
+        'Valor = Robux do inventário',
+        'Entrega no privado',
+        'ALL FULL ACCESS'
+    ], '€ 6,00', '€ 25,00', [
+        { id: 'rbx_1', nome: '1000-2500 Robux', preco: '€ 6,00', estoque: 8 },
+        { id: 'rbx_2', nome: '2500-5000 Robux', preco: '€ 8,00', estoque: 8 },
+        { id: 'rbx_3', nome: '5000-10000 Robux', preco: '€ 12,00', estoque: 6 },
+        { id: 'rbx_4', nome: '10000-15000 Robux', preco: '€ 16,00', estoque: 6 },
+        { id: 'rbx_5', nome: '15000-25000 Robux', preco: '€ 20,00', estoque: 4 },
+        { id: 'rbx_6', nome: '25000-50000 Robux', preco: '€ 25,00', estoque: 4 }
+    ], null, null, ['roblox', 'robux']),
+    criarLoja('fortnite', ['loja17'], 'Fortnite', [
+        'Contas Fortnite full access',
+        'Skins OG, rare e tryhard',
+        'ALL FULL ACCESS',
+        'Entrega no privado'
+    ], '€ 10,00', '€ 25,00', [
+        { id: 'fn_1', nome: '100-150 Skins', preco: '€ 10,00', estoque: 8 },
+        { id: 'fn_2', nome: '150-250 Skins', preco: '€ 15,00', estoque: 6 },
+        { id: 'fn_3', nome: '100-250 Tryhard', preco: '€ 20,00', estoque: 6 },
+        { id: 'fn_4', nome: '250-400 Skins', preco: '€ 25,00', estoque: 4 }
+    ], null, null, ['fortnite', 'fortacc', 'fort-accs']),
+    criarLoja('clonar', ['loja18'], 'Clonar Site', [
+        'Clonagem de site sob pedido',
+        'Layout igual ao original',
+        'Entrega combinada no ticket',
+        'Suporte até validar'
+    ], 'R$ 19,99', 'R$ 79,99', [
+        { id: 'clone_landing', nome: 'Landing page', preco: 'R$ 19,99', estoque: 8 },
+        { id: 'clone_loja', nome: 'Loja / checkout', preco: 'R$ 49,99', estoque: 6 },
+        { id: 'clone_full', nome: 'Clone completo', preco: 'R$ 79,99', estoque: 4 }
+    ], null, null, ['clonar', 'clonarsite', 'clone']),
+    criarLoja('curso_ss', ['loja19'], 'Curso Screen Share', [
+        'Métodos priv de encontrar bypass',
+        'Lógica do bypass e telagem',
+        'Curso avançado + aulas gravadas',
+        'Event Viewer, CMD, Win+R, PowerShell',
+        'Apps de telagens e tipos de bypass'
+    ], 'R$ 29,99', 'R$ 79,99', [
+        { id: 'ss_intro', nome: 'Curso Introdução', preco: 'R$ 29,99', estoque: 12 },
+        { id: 'ss_avancado', nome: 'Curso Avançado', preco: 'R$ 49,99', estoque: 8 },
+        { id: 'ss_full', nome: 'Curso Completo', preco: 'R$ 79,99', estoque: 6 }
+    ], 'Abre ticket em SUPPORT se precisares de ajuda após a compra.', null, ['screenshare', 'cursoscreen', 'cursoss', 'telagem', 'telador'])
 ];
 
 function lojaPorId(id) {
@@ -7642,6 +7738,51 @@ function lojaPorId(id) {
 
 function lojaPorComando(nome) {
     return LOJAS.find((l) => l.comandos.includes(nome)) || null;
+}
+
+function chaveTexto(texto) {
+    const letras = {
+        'ʀ': 'r', 'ᴇ': 'e', 'ʟ': 'l', 'ɪ': 'i', 'ɴ': 'n', 'ᴛ': 't', 'ᴀ': 'a', 'ᴅ': 'd',
+        'ᴏ': 'o', 'ᴜ': 'u', 'ɢ': 'g', 'ʙ': 'b', 'ᴄ': 'c', 'ғ': 'f', 'ꜰ': 'f', 'ᴍ': 'm',
+        'ᴘ': 'p', 'ʏ': 'y', 'ᴢ': 'z', 'ᴋ': 'k', 'ѕ': 's', 'ⅴ': 'v', 'ｒ': 'r', 'ｅ': 'e',
+        'ｉ': 'i', 'ｏ': 'o', 'ｎ': 'n'
+    };
+    return String(texto || '')
+        .toLowerCase()
+        .replace(/./g, (ch) => letras[ch] || ch)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/4/g, 'a')
+        .replace(/3/g, 'e')
+        .replace(/0/g, 'o')
+        .replace(/1/g, 'i')
+        .replace(/[^a-z]+/g, '');
+}
+
+function lojaPorCanal(channel) {
+    const chave = chaveTexto([channel?.name, channel?.parent?.name, channel?.topic].filter(Boolean).join(' '));
+    if (!chave) return null;
+    let melhor = null;
+    let tamanho = 0;
+    for (const loja of LOJAS) {
+        for (const alias of loja.canais) {
+            const alvo = chaveTexto(alias);
+            if (alvo && chave.includes(alvo) && alvo.length > tamanho) {
+                melhor = loja;
+                tamanho = alvo.length;
+            }
+        }
+    }
+    return melhor;
+}
+
+function resolverLoja(comando, channel) {
+    if (comando === 'loja') return lojaPorCanal(channel);
+    return lojaPorComando(comando);
+}
+
+function comandoPrincipalLoja(loja) {
+    return loja.comandos.find((c) => c.startsWith('loja')) || loja.comandos[0];
 }
 
 function botaoComprar(loja) {
@@ -7910,17 +8051,11 @@ async function aoFicarOnline() {
             const cmds = await guild.commands.fetch();
             const nomes = new Set([...cmds.values()].map((c) => c.name));
             const slashes = [
-                { name: 'loja', description: 'Publica o painel Nitradas neste canal' },
-                { name: 'loja1', description: 'Publica o painel 1-REAL neste canal' },
-                { name: 'loja2', description: 'Publica o painel de Impulsos neste canal' },
-                { name: 'loja3', description: 'Publica o painel Nitradas neste canal' },
-                { name: 'loja4', description: 'Publica o painel Trial neste canal' },
-                { name: 'loja5', description: 'Publica o painel Virgem neste canal' },
-                { name: 'loja6', description: 'Publica o painel Aged neste canal' },
-                { name: 'loja7', description: 'Publica o painel Spotify neste canal' },
-                { name: 'loja8', description: 'Publica o painel Link Spotify neste canal' },
-                { name: 'loja9', description: 'Publica o painel Minecraft neste canal' },
-                { name: 'loja10', description: 'Publica o painel Membros neste canal' },
+                { name: 'loja', description: 'Publica o painel certo neste canal (pelo nome do canal)' },
+                ...LOJAS.map((loja) => ({
+                    name: comandoPrincipalLoja(loja),
+                    description: `Publica o painel ${loja.tituloClassico} neste canal`
+                })),
                 { name: 'verificacao', description: 'Publica o painel de verificação neste canal' }
             ];
             for (const cmd of slashes) {
@@ -7952,8 +8087,14 @@ client.on('messageCreate', async (message) => {
     const args = texto.slice(CONFIG.PREFIXO.length).trim().split(/\s+/);
     const commandName = nomeComando(args.shift() || '');
 
-    const lojaCmd = lojaPorComando(commandName);
-    if (lojaCmd) {
+    const lojaCmd = resolverLoja(commandName, message.channel);
+    if (commandName === 'loja' || lojaPorComando(commandName)) {
+        if (!lojaCmd) {
+            await message.channel.send({
+                content: 'Neste canal usa o comando da categoria (`!loja1` 1-REAL, `!loja2` Impulsos, `!loja3` Nitradas, …). `!loja` só funciona se o nome do canal for da loja.'
+            }).catch(() => {});
+            return;
+        }
         try {
             await publicarPainelLoja(message.channel, lojaCmd);
             message.delete().catch(() => {});
@@ -8039,8 +8180,13 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    if (interaction.isChatInputCommand() && lojaPorComando(interaction.commandName)) {
-        const loja = lojaPorComando(interaction.commandName);
+    if (interaction.isChatInputCommand() && (interaction.commandName === 'loja' || lojaPorComando(interaction.commandName))) {
+        const loja = resolverLoja(interaction.commandName, interaction.channel);
+        if (!loja) {
+            const msg = 'Neste canal usa `/loja1` … `/loja19`. `/loja` publica o painel pelo nome do canal.';
+            if (interaction.deferred || interaction.replied) return interaction.editReply({ content: msg });
+            return interaction.reply({ content: msg, flags: 64 });
+        }
         try {
             await interaction.deferReply({ flags: 64 });
             await publicarPainelLoja(interaction.channel, loja);
