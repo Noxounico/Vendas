@@ -562,70 +562,124 @@ const client = new Client({
 
 const ticketsAbertos = new Set();
 
-const LOJAS = [
-    {
-        id: 'nitradas',
-        comandos: ['loja', 'loja3'],
+function criarLoja(id, comandos, titulo, bullets, precoDe, precoAte, produtos, extra) {
+    return {
+        id,
+        comandos,
         ficheiro: FICHEIRO_BANNER_LOJA,
         texto: (
-            '## Nitradas\n' +
-            '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
-            '• Contas com Nitro Gaming\n' +
-            '• Contas Nitradas Possui Nitro.\n' +
-            '• Nitradas Na Melhor Qualidade.\n\n' +
-            '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```'
+            `## ${titulo}\n` +
+            bullets.map((b) => `• ${b}`).join('\n') +
+            (extra ? `\n\n${extra}` : '') +
+            '\n\n```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```'
         ),
-        rodape: 'Preço: **De R$ 2,55 a R$ 7,99**\nClique no botão **"Comprar"**',
-        tituloClassico: 'Nitradas',
-        produtos: [
-            { id: 'nitrada_mensal', nome: 'Nitrada Mensal', preco: 'R$ 2,55', estoque: 6 },
-            { id: 'nitrada_trimensal', nome: 'Nitrada Trimensal', preco: 'R$ 6,99', estoque: 12 },
-            { id: 'nitrada_anual', nome: 'Nitrada Anual', preco: 'R$ 3,89', estoque: 6 }
-        ]
-    },
-    {
-        id: 'impulsos',
-        comandos: ['loja1'],
-        ficheiro: FICHEIRO_BANNER_IMPULSOS,
-        texto: (
-            '## Impulsos\n' +
-            '• Impulso para o teu servidor Discord\n' +
-            '• Ativação rápida, entrega automática\n' +
-            '• 14 dias, 1 mês ou 3 meses\n' +
-            '• Sem partilhar a tua conta\n\n' +
-            '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```'
-        ),
-        rodape: 'Preço: **De R$ 4,99 a R$ 24,99**\nClique no botão **"Comprar"**',
-        tituloClassico: 'Impulsos',
-        produtos: [
-            { id: 'impulso_14d', nome: 'Impulso 14 Dias', preco: 'R$ 4,99', estoque: 8 },
-            { id: 'impulso_1m', nome: 'Impulso 1 Mês', preco: 'R$ 9,99', estoque: 8 },
-            { id: 'impulso_3m', nome: 'Impulso 3 Meses', preco: 'R$ 24,99', estoque: 6 }
-        ]
-    },
-    {
-        id: 'gift',
-        comandos: ['loja2'],
-        ficheiro: FICHEIRO_BANNER_GIFT,
-        texto: (
-            '## NITRO GIFT GAMING\n' +
-            '• Só clicar em resgatar\n' +
-            '• Pega em todas as contas que já teve nitro\n' +
-            '• Entrega automática no seu privado\n' +
-            '• Chances bem minimas do nitro cair, quase nunca cai, compre ciente\n' +
-            '• Não é necessário de cartão para ativar\n' +
-            '• Nitro gift não possui garantia, apenas que vai ser entregue funcionando!\n\n' +
-            'Pedimos que grave o processo da compra do início ao fim recebendo e resgatando no privado do bot, para que caso ocorra algum erro, possamos trocar o nitro, caso não tenha gravação,não será possível realizar a troca.\n\n' +
-            '```ansi\n\u001b[2;32m⚡ Entrega Automática!\u001b[0m\n```'
-        ),
-        rodape: 'Preço: **De R$ 8,99 a R$ 21,99**\nClique no botão **"Comprar"**',
-        tituloClassico: 'NITRO GIFT GAMING',
-        produtos: [
-            { id: 'gift_1m', nome: 'Nitro Gift 1 Mês', preco: 'R$ 8,99', estoque: 10 },
-            { id: 'gift_3m', nome: 'Nitro Gift 3 Meses', preco: 'R$ 14,99', estoque: 8 },
-            { id: 'gift_1a', nome: 'Nitro Gift 1 Ano', preco: 'R$ 21,99', estoque: 6 }
-        ]
-    }
+        rodape: `Preço: **De ${precoDe} a ${precoAte}**\nClique no botão **"Comprar"**`,
+        tituloClassico: titulo,
+        produtos
+    };
+}
+
+const LOJAS = [
+    criarLoja('real', ['loja1'], '1-REAL', [
+        'Contas Discord reais, full acesso',
+        'Muda e-mail, senha e telefone',
+        'Pronto pra uso, entrega no privado',
+        'Melhor qualidade do servidor'
+    ], 'R$ 4,99', 'R$ 14,99', [
+        { id: 'real_mail', nome: '1-REAL Mail', preco: 'R$ 4,99', estoque: 10 },
+        { id: 'real_phone', nome: '1-REAL Phone', preco: 'R$ 9,99', estoque: 8 },
+        { id: 'real_full', nome: '1-REAL Full', preco: 'R$ 14,99', estoque: 6 }
+    ]),
+    criarLoja('impulsos', ['loja2'], 'Impulsos', [
+        'Impulso para o teu servidor Discord',
+        'Ativação rápida, entrega automática',
+        '14 dias, 1 mês ou 3 meses',
+        'Sem partilhar a tua conta'
+    ], 'R$ 4,99', 'R$ 24,99', [
+        { id: 'impulso_14d', nome: 'Impulso 14 Dias', preco: 'R$ 4,99', estoque: 8 },
+        { id: 'impulso_1m', nome: 'Impulso 1 Mês', preco: 'R$ 9,99', estoque: 8 },
+        { id: 'impulso_3m', nome: 'Impulso 3 Meses', preco: 'R$ 24,99', estoque: 6 }
+    ]),
+    criarLoja('nitradas', ['loja', 'loja3'], 'Nitradas', [
+        'Conta Full Acesso, Muda Email, Senha Etc...',
+        'Contas com Nitro Gaming',
+        'Contas Nitradas Possui Nitro.',
+        'Nitradas Na Melhor Qualidade.'
+    ], 'R$ 2,55', 'R$ 7,99', [
+        { id: 'nitrada_mensal', nome: 'Nitrada Mensal', preco: 'R$ 2,55', estoque: 6 },
+        { id: 'nitrada_trimensal', nome: 'Nitrada Trimensal', preco: 'R$ 6,99', estoque: 12 },
+        { id: 'nitrada_anual', nome: 'Nitrada Anual', preco: 'R$ 3,89', estoque: 6 }
+    ]),
+    criarLoja('trial', ['loja4'], 'Trial', [
+        'Nitro trial pra testar a conta',
+        'Entrega automática no privado',
+        'Ativação simples, só resgatar',
+        'Ideal pra quem quer testar'
+    ], 'R$ 1,99', 'R$ 4,99', [
+        { id: 'trial_3d', nome: 'Trial 3 Dias', preco: 'R$ 1,99', estoque: 12 },
+        { id: 'trial_7d', nome: 'Trial 7 Dias', preco: 'R$ 2,99', estoque: 10 },
+        { id: 'trial_14d', nome: 'Trial 14 Dias', preco: 'R$ 4,99', estoque: 8 }
+    ]),
+    criarLoja('virgem', ['loja5'], 'Virgem', [
+        'Contas virgens, nunca usadas',
+        'Sem histórico de Nitro ou tickets',
+        'Full acesso, muda e-mail e senha',
+        'Entrega automática no privado'
+    ], 'R$ 3,99', 'R$ 9,99', [
+        { id: 'virgem_mail', nome: 'Virgem Mail', preco: 'R$ 3,99', estoque: 10 },
+        { id: 'virgem_phone', nome: 'Virgem Phone', preco: 'R$ 6,99', estoque: 8 },
+        { id: 'virgem_full', nome: 'Virgem Full', preco: 'R$ 9,99', estoque: 6 }
+    ]),
+    criarLoja('aged', ['loja6'], 'Aged', [
+        'Contas envelhecidas (aged)',
+        'Criadas há meses, mais confiança',
+        'Full acesso, muda e-mail e senha',
+        'Entrega automática no privado'
+    ], 'R$ 6,99', 'R$ 19,99', [
+        { id: 'aged_3m', nome: 'Aged 3 Meses', preco: 'R$ 6,99', estoque: 8 },
+        { id: 'aged_6m', nome: 'Aged 6 Meses', preco: 'R$ 12,99', estoque: 6 },
+        { id: 'aged_1a', nome: 'Aged 1 Ano', preco: 'R$ 19,99', estoque: 4 }
+    ]),
+    criarLoja('spotify', ['loja7'], 'Spotify', [
+        'Spotify Premium na tua conta',
+        'Ativação rápida, entrega no privado',
+        'Individual, duo ou família',
+        'Sem partilhar a senha do teu e-mail'
+    ], 'R$ 4,99', 'R$ 14,99', [
+        { id: 'spot_ind', nome: 'Spotify Individual', preco: 'R$ 4,99', estoque: 10 },
+        { id: 'spot_duo', nome: 'Spotify Duo', preco: 'R$ 8,99', estoque: 8 },
+        { id: 'spot_fam', nome: 'Spotify Família', preco: 'R$ 14,99', estoque: 6 }
+    ]),
+    criarLoja('spotify_link', ['loja8'], 'Link Spotify', [
+        'Vaga no plano família Spotify',
+        'Só entrar no convite, sem conta nova',
+        'Entrega do link no privado',
+        'Ativação imediata'
+    ], 'R$ 2,99', 'R$ 7,99', [
+        { id: 'spot_link_1m', nome: 'Link Spotify 1 Mês', preco: 'R$ 2,99', estoque: 12 },
+        { id: 'spot_link_3m', nome: 'Link Spotify 3 Meses', preco: 'R$ 5,99', estoque: 8 },
+        { id: 'spot_link_1a', nome: 'Link Spotify 1 Ano', preco: 'R$ 7,99', estoque: 6 }
+    ]),
+    criarLoja('mine', ['loja9'], 'Minecraft', [
+        'Conta Minecraft Java / original',
+        'Full acesso, muda e-mail e senha',
+        'Entrega automática no privado',
+        'Pronto pra jogar'
+    ], 'R$ 9,99', 'R$ 29,99', [
+        { id: 'mine_java', nome: 'Minecraft Java', preco: 'R$ 9,99', estoque: 8 },
+        { id: 'mine_orig', nome: 'Minecraft Original', preco: 'R$ 19,99', estoque: 6 },
+        { id: 'mine_full', nome: 'Minecraft Full', preco: 'R$ 29,99', estoque: 4 }
+    ]),
+    criarLoja('membros', ['loja10'], 'Membros', [
+        'Membros para o teu servidor',
+        'Entrega automática',
+        'Pacotes de 50, 100 ou 250',
+        'Ideal pra começar o servidor'
+    ], 'R$ 5,99', 'R$ 19,99', [
+        { id: 'mm_50', nome: '50 Membros', preco: 'R$ 5,99', estoque: 10 },
+        { id: 'mm_100', nome: '100 Membros', preco: 'R$ 9,99', estoque: 8 },
+        { id: 'mm_250', nome: '250 Membros', preco: 'R$ 19,99', estoque: 6 }
+    ])
 ];
 
 function lojaPorId(id) {
@@ -895,9 +949,16 @@ async function aoFicarOnline() {
             const nomes = new Set([...cmds.values()].map((c) => c.name));
             const slashes = [
                 { name: 'loja', description: 'Publica o painel Nitradas neste canal' },
-                { name: 'loja1', description: 'Publica o painel de Impulsos neste canal' },
-                { name: 'loja2', description: 'Publica o painel Nitro Gift Gaming neste canal' },
+                { name: 'loja1', description: 'Publica o painel 1-REAL neste canal' },
+                { name: 'loja2', description: 'Publica o painel de Impulsos neste canal' },
                 { name: 'loja3', description: 'Publica o painel Nitradas neste canal' },
+                { name: 'loja4', description: 'Publica o painel Trial neste canal' },
+                { name: 'loja5', description: 'Publica o painel Virgem neste canal' },
+                { name: 'loja6', description: 'Publica o painel Aged neste canal' },
+                { name: 'loja7', description: 'Publica o painel Spotify neste canal' },
+                { name: 'loja8', description: 'Publica o painel Link Spotify neste canal' },
+                { name: 'loja9', description: 'Publica o painel Minecraft neste canal' },
+                { name: 'loja10', description: 'Publica o painel Membros neste canal' },
                 { name: 'verificacao', description: 'Publica o painel de verificação neste canal' }
             ];
             for (const cmd of slashes) {
