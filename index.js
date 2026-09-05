@@ -561,12 +561,40 @@ const client = new Client({
 
 const ticketsAbertos = new Set();
 
+const PRODUTOS_LOJA = [
+    { id: 'nitrada_mensal', nome: 'Nitrada Mensal', preco: 'R$ 2,55', estoque: 6 },
+    { id: 'nitrada_trimensal', nome: 'Nitrada Trimensal', preco: 'R$ 6,99', estoque: 12 },
+    { id: 'nitrada_anual', nome: 'Nitrada Anual', preco: 'R$ 3,89', estoque: 6 }
+];
+
 function botaoComprar() {
     return new ButtonBuilder()
         .setCustomId('btn_comprar')
         .setLabel('Comprar')
         .setEmoji('🛒')
         .setStyle(ButtonStyle.Secondary);
+}
+
+function menuProdutosLoja() {
+    return new StringSelectMenuBuilder()
+        .setCustomId('menu_loja_produto')
+        .setPlaceholder('Selecione uma opção para continuar...')
+        .addOptions(PRODUTOS_LOJA.map((p) =>
+            new StringSelectMenuOptionBuilder()
+                .setLabel(p.nome)
+                .setDescription(`💸 | Valor: ${p.preco} · 📦 | Estoque: ${p.estoque}`)
+                .setValue(p.id)
+                .setEmoji('🎁')
+        ));
+}
+
+function linhaPagamento() {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('pay_credito').setLabel('Crédito/Débito').setEmoji('💳').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('pay_ltc').setLabel('Litecoin').setEmoji('1301292023914856488').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('pay_btc').setLabel('Bitcoin').setEmoji('1301292040432291901').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('pay_cancel').setLabel('Cancelar').setEmoji('🗑️').setStyle(ButtonStyle.Danger)
+    );
 }
 
 function textoPainelLoja() {
@@ -996,12 +1024,12 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'menu_loja_produto') {
-        const btnCredito = new ButtonBuilder().setCustomId('pay_credito').setLabel('Crédito/Débito').setEmoji('💳').setStyle(ButtonStyle.Primary);
-        const btnLtc = new ButtonBuilder().setCustomId('pay_ltc').setLabel('Litecoin').setEmoji('1301292023914856488').setStyle(ButtonStyle.Secondary);
-        const btnBtc = new ButtonBuilder().setCustomId('pay_btc').setLabel('Bitcoin').setEmoji('1301292040432291901').setStyle(ButtonStyle.Secondary);
-        const btnCancelar = new ButtonBuilder().setCustomId('pay_cancel').setLabel('Cancelar').setEmoji('🗑️').setStyle(ButtonStyle.Danger);
-        const row = new ActionRowBuilder().addComponents(btnCredito, btnLtc, btnBtc, btnCancelar);
-        return interaction.reply({ content: 'Selecione uma forma de pagamento:', components: [row], flags: 64 });
+        const produto = PRODUTOS_LOJA.find((p) => p.id === interaction.values[0]);
+        const nome = produto ? produto.nome : 'produto';
+        return interaction.update({
+            content: `Selecionaste **${nome}**. Selecione uma forma de pagamento:`,
+            components: [linhaPagamento()]
+        });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('fechar_ticket_')) {
@@ -1041,13 +1069,10 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isButton() && interaction.customId === 'btn_comprar') {
-        const btnCredito = new ButtonBuilder().setCustomId('pay_credito').setLabel('Crédito/Débito').setEmoji('💳').setStyle(ButtonStyle.Primary);
-        const btnLtc = new ButtonBuilder().setCustomId('pay_ltc').setLabel('Litecoin').setEmoji('1301292023914856488').setStyle(ButtonStyle.Secondary);
-        const btnBtc = new ButtonBuilder().setCustomId('pay_btc').setLabel('Bitcoin').setEmoji('1301292040432291901').setStyle(ButtonStyle.Secondary);
-        const btnCancelar = new ButtonBuilder().setCustomId('pay_cancel').setLabel('Cancelar').setEmoji('🗑️').setStyle(ButtonStyle.Danger);
-
-        const row = new ActionRowBuilder().addComponents(btnCredito, btnLtc, btnBtc, btnCancelar);
-        await interaction.reply({ content: 'Selecione uma forma de pagamento:', components: [row], flags: 64 });
+        await interaction.reply({
+            components: [new ActionRowBuilder().addComponents(menuProdutosLoja())],
+            flags: 64
+        });
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('pay_')) {
