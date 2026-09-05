@@ -870,7 +870,7 @@ function criarLoja(id, comandos, titulo, bullets, precoDe, precoAte, produtos, e
     return {
         id,
         comandos,
-        ficheiro: ficheiro || FICHEIRO_BANNER_LOJA,
+        ficheiro: ficheiro || FICHEIRO_BANNER_IMPULSOS,
         texto: (
             `## ${titulo}\n` +
             bullets.map((b) => `• ${b}`).join('\n') +
@@ -1049,9 +1049,9 @@ function baixarFicheiro(url, destino) {
 
 function garantirBannerLoja() {
     fs.mkdirSync(PASTA_ASSETS, { recursive: true });
-    fs.writeFileSync(FICHEIRO_BANNER_LOJA, BANNER_LOJA_EMBUTIDO);
+    fs.writeFileSync(FICHEIRO_BANNER_LOJA, BANNER_IMPULSOS_EMBUTIDO);
     fs.writeFileSync(FICHEIRO_BANNER_IMPULSOS, BANNER_IMPULSOS_EMBUTIDO);
-    fs.writeFileSync(FICHEIRO_BANNER_GIFT, BANNER_LOJA_EMBUTIDO);
+    fs.writeFileSync(FICHEIRO_BANNER_GIFT, BANNER_IMPULSOS_EMBUTIDO);
     return FICHEIRO_BANNER_LOJA;
 }
 
