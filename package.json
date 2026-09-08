@@ -8,6 +8,9 @@
     "start": "node index.js",
     "seed": "node seed.js"
   },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "better-sqlite3": "^11.3.0",
     "discord.js": "^14.15.3",

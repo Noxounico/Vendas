@@ -3,7 +3,11 @@
 // Guarda: produtos (os teus jogos), chaves disponíveis por produto, e pedidos (compras).
 
 const Database = require('better-sqlite3');
-const db = new Database('loja.db');
+
+// Caminho da base de dados configurável (para usar um volume no Railway e não
+// perder produtos/chaves a cada deploy). Ex.: DATABASE_PATH=/data/loja.db
+const DB_PATH = process.env.DATABASE_PATH || 'loja.db';
+const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
 
