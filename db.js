@@ -3,7 +3,11 @@
 // Guarda: produtos (os teus jogos), chaves disponíveis por produto, e pedidos (compras).
 
 const Database = require('better-sqlite3');
-const db = new Database('loja.db');
+
+// Caminho da base de dados configurável (para usar um volume no Railway e não
+// perder produtos/chaves a cada deploy). Ex.: DATABASE_PATH=/data/loja.db
+const DB_PATH = process.env.DATABASE_PATH || 'loja.db';
+const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
 
@@ -12,7 +16,9 @@ CREATE TABLE IF NOT EXISTS products (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   description TEXT DEFAULT '',
-  price_eur REAL NOT NULL,
+  price_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'eur',
+  category TEXT,
   role_id TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now'))
@@ -31,25 +37,56 @@ CREATE TABLE IF NOT EXISTS orders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   product_id INTEGER NOT NULL REFERENCES products(id),
   discord_user_id TEXT NOT NULL,
-  payment_method TEXT, -- 'mbway' | 'multibanco'
-  external_ref TEXT,   -- entidade+referência (Multibanco) ou nº de telemóvel (MB WAY)
-  status TEXT NOT NULL DEFAULT 'pending', -- pending | delivered
+  stripe_session_id TEXT,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending | paid | delivered | expired
   key_id INTEGER,
   created_at TEXT DEFAULT (datetime('now'))
 );
 `);
 
+// Migração: adiciona a coluna "category" a bases de dados criadas antes dos canais.
+const hasCategory = db
+  .prepare(`PRAGMA table_info(products)`)
+  .all()
+  .some((col) => col.name === 'category');
+if (!hasCategory) {
+  db.exec(`ALTER TABLE products ADD COLUMN category TEXT`);
+}
+
 // ---------- Produtos ----------
-function addProduct({ name, description, priceEur, roleId }) {
+function addProduct({ name, description, priceCents, currency, category, roleId }) {
   const stmt = db.prepare(
-    `INSERT INTO products (name, description, price_eur, role_id) VALUES (?, ?, ?, ?)`
+    `INSERT INTO products (name, description, price_cents, currency, category, role_id) VALUES (?, ?, ?, ?, ?, ?)`
   );
-  const info = stmt.run(name, description || '', priceEur, roleId || null);
+  const info = stmt.run(
+    name,
+    description || '',
+    priceCents,
+    currency || 'eur',
+    category || null,
+    roleId || null
+  );
   return info.lastInsertRowid;
 }
 
 function listActiveProducts() {
   return db.prepare(`SELECT * FROM products WHERE active = 1 ORDER BY id DESC`).all();
+}
+
+function listActiveProductsByCategory(category) {
+  return db
+    .prepare(`SELECT * FROM products WHERE active = 1 AND category = ? ORDER BY id ASC`)
+    .all(category);
+}
+
+function listCategories() {
+  return db
+    .prepare(
+      `SELECT category FROM products WHERE active = 1 AND category IS NOT NULL AND category <> ''
+       GROUP BY category ORDER BY MIN(id) ASC`
+    )
+    .all()
+    .map((row) => row.category);
 }
 
 function getProduct(id) {
@@ -93,17 +130,23 @@ function getKeyValue(keyId) {
 }
 
 // ---------- Pedidos ----------
-function createOrder({ productId, discordUserId, paymentMethod, externalRef }) {
+function createOrder({ productId, discordUserId }) {
   const info = db
-    .prepare(
-      `INSERT INTO orders (product_id, discord_user_id, payment_method, external_ref) VALUES (?, ?, ?, ?)`
-    )
-    .run(productId, discordUserId, paymentMethod, externalRef || null);
+    .prepare(`INSERT INTO orders (product_id, discord_user_id) VALUES (?, ?)`)
+    .run(productId, discordUserId);
   return info.lastInsertRowid;
+}
+
+function attachStripeSession(orderId, sessionId) {
+  db.prepare(`UPDATE orders SET stripe_session_id = ? WHERE id = ?`).run(sessionId, orderId);
 }
 
 function getOrder(orderId) {
   return db.prepare(`SELECT * FROM orders WHERE id = ?`).get(orderId);
+}
+
+function getOrderBySessionId(sessionId) {
+  return db.prepare(`SELECT * FROM orders WHERE stripe_session_id = ?`).get(sessionId);
 }
 
 function markOrderDelivered(orderId, keyId) {
@@ -117,13 +160,17 @@ function markOrderStatus(orderId, status) {
 module.exports = {
   addProduct,
   listActiveProducts,
+  listActiveProductsByCategory,
+  listCategories,
   getProduct,
   countAvailableKeys,
   addKeysBulk,
   allocateKeyTxn,
   getKeyValue,
   createOrder,
+  attachStripeSession,
   getOrder,
+  getOrderBySessionId,
   markOrderDelivered,
   markOrderStatus,
 };
