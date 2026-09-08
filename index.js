@@ -402,14 +402,20 @@ async function publicarVerificacao(interaction) {
   const cargo = interaction.options.getRole('cargo');
   const anexo = interaction.options.getAttachment('anexo');
   const imagem = anexo?.url || interaction.options.getString('imagem');
-  const titulo = interaction.options.getString('titulo') || 'VERIFICAÇÃO';
+  const titulo = interaction.options.getString('titulo') || '🔒 VERIFICAÇÃO';
+  const loja = process.env.STORE_NAME || 'DENVER STORE';
   const descricao =
     interaction.options.getString('descricao') ||
     '• Clique no botão para se verificar\n' +
       '• Libera o acesso aos canais do servidor\n' +
       '• Verificação imediata, só um clique';
 
-  const embed = new EmbedBuilder().setTitle(titulo).setColor(0xe02424).setDescription(descricao);
+  const embed = new EmbedBuilder()
+    .setTitle(titulo)
+    .setColor(0xe02424)
+    .setDescription(descricao)
+    .addFields({ name: 'Acesso ao servidor', value: 'Clica no botão **Verificar** aqui em baixo. ⬇️' })
+    .setFooter({ text: `${loja} • O controle é nosso` });
   if (imagem) embed.setImage(imagem);
 
   const row = new ActionRowBuilder().addComponents(
