@@ -463,5 +463,3 @@ client.once('ready', async () => {
 if (require.main === module) {
   client.login(process.env.DISCORD_TOKEN);
 }
-
-module.exports = { client, buildLojaEmbedAndRow, formatPrice, entregarPedido };
