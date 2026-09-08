@@ -51,6 +51,12 @@ const slashCommands = [
         .setDescription('Moeda (eur, brl, usd, gbp, ...)')
         .setRequired(false)
     )
+    .addStringOption((opt) =>
+      opt
+        .setName('categoria')
+        .setDescription('Canal/categoria da loja (ex.: Impulsos, Nitradas, Links, Trial)')
+        .setRequired(false)
+    )
     .addRoleOption((opt) =>
       opt
         .setName('cargo')
@@ -80,7 +86,13 @@ const slashCommands = [
 
   new SlashCommandBuilder()
     .setName('loja')
-    .setDescription('Publica a loja neste canal'),
+    .setDescription('Publica a loja neste canal')
+    .addStringOption((opt) =>
+      opt
+        .setName('categoria')
+        .setDescription('Publica só o painel deste canal (ex.: Impulsos). Sem isto, publica tudo.')
+        .setRequired(false)
+    ),
 ].map((cmd) => cmd.toJSON());
 
 async function registerSlashCommands() {
@@ -130,13 +142,13 @@ async function logToChannel(text) {
   }
 }
 
-function buildLojaEmbedAndRow(products) {
+function buildLojaEmbedAndRow(products, categoryName) {
   const embed = new EmbedBuilder()
-    .setTitle('🎮 Loja de Jogos')
+    .setTitle(categoryName ? `🎮 Loja — ${categoryName}` : '🎮 Loja de Jogos')
     .setColor(0x5865f2)
     .setDescription(
       products.length
-        ? 'Escolhe um jogo abaixo para comprar. A chave é entregue automaticamente por DM após o pagamento.'
+        ? 'Escolhe uma opção abaixo para comprar. A chave é entregue automaticamente por DM após o pagamento.'
         : 'Não há produtos disponíveis de momento.'
     );
 
@@ -291,6 +303,7 @@ client.on('interactionCreate', async (interaction) => {
         const preco = interaction.options.getNumber('preco');
         const descricao = interaction.options.getString('descricao') || '';
         const moeda = interaction.options.getString('moeda') || 'eur';
+        const categoria = interaction.options.getString('categoria') || null;
         const cargo = interaction.options.getRole('cargo');
 
         const id = db.addProduct({
@@ -298,6 +311,7 @@ client.on('interactionCreate', async (interaction) => {
           description: descricao,
           priceCents: Math.round(preco * 100),
           currency: moeda,
+          category: categoria,
           roleId: cargo?.id,
         });
 
@@ -337,18 +351,34 @@ client.on('interactionCreate', async (interaction) => {
         }
         const linhas = products.map(
           (p) =>
-            `**#${p.id} ${p.name}** — ${formatPrice(p.price_cents, p.currency)} — stock: ${db.countAvailableKeys(
-              p.id
-            )}`
+            `**#${p.id} ${p.name}** — ${formatPrice(p.price_cents, p.currency)}${
+              p.category ? ` — [${p.category}]` : ''
+            } — stock: ${db.countAvailableKeys(p.id)}`
         );
         await interaction.reply({ content: linhas.join('\n'), ephemeral: true });
       }
 
       if (commandName === 'loja') {
-        const products = db.listActiveProducts();
-        const { embed, rows } = buildLojaEmbedAndRow(products);
+        const categoria = interaction.options.getString('categoria');
+        const products = categoria
+          ? db.listActiveProductsByCategory(categoria)
+          : db.listActiveProducts();
+
+        if (categoria && products.length === 0) {
+          return interaction.reply({
+            content: `Não há produtos no canal **${categoria}**. Categorias disponíveis: ${
+              db.listCategories().join(', ') || '(nenhuma)'
+            }.`,
+            ephemeral: true,
+          });
+        }
+
+        const { embed, rows } = buildLojaEmbedAndRow(products, categoria);
         await interaction.channel.send({ embeds: [embed], components: rows });
-        await interaction.reply({ content: 'Loja publicada!', ephemeral: true });
+        await interaction.reply({
+          content: categoria ? `Painel do canal **${categoria}** publicado!` : 'Loja publicada!',
+          ephemeral: true,
+        });
       }
     }
 

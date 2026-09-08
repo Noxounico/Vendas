@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS products (
   description TEXT DEFAULT '',
   price_cents INTEGER NOT NULL,
   currency TEXT NOT NULL DEFAULT 'eur',
+  category TEXT,
   role_id TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now'))
@@ -39,17 +40,49 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 `);
 
+// Migração: adiciona a coluna "category" a bases de dados criadas antes dos canais.
+const hasCategory = db
+  .prepare(`PRAGMA table_info(products)`)
+  .all()
+  .some((col) => col.name === 'category');
+if (!hasCategory) {
+  db.exec(`ALTER TABLE products ADD COLUMN category TEXT`);
+}
+
 // ---------- Produtos ----------
-function addProduct({ name, description, priceCents, currency, roleId }) {
+function addProduct({ name, description, priceCents, currency, category, roleId }) {
   const stmt = db.prepare(
-    `INSERT INTO products (name, description, price_cents, currency, role_id) VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO products (name, description, price_cents, currency, category, role_id) VALUES (?, ?, ?, ?, ?, ?)`
   );
-  const info = stmt.run(name, description || '', priceCents, currency || 'eur', roleId || null);
+  const info = stmt.run(
+    name,
+    description || '',
+    priceCents,
+    currency || 'eur',
+    category || null,
+    roleId || null
+  );
   return info.lastInsertRowid;
 }
 
 function listActiveProducts() {
   return db.prepare(`SELECT * FROM products WHERE active = 1 ORDER BY id DESC`).all();
+}
+
+function listActiveProductsByCategory(category) {
+  return db
+    .prepare(`SELECT * FROM products WHERE active = 1 AND category = ? ORDER BY id ASC`)
+    .all(category);
+}
+
+function listCategories() {
+  return db
+    .prepare(
+      `SELECT category FROM products WHERE active = 1 AND category IS NOT NULL AND category <> ''
+       GROUP BY category ORDER BY MIN(id) ASC`
+    )
+    .all()
+    .map((row) => row.category);
 }
 
 function getProduct(id) {
@@ -123,6 +156,8 @@ function markOrderStatus(orderId, status) {
 module.exports = {
   addProduct,
   listActiveProducts,
+  listActiveProductsByCategory,
+  listCategories,
   getProduct,
   countAvailableKeys,
   addKeysBulk,
