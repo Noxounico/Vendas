@@ -410,11 +410,3 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
 // Assim o módulo pode ser importado em testes sem tentar autenticar no Discord.
 if (require.main === module) {
   client.login(process.env.DISCORD_TOKEN);
-
-  const port = process.env.PORT || 3000;
-  app.listen(port, () => {
-    console.log(`Servidor do webhook a correr na porta ${port}`);
-  });
-}
-
-module.exports = { app, client, buildLojaEmbedAndRow, formatPrice };
