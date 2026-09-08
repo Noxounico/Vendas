@@ -99,6 +99,29 @@ const slashCommands = [
       opt.setName('pedido_id').setDescription('ID do pedido a entregar').setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('verificacao')
+    .setDescription('Publica um painel de verificação neste canal')
+    .addRoleOption((opt) =>
+      opt
+        .setName('cargo')
+        .setDescription('Cargo dado a quem se verificar (dá acesso ao servidor)')
+        .setRequired(true)
+    )
+    .addAttachmentOption((opt) =>
+      opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('imagem').setDescription('URL do banner (opcional, alternativa ao anexo)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('titulo').setDescription('Título do painel (opcional)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('descricao').setDescription('Texto do painel (opcional)').setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 ].map((cmd) => cmd.toJSON());
 
 async function registerSlashCommands() {
@@ -372,6 +395,58 @@ async function entregarPedido(orderId) {
 }
 
 // ---------------------------------------------------------------------------
+// Verificação: publica um painel com botão que dá um cargo de acesso.
+// ---------------------------------------------------------------------------
+
+async function publicarVerificacao(interaction) {
+  const cargo = interaction.options.getRole('cargo');
+  const anexo = interaction.options.getAttachment('anexo');
+  const imagem = anexo?.url || interaction.options.getString('imagem');
+  const titulo = interaction.options.getString('titulo') || 'VERIFICAÇÃO';
+  const descricao =
+    interaction.options.getString('descricao') ||
+    '• Clique no botão para se verificar\n' +
+      '• Libera o acesso aos canais do servidor\n' +
+      '• Verificação imediata, só um clique';
+
+  const embed = new EmbedBuilder().setTitle(titulo).setColor(0xe02424).setDescription(descricao);
+  if (imagem) embed.setImage(imagem);
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel('Verificar')
+      .setEmoji('✅')
+      .setStyle(ButtonStyle.Success)
+      .setCustomId(`verificar_${cargo.id}`)
+  );
+
+  await interaction.channel.send({ embeds: [embed], components: [row] });
+  await interaction.reply({ content: 'Painel de verificação publicado!', ephemeral: true });
+}
+
+async function verificarMembro(interaction, roleId) {
+  const member = interaction.member;
+  if (member?.roles?.cache?.has(roleId)) {
+    return interaction.reply({ content: '✅ Já estás verificado!', ephemeral: true });
+  }
+  try {
+    await member.roles.add(roleId);
+    await interaction.reply({
+      content: '✅ Verificado! Já tens acesso ao servidor.',
+      ephemeral: true,
+    });
+  } catch (err) {
+    console.error('Falha ao verificar membro:', err.message);
+    await interaction.reply({
+      content:
+        'Não consegui dar-te o cargo. Um admin precisa de dar ao bot a permissão **Gerir Cargos** ' +
+        'e de colocar o cargo do bot **acima** do cargo de verificação.',
+      ephemeral: true,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Slash commands e interações
 // ---------------------------------------------------------------------------
 
@@ -467,6 +542,10 @@ client.on('interactionCreate', async (interaction) => {
         const pedidoId = interaction.options.getInteger('pedido_id');
         await entregarPorAdmin(interaction, pedidoId);
       }
+
+      if (commandName === 'verificacao') {
+        await publicarVerificacao(interaction);
+      }
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'comprar_select') {
@@ -482,6 +561,11 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('cancelar_')) {
       const orderId = Number(interaction.customId.slice('cancelar_'.length));
       await cancelarPedido(interaction, orderId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('verificar_')) {
+      const roleId = interaction.customId.slice('verificar_'.length);
+      await verificarMembro(interaction, roleId);
     }
   } catch (err) {
     console.error(err);
