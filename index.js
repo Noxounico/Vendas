@@ -20,6 +20,7 @@ const {
 } = require('discord.js');
 
 const db = require('./db');
+const { formatPrice } = require('./currency');
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -47,7 +48,7 @@ const slashCommands = [
     .addStringOption((opt) =>
       opt
         .setName('moeda')
-        .setDescription('Moeda (eur, usd, ...)')
+        .setDescription('Moeda (eur, brl, usd, gbp, ...)')
         .setRequired(false)
     )
     .addRoleOption((opt) =>
@@ -118,11 +119,6 @@ async function registerSlashCommands() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function formatPrice(cents, currency) {
-  const value = (cents / 100).toFixed(2);
-  return currency.toUpperCase() === 'EUR' ? `${value} €` : `$${value}`;
-}
 
 async function logToChannel(text) {
   if (!process.env.LOG_CHANNEL_ID) return;
@@ -379,8 +375,6 @@ client.once('ready', async () => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
-
 // ---------------------------------------------------------------------------
 // Servidor HTTP — recebe o webhook do Stripe
 // ---------------------------------------------------------------------------
@@ -412,7 +406,15 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
   res.json({ received: true });
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Servidor do webhook a correr na porta ${port}`);
-});
+// Só liga o bot e o servidor quando o ficheiro é corrido diretamente (npm start).
+// Assim o módulo pode ser importado em testes sem tentar autenticar no Discord.
+if (require.main === module) {
+  client.login(process.env.DISCORD_TOKEN);
+
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log(`Servidor do webhook a correr na porta ${port}`);
+  });
+}
+
+module.exports = { app, client, buildLojaEmbedAndRow, formatPrice };
