@@ -1,11 +1,10 @@
 // index.js
 // Corre o bot com: npm start
 // Os slash commands são registados automaticamente quando o bot liga.
-// É só bot: o pagamento é confirmado pela API do Stripe quando o cliente
-// carrega em "Já paguei" (não há servidor de webhook a correr).
+// Bot de vendas com pagamento MANUAL: o cliente compra, um admin confirma o
+// pagamento (botão "Entregar" ou /entregar) e a chave é enviada por DM.
 
 require('dotenv').config();
-const Stripe = require('stripe');
 const {
   Client,
   GatewayIntentBits,
@@ -22,8 +21,6 @@ const {
 
 const db = require('./db');
 const { formatPrice } = require('./currency');
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
@@ -94,6 +91,14 @@ const slashCommands = [
         .setDescription('Publica só o painel deste canal (ex.: Impulsos). Sem isto, publica tudo.')
         .setRequired(false)
     ),
+
+  new SlashCommandBuilder()
+    .setName('entregar')
+    .setDescription('Confirma o pagamento e entrega a chave de um pedido (admin)')
+    .addIntegerOption((opt) =>
+      opt.setName('pedido_id').setDescription('ID do pedido a entregar').setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 ].map((cmd) => cmd.toJSON());
 
 async function registerSlashCommands() {
@@ -187,7 +192,8 @@ function buildLojaEmbedAndRow(products, categoryName) {
 }
 
 // ---------------------------------------------------------------------------
-// Compra: cria a sessão de checkout no Stripe
+// Compra (pagamento manual): cria o pedido, mostra as instruções de pagamento
+// ao cliente e avisa os admins com um botão para entregar.
 // ---------------------------------------------------------------------------
 
 async function iniciarCompra(interaction, productId) {
@@ -203,93 +209,121 @@ async function iniciarCompra(interaction, productId) {
 
   const orderId = db.createOrder({ productId: product.id, discordUserId: interaction.user.id });
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price_data: {
-          currency: product.currency,
-          product_data: {
-            name: product.name,
-            description: product.description || undefined,
-          },
-          unit_amount: product.price_cents,
-        },
-        quantity: 1,
-      },
-    ],
-    success_url: process.env.SUCCESS_URL || 'https://example.com/sucesso',
-    cancel_url: process.env.CANCEL_URL || 'https://example.com/cancelado',
-    metadata: {
-      order_id: String(orderId),
-      discord_user_id: interaction.user.id,
-      product_id: String(product.id),
-    },
-  });
-
-  db.attachStripeSession(orderId, session.id);
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setLabel('Pagar agora').setStyle(ButtonStyle.Link).setURL(session.url),
-    new ButtonBuilder()
-      .setLabel('Já paguei — receber chave')
-      .setStyle(ButtonStyle.Success)
-      .setCustomId(`verificar_${orderId}`)
-  );
+  const instrucoes =
+    process.env.PAYMENT_INFO ||
+    'Contacta um administrador para efetuares o pagamento. Assim que for confirmado, recebes a tua chave por DM.';
 
   await interaction.reply({
-    content: `Compra de **${product.name}** criada. Clica em **Pagar agora** e, depois de pagares, carrega em **Já paguei — receber chave** para receberes a chave por DM.`,
-    components: [row],
+    content:
+      `🧾 Pedido **#${orderId}** criado — **${product.name}** por ${formatPrice(
+        product.price_cents,
+        product.currency
+      )}.\n\n` +
+      `**Como pagar:** ${instrucoes}\n\n` +
+      `Assim que um admin confirmar o pagamento, a tua chave chega por DM. 📩`,
     ephemeral: true,
   });
+
+  await notificarPedidoAdmins(interaction, orderId, product);
+}
+
+// Publica o pedido no canal de admins (PEDIDOS_CHANNEL_ID ou LOG_CHANNEL_ID)
+// com os botões "Entregar chave" e "Cancelar".
+async function notificarPedidoAdmins(interaction, orderId, product) {
+  const channelId = process.env.PEDIDOS_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+  if (!channelId) return;
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel?.isTextBased()) return;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🛒 Novo pedido #${orderId}`)
+      .setColor(0xfaa61a)
+      .addFields(
+        {
+          name: 'Produto',
+          value: `${product.name} — ${formatPrice(product.price_cents, product.currency)}`,
+        },
+        { name: 'Cliente', value: `<@${interaction.user.id}>` },
+        { name: 'Estado', value: 'Aguarda confirmação de pagamento' }
+      );
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Entregar chave')
+        .setStyle(ButtonStyle.Success)
+        .setCustomId(`entregar_${orderId}`),
+      new ButtonBuilder()
+        .setLabel('Cancelar')
+        .setStyle(ButtonStyle.Danger)
+        .setCustomId(`cancelar_${orderId}`)
+    );
+
+    await channel.send({ embeds: [embed], components: [row] });
+  } catch (err) {
+    console.error('Falha ao notificar admins do pedido:', err.message);
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Confirmação do pagamento (só bot): consulta o estado da sessão no Stripe
-// quando o cliente carrega em "Já paguei" e entrega a chave se estiver paga.
+// Confirmação manual pelo admin: entrega a chave e envia por DM ao cliente.
 // ---------------------------------------------------------------------------
 
-async function verificarEEntregar(interaction, orderId) {
+async function entregarPorAdmin(interaction, orderId) {
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+    return interaction.reply({
+      content: 'Só administradores podem entregar pedidos.',
+      ephemeral: true,
+    });
+  }
+
   const order = db.getOrder(orderId);
   if (!order) {
-    return interaction.reply({ content: 'Pedido não encontrado.', ephemeral: true });
+    return interaction.reply({ content: `Não existe o pedido #${orderId}.`, ephemeral: true });
   }
   if (order.status === 'delivered') {
-    return interaction.reply({
-      content: 'Este pedido já foi entregue. Vê as tuas DMs. 📩',
-      ephemeral: true,
-    });
-  }
-  if (!order.stripe_session_id) {
-    return interaction.reply({
-      content: 'Este pedido ainda não tem um pagamento associado.',
-      ephemeral: true,
-    });
-  }
-
-  await interaction.deferReply({ ephemeral: true });
-
-  const session = await stripe.checkout.sessions.retrieve(order.stripe_session_id);
-  if (session.payment_status !== 'paid') {
-    return interaction.editReply(
-      'Ainda não recebi a confirmação do pagamento. Se acabaste de pagar, espera uns segundos e carrega outra vez.'
-    );
+    return interaction.reply({ content: `O pedido #${orderId} já foi entregue.`, ephemeral: true });
   }
 
   await entregarPedido(orderId);
+  const entregue = db.getOrder(orderId).status === 'delivered';
 
-  if (db.getOrder(orderId).status === 'delivered') {
-    await interaction.editReply('✅ Pagamento confirmado! Enviei a tua chave por DM.');
-  } else {
-    await interaction.editReply(
-      '⚠️ Pagamento confirmado, mas não há stock disponível de momento. Um admin vai tratar da entrega.'
-    );
+  await interaction.reply({
+    content: entregue
+      ? `✅ Pedido #${orderId} entregue. A chave foi enviada por DM ao cliente.`
+      : `⚠️ Pedido #${orderId}: não há chaves em stock. Usa \`/chave-adicionar\` e tenta de novo.`,
+    ephemeral: true,
+  });
+
+  if (entregue && interaction.message) {
+    try {
+      await interaction.message.edit({ components: [] });
+    } catch {
+      /* mensagem pode não ser editável */
+    }
+  }
+}
+
+async function cancelarPedido(interaction, orderId) {
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+    return interaction.reply({
+      content: 'Só administradores podem cancelar pedidos.',
+      ephemeral: true,
+    });
+  }
+  db.markOrderStatus(orderId, 'expired');
+  await interaction.reply({ content: `Pedido #${orderId} cancelado.`, ephemeral: true });
+  if (interaction.message) {
+    try {
+      await interaction.message.edit({ components: [] });
+    } catch {
+      /* ignora */
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
-// Entrega: chamado quando o Stripe confirma o pagamento
+// Entrega: aloca uma chave livre e envia-a por DM ao cliente.
 // ---------------------------------------------------------------------------
 
 async function entregarPedido(orderId) {
@@ -428,6 +462,11 @@ client.on('interactionCreate', async (interaction) => {
           ephemeral: true,
         });
       }
+
+      if (commandName === 'entregar') {
+        const pedidoId = interaction.options.getInteger('pedido_id');
+        await entregarPorAdmin(interaction, pedidoId);
+      }
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'comprar_select') {
@@ -435,9 +474,14 @@ client.on('interactionCreate', async (interaction) => {
       await iniciarCompra(interaction, productId);
     }
 
-    if (interaction.isButton() && interaction.customId.startsWith('verificar_')) {
-      const orderId = Number(interaction.customId.slice('verificar_'.length));
-      await verificarEEntregar(interaction, orderId);
+    if (interaction.isButton() && interaction.customId.startsWith('entregar_')) {
+      const orderId = Number(interaction.customId.slice('entregar_'.length));
+      await entregarPorAdmin(interaction, orderId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('cancelar_')) {
+      const orderId = Number(interaction.customId.slice('cancelar_'.length));
+      await cancelarPedido(interaction, orderId);
     }
   } catch (err) {
     console.error(err);
