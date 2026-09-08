@@ -1,9 +1,10 @@
 // index.js
 // Corre o bot com: npm start
 // Os slash commands são registados automaticamente quando o bot liga.
+// É só bot: o pagamento é confirmado pela API do Stripe quando o cliente
+// carrega em "Já paguei" (não há servidor de webhook a correr).
 
 require('dotenv').config();
-const express = require('express');
 const Stripe = require('stripe');
 const {
   Client,
@@ -230,14 +231,61 @@ async function iniciarCompra(interaction, productId) {
   db.attachStripeSession(orderId, session.id);
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setLabel('Pagar agora').setStyle(ButtonStyle.Link).setURL(session.url)
+    new ButtonBuilder().setLabel('Pagar agora').setStyle(ButtonStyle.Link).setURL(session.url),
+    new ButtonBuilder()
+      .setLabel('Já paguei — receber chave')
+      .setStyle(ButtonStyle.Success)
+      .setCustomId(`verificar_${orderId}`)
   );
 
   await interaction.reply({
-    content: `Compra de **${product.name}** criada. Clica no botão para pagares com cartão. A chave chega por DM assim que o pagamento for confirmado.`,
+    content: `Compra de **${product.name}** criada. Clica em **Pagar agora** e, depois de pagares, carrega em **Já paguei — receber chave** para receberes a chave por DM.`,
     components: [row],
     ephemeral: true,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Confirmação do pagamento (só bot): consulta o estado da sessão no Stripe
+// quando o cliente carrega em "Já paguei" e entrega a chave se estiver paga.
+// ---------------------------------------------------------------------------
+
+async function verificarEEntregar(interaction, orderId) {
+  const order = db.getOrder(orderId);
+  if (!order) {
+    return interaction.reply({ content: 'Pedido não encontrado.', ephemeral: true });
+  }
+  if (order.status === 'delivered') {
+    return interaction.reply({
+      content: 'Este pedido já foi entregue. Vê as tuas DMs. 📩',
+      ephemeral: true,
+    });
+  }
+  if (!order.stripe_session_id) {
+    return interaction.reply({
+      content: 'Este pedido ainda não tem um pagamento associado.',
+      ephemeral: true,
+    });
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const session = await stripe.checkout.sessions.retrieve(order.stripe_session_id);
+  if (session.payment_status !== 'paid') {
+    return interaction.editReply(
+      'Ainda não recebi a confirmação do pagamento. Se acabaste de pagar, espera uns segundos e carrega outra vez.'
+    );
+  }
+
+  await entregarPedido(orderId);
+
+  if (db.getOrder(orderId).status === 'delivered') {
+    await interaction.editReply('✅ Pagamento confirmado! Enviei a tua chave por DM.');
+  } else {
+    await interaction.editReply(
+      '⚠️ Pagamento confirmado, mas não há stock disponível de momento. Um admin vai tratar da entrega.'
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -386,6 +434,11 @@ client.on('interactionCreate', async (interaction) => {
       const productId = Number(interaction.values[0]);
       await iniciarCompra(interaction, productId);
     }
+
+    if (interaction.isButton() && interaction.customId.startsWith('verificar_')) {
+      const orderId = Number(interaction.customId.slice('verificar_'.length));
+      await verificarEEntregar(interaction, orderId);
+    }
   } catch (err) {
     console.error(err);
     if (interaction.isRepliable()) {
@@ -405,46 +458,10 @@ client.once('ready', async () => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Servidor HTTP — recebe o webhook do Stripe
-// ---------------------------------------------------------------------------
-
-const app = express();
-
-// Importante: esta rota precisa do corpo em "raw" para o Stripe verificar a assinatura.
-app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      req.headers['stripe-signature'],
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.error('Assinatura do webhook inválida:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const orderId = Number(session.metadata?.order_id);
-    if (orderId) {
-      await entregarPedido(orderId);
-    }
-  }
-
-  res.json({ received: true });
-});
-
-// Só liga o bot e o servidor quando o ficheiro é corrido diretamente (npm start).
+// Só liga o bot quando o ficheiro é corrido diretamente (npm start).
 // Assim o módulo pode ser importado em testes sem tentar autenticar no Discord.
 if (require.main === module) {
   client.login(process.env.DISCORD_TOKEN);
-
-  const port = process.env.PORT || 3000;
-  app.listen(port, () => {
-    console.log(`Servidor do webhook a correr na porta ${port}`);
-  });
 }
 
-module.exports = { app, client, buildLojaEmbedAndRow, formatPrice };
+module.exports = { client, buildLojaEmbedAndRow, formatPrice, entregarPedido };
