@@ -55,6 +55,18 @@ const CATALOG = [
     category: 'Trial',
     products: [{ name: 'Trial Nitro', priceCents: 80 }],
   },
+  {
+    category: 'Contas',
+    products: [
+      { name: 'Conta 2016', priceCents: 1200 },
+      { name: 'Conta 2017', priceCents: 700 },
+      { name: 'Conta 2018', priceCents: 500 },
+      { name: 'Conta 2019', priceCents: 400 },
+      { name: 'Conta 2020', priceCents: 300 },
+      { name: 'Conta 2021', priceCents: 250 },
+      { name: 'Conta 2022', priceCents: 200 },
+    ],
+  },
 ];
 
 function seed() {
