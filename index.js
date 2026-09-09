@@ -27,6 +27,99 @@ const client = new Client({
 });
 
 // ---------------------------------------------------------------------------
+// Produtos iniciais da loja — criados automaticamente quando o bot liga,
+// já organizados por categoria/canal (usa estes nomes em /loja categoria:"...")
+// Preço em euros -> cêntimos (1,20€ = 120).
+// ---------------------------------------------------------------------------
+
+function eur(valor) {
+  return Math.round(valor * 100);
+}
+
+const PRODUTOS_SEED = [
+  // --- Painéis & Métodos (nome de categoria por confirmar) ---
+  { nome: 'Painel SMS', preco: eur(1), categoria: 'Painéis & Métodos' },
+  { nome: 'Painel do 7', preco: eur(1), categoria: 'Painéis & Métodos' },
+  { nome: 'Método Ifood', preco: eur(1.2), categoria: 'Painéis & Métodos' },
+  { nome: 'Método internet grátis', preco: eur(1.1), categoria: 'Painéis & Métodos' },
+  { nome: 'Método banir insta', preco: eur(1.2), categoria: 'Painéis & Métodos' },
+  { nome: 'Modelo loja', preco: eur(1), categoria: 'Painéis & Métodos' },
+
+  // --- Canal de impulsos ---
+  { nome: '2x impulsos', preco: eur(1.2), categoria: 'Impulsos' },
+  { nome: '6x impulsos', preco: eur(3), categoria: 'Impulsos' },
+  { nome: '8x impulsos', preco: eur(5), categoria: 'Impulsos' },
+  { nome: '14x impulsos', preco: eur(8), categoria: 'Impulsos' },
+  { nome: '14x impulsos trimensais', preco: eur(10), categoria: 'Impulsos' },
+
+  // --- Canal de nitradas ---
+  { nome: 'Nitrada Mensal', preco: eur(1), categoria: 'Nitradas' },
+  { nome: 'Nitrada Trimensal', preco: eur(2.5), categoria: 'Nitradas' },
+  { nome: 'Nitrada Anual', preco: eur(7), categoria: 'Nitradas' },
+
+  // --- Canal de links ---
+  { nome: 'Nitro Link Mensal', preco: eur(0.8), categoria: 'Links' },
+  { nome: 'Nitro Link Trimensal', preco: eur(2), categoria: 'Links' },
+  { nome: 'Ativação do Nitro', preco: eur(1), categoria: 'Links' },
+
+  // --- Canal de trial ---
+  { nome: 'Trial Nitro', preco: eur(0.8), categoria: 'Trial' },
+
+  // --- Canal virgem ---
+  { nome: 'Conta Virgem', preco: eur(0.55), categoria: 'Virgem' },
+
+  // --- Canal aged ---
+  { nome: 'Conta Aged Premium', preco: eur(7), categoria: 'Aged' },
+
+  // --- Canal Spotify ---
+  { nome: 'Conta Spotify Premium', preco: eur(1.3), categoria: 'Spotify' },
+
+  // --- Canal link Spotify Tri ---
+  { nome: 'Link Spotify Trimensal', preco: eur(0.5), categoria: 'Link Spotify Tri' },
+
+  // --- Canal membros ---
+  { nome: '100x membros online', preco: eur(1.5), categoria: 'Membros' },
+  { nome: '100x membros offline', preco: eur(1), categoria: 'Membros' },
+
+  // --- Canal trampo ---
+  { nome: 'Trampo fazendo dinheiro', preco: eur(1.2), categoria: 'Trampo' },
+
+  // --- Canal clonar site ---
+  // (ainda sem produto/preço definido — acrescenta aqui quando souberes)
+];
+
+// Cria os produtos de PRODUTOS_SEED que ainda não existem (por nome).
+// Corre sempre que o bot liga, mas nunca duplica os que já foram criados.
+function seedProdutosIniciais() {
+  const existentes = new Set(
+    db.listActiveProducts().map((p) => p.name.toLowerCase())
+  );
+
+  let criados = 0;
+  for (const p of PRODUTOS_SEED) {
+    if (existentes.has(p.nome.toLowerCase())) continue;
+
+    const id = db.addProduct({
+      name: p.nome,
+      description: p.descricao || '',
+      priceCents: p.preco,
+      currency: 'eur',
+      category: p.categoria,
+      roleId: p.roleId || undefined,
+    });
+
+    console.log(`✅ produto criado #${id}: ${p.nome} — ${(p.preco / 100).toFixed(2)}€ [${p.categoria}]`);
+    criados++;
+  }
+
+  if (criados > 0) {
+    console.log(`🌱 ${criados} produto(s) novo(s) criado(s). Falta carregar chaves com /chave-adicionar.`);
+  } else {
+    console.log('🌱 Produtos iniciais já existiam, nada foi criado.');
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Slash commands — registados no Discord quando o bot liga
 // ---------------------------------------------------------------------------
 
@@ -625,6 +718,11 @@ client.once('ready', async () => {
   } catch (err) {
     console.error('❌ Erro ao registar comandos:', err);
   }
+  try {
+    seedProdutosIniciais();
+  } catch (err) {
+    console.error('❌ Erro ao criar produtos iniciais:', err);
+  }
 });
 
 // Só liga o bot quando o ficheiro é corrido diretamente (npm start).
@@ -633,4 +731,4 @@ if (require.main === module) {
   client.login(process.env.DISCORD_TOKEN);
 }
 
-module.exports = { client, buildLojaEmbedAndRow, formatPrice, entregarPedido };
+module.exports = { client, buildLojaEmbedAndRow, formatPrice, entregarPedido, seedProdutosIniciais };
