@@ -106,8 +106,8 @@ const slashCommands = [
     .addRoleOption((opt) =>
       opt
         .setName('cargo')
-        .setDescription('Cargo dado a quem se verificar (dá acesso ao servidor)')
-        .setRequired(true)
+        .setDescription('Cargo dado a quem se verificar (senão usa a variável VERIFY_ROLE_ID)')
+        .setRequired(false)
     )
     .addAttachmentOption((opt) =>
       opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
@@ -400,6 +400,16 @@ async function entregarPedido(orderId) {
 
 async function publicarVerificacao(interaction) {
   const cargo = interaction.options.getRole('cargo');
+  const roleId = cargo?.id || process.env.VERIFY_ROLE_ID;
+  if (!roleId) {
+    return interaction.reply({
+      content:
+        'Falta o cargo de verificação. Escolhe-o na opção `cargo` do comando, ' +
+        'ou define a variável `VERIFY_ROLE_ID` com o ID do cargo.',
+      ephemeral: true,
+    });
+  }
+
   const anexo = interaction.options.getAttachment('anexo');
   const imagem = anexo?.url || interaction.options.getString('imagem');
   const titulo = interaction.options.getString('titulo') || '🔒 VERIFICAÇÃO';
@@ -424,7 +434,7 @@ async function publicarVerificacao(interaction) {
       .setLabel('Verificar')
       .setEmoji('✅')
       .setStyle(ButtonStyle.Success)
-      .setCustomId(`verificar_${cargo.id}`)
+      .setCustomId(`verificar_${roleId}`)
   );
 
   try {
