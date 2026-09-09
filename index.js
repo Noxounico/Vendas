@@ -411,22 +411,27 @@ async function publicarVerificacao(interaction) {
     });
   }
 
+  // Banner por defeito (troca com a opção anexo/imagem ou a variável VERIFY_BANNER_URL).
+  // Atenção: links do Discord (com ?ex=) expiram; para permanente usa a opção `anexo`.
+  const bannerDefeito =
+    process.env.VERIFY_BANNER_URL ||
+    'https://media.discordapp.net/attachments/1545383446208315422/1545780693550891009/banner.png?ex=6aa15874&is=6aa006f4&hm=56751429c4ad74e1edd9ded35491d91681dfed9e4c5e8c0bac13f9039c16369b&=&format=webp&quality=lossless&width=1521&height=856';
   const anexo = interaction.options.getAttachment('anexo');
-  const imagem = anexo?.url || interaction.options.getString('imagem');
-  const titulo = interaction.options.getString('titulo') || '🔒 VERIFICAÇÃO';
-  const loja = process.env.STORE_NAME || 'DENVER STORE';
+  const imagem = anexo?.url || interaction.options.getString('imagem') || bannerDefeito;
+  const titulo = interaction.options.getString('titulo') || 'VERIFICAÇÃO';
   const descricao =
     interaction.options.getString('descricao') ||
     '• Clique no botão para se verificar\n' +
       '• Libera o acesso aos canais do servidor\n' +
-      '• Verificação imediata, só um clique';
+      '• Verificação imediata, só um clique\n' +
+      // Caixa verde "Verifique-se agora!" (bloco de código ANSI a verde).
+      '```ansi\n\u001b[2;32mVerifique-se agora!\u001b[0m\n```';
 
   const embed = new EmbedBuilder()
     .setTitle(titulo)
     .setColor(0xe02424)
     .setDescription(descricao)
-    .addFields({ name: 'Acesso ao servidor', value: 'Clica no botão **Verificar** aqui em baixo. ⬇️' })
-    .setFooter({ text: `${loja} • O controle é nosso` });
+    .addFields({ name: 'Acesso ao servidor', value: 'Clique no botão **Verificar**' });
   // Só mete a imagem se for mesmo um URL (evita rebentar o embed com valores inválidos).
   if (imagem && /^https?:\/\//i.test(imagem)) embed.setImage(imagem);
 
