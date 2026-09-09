@@ -160,6 +160,36 @@ const CATEGORIA_POR_COMANDO = {
   'loja-cloner': 'cloner',
 };
 
+// Acrescenta as opções comuns de personalização do painel a um comando
+// (imagem, título, bullets, texto de entrega, emoji/texto do botão, cor).
+function addOpcoesPainel(builder) {
+  return builder
+    .addAttachmentOption((opt) =>
+      opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('imagem').setDescription('URL do banner (opcional, alternativa ao anexo)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('titulo').setDescription('Título do painel (opcional)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('descricao').setDescription('Bullets do painel (opcional, usa \\n para nova linha)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('entrega').setDescription('Texto da caixa de entrega (opcional, ex.: "⚡ Entrega Automática!")').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('botao_emoji').setDescription('Emoji do botão de compra (opcional, ex.: 🛒)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('botao_texto').setDescription('Texto do botão de compra (opcional, ex.: Comprar)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('cor').setDescription('Cor do embed em hex (opcional, ex.: #8B1E1E)').setRequired(false)
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Slash commands — registados no Discord quando o bot liga
 // ---------------------------------------------------------------------------
@@ -375,37 +405,69 @@ function buildSelectRow(products) {
   );
 }
 
-// Painel de venda no estilo "banner + título + bullets + preço + botão",
-// em vez da lista de campos por produto. O menu de escolha só aparece depois
-// de se clicar em "Comprar" (ver handler do customId abrir_...).
+// Converte "#e02424" ou "e02424" no número que o EmbedBuilder.setColor espera.
+function corParaHex(cor) {
+  if (!cor) return null;
+  const n = parseInt(String(cor).replace('#', ''), 16);
+  return Number.isNaN(n) ? null : n;
+}
+
+// Textos/estilo específicos por categoria — usados quando ninguém passa uma
+// opção manual no comando. Acrescenta aqui outras categorias sempre que
+// quiseres bullets/entrega/cor próprios para esse canal.
+const PAINEL_TEXTOS = {
+  Nitradas: {
+    descricao:
+      '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
+      '• Contas com Nitro Gaming\n' +
+      '• Contas Nitradas Possui Nitro.\n' +
+      '• Nitradas Na Melhor Qualidade.',
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x8b1e1e,
+  },
+};
+
+// Painel de venda no estilo "banner + título + bullets + caixa de entrega +
+// preço + botão". O menu de escolha só aparece depois de se clicar em
+// "Comprar" (ver handler do customId abrir_...).
+// opts: imagem, titulo, descricao (bullets), entrega (texto da caixa verde),
+//       botaoEmoji, botaoTexto, cor (hex, ex.: "#e02424")
 function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
-  const { imagem, titulo, descricao } = opts;
+  const { imagem, titulo, descricao, entrega, botaoEmoji, botaoTexto, cor } = opts;
+  const defaults = PAINEL_TEXTOS[categoryName] || {};
 
-  const tituloFinal = titulo || (categoryName ? capitalizar(categoryName) : 'Loja');
+  const tituloFinal = titulo || defaults.titulo || (categoryName ? capitalizar(categoryName) : 'Loja');
   const faixa = faixaPrecos(products);
-  const imagemFinal = imagem || LOJA_BANNER_URL_PADRAO;
-
-  const descricaoFinal =
+  const imagemFinal = imagem || defaults.imagem || LOJA_BANNER_URL_PADRAO;
+  const corFinal = corParaHex(cor) ?? defaults.cor ?? 0x9b59b6;
+  const bulletsFinal =
     descricao ||
+    defaults.descricao ||
     '• Produtos de qualidade, com stock verificado antes da compra.\n' +
       '• Preços justos, sempre pensados para o teu bolso.\n' +
-      '• Compra rápida, simples e segura — só um clique.\n\n' +
-      // Linha a verde, igual à do painel de verificação (bloco de código ANSI).
-      '```ansi\n\u001b[2;32m⚡ Entrega Automática por DM após confirmação do pagamento!\u001b[0m\n```' +
-      (faixa
-        ? `\n**Preço:** ${faixa}\nClica no botão **"Comprar"** para escolheres o produto.`
-        : '\nNão há produtos disponíveis de momento.');
+      '• Compra rápida, simples e segura — só um clique.';
+  const entregaFinal = entrega || defaults.entrega || '⚡ Entrega Automática!';
+  const botaoEmojiFinal = botaoEmoji || defaults.botaoEmoji || '🛒';
+  const botaoTextoFinal = botaoTexto || defaults.botaoTexto || 'Comprar';
+
+  const descricaoFinal =
+    `${bulletsFinal}\n\n` +
+    // Caixa com fundo diferente e bordas discretas = bloco de código ANSI a verde.
+    `\`\`\`ansi\n\u001b[2;32m${entregaFinal}\u001b[0m\n\`\`\`` +
+    (faixa
+      ? `\n**Preço:** ${faixa}\nClique no botão **"${botaoTextoFinal}"** para escolheres o produto.`
+      : '\nNão há produtos disponíveis de momento.');
 
   const embedTexto = new EmbedBuilder()
     .setTitle(tituloFinal)
-    .setColor(0x9b59b6)
+    .setColor(corFinal)
     .setDescription(descricaoFinal);
 
   const embeds = [];
   if (imagemFinal && /^https?:\/\//i.test(imagemFinal)) {
     // Imagem POR CIMA: o setImage de um embed aparece em baixo, por isso a
     // imagem vai num embed próprio (só imagem), enviado antes do do texto.
-    embeds.push(new EmbedBuilder().setColor(0x9b59b6).setImage(imagemFinal));
+    embeds.push(new EmbedBuilder().setColor(corFinal).setImage(imagemFinal));
   }
   embeds.push(embedTexto);
 
@@ -415,8 +477,8 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
     rows.push(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setLabel('Comprar')
-          .setEmoji('🛒')
+          .setLabel(botaoTextoFinal)
+          .setEmoji(botaoEmojiFinal)
           .setStyle(ButtonStyle.Secondary)
           .setCustomId(`abrir_${encodeURIComponent(categoryName || '')}`)
       )
@@ -425,6 +487,7 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
 
   return { embeds, rows };
 }
+
 
 // Publica o painel de uma categoria (chamado tanto por /loja categoria:"..."
 // como pelos comandos fixos /loja-trial, /loja-spotify, etc.)
@@ -444,11 +507,19 @@ async function publicarLoja(interaction, categoria) {
   const imagem = anexo?.url || interaction.options.getString('imagem') || null;
   const titulo = interaction.options.getString('titulo') || null;
   const descricaoOpt = interaction.options.getString('descricao') || null;
+  const entrega = interaction.options.getString('entrega') || null;
+  const botaoEmoji = interaction.options.getString('botao_emoji') || null;
+  const botaoTexto = interaction.options.getString('botao_texto') || null;
+  const cor = interaction.options.getString('cor') || null;
 
   const { embeds, rows } = buildLojaEmbedAndRow(products, categoria, {
     imagem,
     titulo,
     descricao: descricaoOpt,
+    entrega,
+    botaoEmoji,
+    botaoTexto,
+    cor,
   });
   await interaction.channel.send({ embeds, components: rows });
   await interaction.reply({
