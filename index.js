@@ -135,6 +135,22 @@ function seedProdutosIniciais() {
   }
 }
 
+// Categoria fixa de cada comando /loja-XXX — não precisas de escrever nada,
+// só escolher o comando certo na lista do Discord.
+const CATEGORIA_POR_COMANDO = {
+  'loja-paineis': 'Painéis & Métodos',
+  'loja-impulsos': 'Impulsos',
+  'loja-nitradas': 'Nitradas',
+  'loja-links': 'Links',
+  'loja-trial': 'trial',
+  'loja-virgem': 'virgem',
+  'loja-aged': 'aged',
+  'loja-spotify': 'spotify',
+  'loja-membros': 'membros',
+  'loja-trampo': 'trampo',
+  'loja-cloner': 'cloner',
+};
+
 // ---------------------------------------------------------------------------
 // Slash commands — registados no Discord quando o bot liga
 // ---------------------------------------------------------------------------
@@ -199,6 +215,7 @@ const slashCommands = [
         .setName('categoria')
         .setDescription('Publica só o painel deste canal (ex.: Impulsos). Sem isto, publica tudo.')
         .setRequired(false)
+        .setAutocomplete(true)
     )
     .addAttachmentOption((opt) =>
       opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
@@ -212,6 +229,26 @@ const slashCommands = [
     .addStringOption((opt) =>
       opt.setName('descricao').setDescription('Texto do painel (opcional, substitui os bullets)').setRequired(false)
     ),
+
+  // Comandos fixos por categoria — nada para escrever, só escolher o comando.
+  ...Object.keys(CATEGORIA_POR_COMANDO).map((cmdName) =>
+    new SlashCommandBuilder()
+      .setName(cmdName)
+      .setDescription(`Publica o painel de "${CATEGORIA_POR_COMANDO[cmdName]}" neste canal`)
+      .addAttachmentOption((opt) =>
+        opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
+      )
+      .addStringOption((opt) =>
+        opt.setName('imagem').setDescription('URL do banner (opcional, alternativa ao anexo)').setRequired(false)
+      )
+      .addStringOption((opt) =>
+        opt.setName('titulo').setDescription('Título do painel (opcional)').setRequired(false)
+      )
+      .addStringOption((opt) =>
+        opt.setName('descricao').setDescription('Texto do painel (opcional, substitui os bullets)').setRequired(false)
+      )
+      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  ),
 
   new SlashCommandBuilder()
     .setName('entregar')
@@ -378,6 +415,37 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
   }
 
   return { embeds, rows };
+}
+
+// Publica o painel de uma categoria (chamado tanto por /loja categoria:"..."
+// como pelos comandos fixos /loja-trial, /loja-spotify, etc.)
+async function publicarLoja(interaction, categoria) {
+  const products = categoria ? db.listActiveProductsByCategory(categoria) : db.listActiveProducts();
+
+  if (categoria && products.length === 0) {
+    return interaction.reply({
+      content: `Não há produtos no canal **${categoria}**. Categorias disponíveis: ${
+        db.listCategories().join(', ') || '(nenhuma)'
+      }.`,
+      ephemeral: true,
+    });
+  }
+
+  const anexo = interaction.options.getAttachment('anexo');
+  const imagem = anexo?.url || interaction.options.getString('imagem') || null;
+  const titulo = interaction.options.getString('titulo') || null;
+  const descricaoOpt = interaction.options.getString('descricao') || null;
+
+  const { embeds, rows } = buildLojaEmbedAndRow(products, categoria, {
+    imagem,
+    titulo,
+    descricao: descricaoOpt,
+  });
+  await interaction.channel.send({ embeds, components: rows });
+  await interaction.reply({
+    content: categoria ? `Painel do canal **${categoria}** publicado!` : 'Loja publicada!',
+    ephemeral: true,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -659,6 +727,22 @@ async function verificarMembro(interaction, roleId) {
 
 client.on('interactionCreate', async (interaction) => {
   try {
+    // Autocomplete do campo "categoria" do /loja — mostra as categorias que
+    // já existem (trial, virgem, spotify, ...) para escolheres por lista em
+    // vez de teres de escrever o nome certo à mão.
+    if (interaction.isAutocomplete()) {
+      const focused = interaction.options.getFocused(true);
+      if (interaction.commandName === 'loja' && focused.name === 'categoria') {
+        const termo = (focused.value || '').toLowerCase();
+        const categorias = db
+          .listCategories()
+          .filter((c) => c.toLowerCase().includes(termo))
+          .slice(0, 25);
+        await interaction.respond(categorias.map((c) => ({ name: c, value: c })));
+      }
+      return;
+    }
+
     if (interaction.isChatInputCommand()) {
       const { commandName } = interaction;
 
@@ -723,35 +807,11 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       if (commandName === 'loja') {
-        const categoria = interaction.options.getString('categoria');
-        const products = categoria
-          ? db.listActiveProductsByCategory(categoria)
-          : db.listActiveProducts();
+        await publicarLoja(interaction, interaction.options.getString('categoria'));
+      }
 
-        if (categoria && products.length === 0) {
-          return interaction.reply({
-            content: `Não há produtos no canal **${categoria}**. Categorias disponíveis: ${
-              db.listCategories().join(', ') || '(nenhuma)'
-            }.`,
-            ephemeral: true,
-          });
-        }
-
-        const anexo = interaction.options.getAttachment('anexo');
-        const imagem = anexo?.url || interaction.options.getString('imagem') || null;
-        const titulo = interaction.options.getString('titulo') || null;
-        const descricaoOpt = interaction.options.getString('descricao') || null;
-
-        const { embeds, rows } = buildLojaEmbedAndRow(products, categoria, {
-          imagem,
-          titulo,
-          descricao: descricaoOpt,
-        });
-        await interaction.channel.send({ embeds, components: rows });
-        await interaction.reply({
-          content: categoria ? `Painel do canal **${categoria}** publicado!` : 'Loja publicada!',
-          ephemeral: true,
-        });
+      if (CATEGORIA_POR_COMANDO[commandName]) {
+        await publicarLoja(interaction, CATEGORIA_POR_COMANDO[commandName]);
       }
 
       if (commandName === 'entregar') {
