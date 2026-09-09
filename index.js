@@ -304,23 +304,27 @@ function faixaPrecos(products) {
     : `de ${formatPrice(min, moeda)} a ${formatPrice(max, moeda)}`;
 }
 
-// Constrói o menu de seleção com os produtos em stock (usado só depois de
-// se clicar no botão "Comprar" — não vai logo no painel).
+// Constrói o menu de seleção com os produtos da categoria — mostra o preço e o
+// stock em cada opção (mesmo quando esgotado), tal como no exemplo que mandaste.
 function buildSelectRow(products) {
-  const options = products
-    .filter((p) => db.countAvailableKeys(p.id) > 0)
-    .slice(0, 25)
-    .map((p) => ({
-      label: `${p.name} — ${formatPrice(p.price_cents, p.currency)}`,
+  const options = products.slice(0, 25).map((p) => {
+    const stock = db.countAvailableKeys(p.id);
+    return {
+      label: p.name,
+      description: `Valor: ${formatPrice(p.price_cents, p.currency)} · 📦 Estoque: ${
+        stock === 0 ? 'Esgotado' : stock
+      }`,
       value: String(p.id),
-    }));
+      emoji: '⭐',
+    };
+  });
 
   if (options.length === 0) return null;
 
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('comprar_select')
-      .setPlaceholder('Seleciona o produto que queres comprar')
+      .setPlaceholder('Selecione uma opção para continuar...')
       .addOptions(options)
   );
 }
@@ -359,9 +363,9 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
   }
   embeds.push(embedTexto);
 
-  const temStock = products.some((p) => db.countAvailableKeys(p.id) > 0);
+  const temProdutos = products.length > 0;
   const rows = [];
-  if (temStock) {
+  if (temProdutos) {
     rows.push(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
