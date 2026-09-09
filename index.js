@@ -41,8 +41,17 @@ function capitalizar(str) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
+
+// Prefixo dos comandos de texto — alternativa aos slash commands, para o caso
+// de os slash commands não aparecerem/funcionarem no teu Discord.
+// Ex.: escreve "!loja-trial" ou "!loja spotify" num canal.
+const PREFIXO = '!';
 
 // ---------------------------------------------------------------------------
 // Produtos iniciais da loja — criados automaticamente quando o bot liga,
@@ -446,6 +455,29 @@ async function publicarLoja(interaction, categoria) {
     content: categoria ? `Painel do canal **${categoria}** publicado!` : 'Loja publicada!',
     ephemeral: true,
   });
+}
+
+// Versão do publicarLoja para comandos de texto (!loja-trial, !loja spotify).
+// Sem opções de anexo/título/descrição — usa sempre o banner e os bullets
+// por defeito. Apaga a própria mensagem do comando para o canal ficar limpo.
+async function publicarLojaTexto(message, categoria) {
+  const products = categoria ? db.listActiveProductsByCategory(categoria) : db.listActiveProducts();
+
+  if (categoria && products.length === 0) {
+    return message.reply(
+      `Não há produtos no canal **${categoria}**. Categorias disponíveis: ${
+        db.listCategories().join(', ') || '(nenhuma)'
+      }.`
+    );
+  }
+
+  const { embeds, rows } = buildLojaEmbedAndRow(products, categoria, {});
+  await message.channel.send({ embeds, components: rows });
+  try {
+    await message.delete();
+  } catch {
+    /* o bot pode não ter permissão para apagar — não é grave */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -873,6 +905,37 @@ client.on('interactionCreate', async (interaction) => {
       if (interaction.deferred || interaction.replied) await interaction.followUp(msg);
       else await interaction.reply(msg);
     }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Comandos de texto com "!" — alternativa aos slash commands.
+// Ex.: escreve "!loja-trial", "!loja-spotify" ou "!loja spotify" num canal.
+// Precisa da MESSAGE CONTENT INTENT ativada no Developer Portal do bot
+// (Bot > Privileged Gateway Intents > Message Content Intent) — sem isso o
+// bot não recebe o texto das mensagens e este bloco não faz nada.
+// ---------------------------------------------------------------------------
+
+client.on('messageCreate', async (message) => {
+  try {
+    if (message.author.bot) return;
+    if (!message.content.startsWith(PREFIXO)) return;
+    if (!message.member?.permissions?.has(PermissionFlagsBits.Administrator)) return;
+
+    const [cmd, ...resto] = message.content.slice(PREFIXO.length).trim().split(/\s+/);
+    const nomeComando = (cmd || '').toLowerCase();
+
+    if (nomeComando === 'loja') {
+      const categoria = resto.join(' ') || null;
+      await publicarLojaTexto(message, categoria);
+      return;
+    }
+
+    if (CATEGORIA_POR_COMANDO[nomeComando]) {
+      await publicarLojaTexto(message, CATEGORIA_POR_COMANDO[nomeComando]);
+    }
+  } catch (err) {
+    console.error(err);
   }
 });
 
