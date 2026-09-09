@@ -96,7 +96,13 @@ const PRODUTOS_SEED = [
   { nome: 'Conta Virgem', preco: eur(0.55), categoria: 'virgem' },
 
   // --- Canal aged ---
-  { nome: 'Conta Aged Premium', preco: eur(7), categoria: 'aged' },
+  { nome: 'Conta 2016', preco: eur(12), categoria: 'aged' },
+  { nome: 'Conta 2017', preco: eur(7), categoria: 'aged' },
+  { nome: 'Conta 2018', preco: eur(5), categoria: 'aged' },
+  { nome: 'Conta 2019', preco: eur(4), categoria: 'aged' },
+  { nome: 'Conta 2020', preco: eur(3), categoria: 'aged' },
+  { nome: 'Conta 2021', preco: eur(2.5), categoria: 'aged' },
+  { nome: 'Conta 2022', preco: eur(2), categoria: 'aged' },
 
   // --- Canal Spotify + Canal link Spotify Tri (mesma categoria "spotify") ---
   { nome: 'Conta Spotify Premium', preco: eur(1.3), categoria: 'spotify' },
