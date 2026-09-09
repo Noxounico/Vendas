@@ -400,7 +400,8 @@ async function entregarPedido(orderId) {
 
 async function publicarVerificacao(interaction) {
   const cargo = interaction.options.getRole('cargo');
-  const roleId = cargo?.id || process.env.VERIFY_ROLE_ID;
+  // Ordem: opção do comando > variável VERIFY_ROLE_ID > cargo por defeito.
+  const roleId = cargo?.id || process.env.VERIFY_ROLE_ID || '1547037277132292146';
   if (!roleId) {
     return interaction.reply({
       content:
