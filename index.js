@@ -22,6 +22,24 @@ const {
 const db = require('./db');
 const { formatPrice } = require('./currency');
 
+// Banner por defeito de TODOS os painéis da loja — troca por env var LOJA_BANNER_URL
+// se quiseres outra imagem sem tocar no código.
+// ⚠️ Atenção: links do Discord CDN com "?ex=" EXPIRAM (normalmente em 24h).
+// Para um banner permanente, o melhor é subir a imagem para um serviço como
+// imgur/Cloudinary/GitHub e usar esse link — ou passar sempre `anexo:` no
+// comando /loja, que reenvia o ficheiro para o Discord de cada vez.
+const LOJA_BANNER_URL_PADRAO =
+  process.env.LOJA_BANNER_URL ||
+  'https://media.discordapp.net/attachments/1545383446208315422/1545780646473891962/banner-loja.jpg?ex=6aa2a9e9&is=6aa15869&hm=404cc600d7d05b1b6913c6f5570112197949aa98e2d14b023a24c6b2ccc76e1c&=&format=webp';
+
+// "trial" -> "Trial", "link spotify tri" -> "Link Spotify Tri"
+function capitalizar(str) {
+  return str
+    .split(' ')
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
@@ -63,29 +81,27 @@ const PRODUTOS_SEED = [
   { nome: 'Ativação do Nitro', preco: eur(1), categoria: 'Links' },
 
   // --- Canal de trial ---
-  { nome: 'Trial Nitro', preco: eur(0.8), categoria: 'Trial' },
+  { nome: 'Trial Nitro', preco: eur(0.8), categoria: 'trial' },
 
   // --- Canal virgem ---
-  { nome: 'Conta Virgem', preco: eur(0.55), categoria: 'Virgem' },
+  { nome: 'Conta Virgem', preco: eur(0.55), categoria: 'virgem' },
 
   // --- Canal aged ---
-  { nome: 'Conta Aged Premium', preco: eur(7), categoria: 'Aged' },
+  { nome: 'Conta Aged Premium', preco: eur(7), categoria: 'aged' },
 
-  // --- Canal Spotify ---
-  { nome: 'Conta Spotify Premium', preco: eur(1.3), categoria: 'Spotify' },
-
-  // --- Canal link Spotify Tri ---
-  { nome: 'Link Spotify Trimensal', preco: eur(0.5), categoria: 'Link Spotify Tri' },
+  // --- Canal Spotify + Canal link Spotify Tri (mesma categoria "spotify") ---
+  { nome: 'Conta Spotify Premium', preco: eur(1.3), categoria: 'spotify' },
+  { nome: 'Link Spotify Trimensal', preco: eur(0.5), categoria: 'spotify' },
 
   // --- Canal membros ---
-  { nome: '100x membros online', preco: eur(1.5), categoria: 'Membros' },
-  { nome: '100x membros offline', preco: eur(1), categoria: 'Membros' },
+  { nome: '100x membros online', preco: eur(1.5), categoria: 'membros' },
+  { nome: '100x membros offline', preco: eur(1), categoria: 'membros' },
 
   // --- Canal trampo ---
-  { nome: 'Trampo fazendo dinheiro', preco: eur(1.2), categoria: 'Trampo' },
+  { nome: 'Trampo fazendo dinheiro', preco: eur(1.2), categoria: 'trampo' },
 
   // --- Canal clonar site ---
-  // (ainda sem produto/preço definido — acrescenta aqui quando souberes)
+  { nome: 'Clonar site', preco: eur(5), categoria: 'cloner' },
 ];
 
 // Cria os produtos de PRODUTOS_SEED que ainda não existem (por nome).
@@ -315,15 +331,15 @@ function buildSelectRow(products) {
 function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
   const { imagem, titulo, descricao } = opts;
 
-  const tituloFinal = titulo || categoryName || 'Loja';
+  const tituloFinal = titulo || (categoryName ? capitalizar(categoryName) : 'Loja');
   const faixa = faixaPrecos(products);
+  const imagemFinal = imagem || LOJA_BANNER_URL_PADRAO;
 
   const descricaoFinal =
     descricao ||
-    `• Encontra aqui os produtos${
-      categoryName ? ` de **${categoryName}**` : ''
-    }, todos organizados para facilitares a tua escolha e compra de forma rápida e segura.\n` +
-      '• Estamos aqui para garantir que a tua experiência seja simples e satisfatória.\n\n' +
+    '• Produtos de qualidade, com stock verificado antes da compra.\n' +
+      '• Preços justos, sempre pensados para o teu bolso.\n' +
+      '• Compra rápida, simples e segura — só um clique.\n\n' +
       // Linha a verde, igual à do painel de verificação (bloco de código ANSI).
       '```ansi\n\u001b[2;32m⚡ Entrega Automática por DM após confirmação do pagamento!\u001b[0m\n```' +
       (faixa
@@ -336,10 +352,10 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
     .setDescription(descricaoFinal);
 
   const embeds = [];
-  if (imagem && /^https?:\/\//i.test(imagem)) {
+  if (imagemFinal && /^https?:\/\//i.test(imagemFinal)) {
     // Imagem POR CIMA: o setImage de um embed aparece em baixo, por isso a
     // imagem vai num embed próprio (só imagem), enviado antes do do texto.
-    embeds.push(new EmbedBuilder().setColor(0x9b59b6).setImage(imagem));
+    embeds.push(new EmbedBuilder().setColor(0x9b59b6).setImage(imagemFinal));
   }
   embeds.push(embedTexto);
 
@@ -350,8 +366,8 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setLabel('Comprar')
-          .setEmoji('⭐')
-          .setStyle(ButtonStyle.Primary)
+          .setEmoji('🛒')
+          .setStyle(ButtonStyle.Secondary)
           .setCustomId(`abrir_${encodeURIComponent(categoryName || '')}`)
       )
     );
