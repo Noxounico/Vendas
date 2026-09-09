@@ -416,7 +416,8 @@ async function publicarVerificacao(interaction) {
     .setDescription(descricao)
     .addFields({ name: 'Acesso ao servidor', value: 'Clica no botão **Verificar** aqui em baixo. ⬇️' })
     .setFooter({ text: `${loja} • O controle é nosso` });
-  if (imagem) embed.setImage(imagem);
+  // Só mete a imagem se for mesmo um URL (evita rebentar o embed com valores inválidos).
+  if (imagem && /^https?:\/\//i.test(imagem)) embed.setImage(imagem);
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
