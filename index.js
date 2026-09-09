@@ -246,47 +246,26 @@ const slashCommands = [
     .setDescription('Lista os produtos ativos e o stock atual')
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-  new SlashCommandBuilder()
-    .setName('loja')
-    .setDescription('Publica a loja neste canal')
-    .addStringOption((opt) =>
-      opt
-        .setName('categoria')
-        .setDescription('Publica só o painel deste canal (ex.: Impulsos). Sem isto, publica tudo.')
-        .setRequired(false)
-        .setAutocomplete(true)
-    )
-    .addAttachmentOption((opt) =>
-      opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
-    )
-    .addStringOption((opt) =>
-      opt.setName('imagem').setDescription('URL do banner (opcional, alternativa ao anexo)').setRequired(false)
-    )
-    .addStringOption((opt) =>
-      opt.setName('titulo').setDescription('Título do painel (opcional)').setRequired(false)
-    )
-    .addStringOption((opt) =>
-      opt.setName('descricao').setDescription('Texto do painel (opcional, substitui os bullets)').setRequired(false)
-    ),
+  addOpcoesPainel(
+    new SlashCommandBuilder()
+      .setName('loja')
+      .setDescription('Publica a loja neste canal')
+      .addStringOption((opt) =>
+        opt
+          .setName('categoria')
+          .setDescription('Publica só o painel deste canal (ex.: Impulsos). Sem isto, publica tudo.')
+          .setRequired(false)
+          .setAutocomplete(true)
+      )
+  ),
 
   // Comandos fixos por categoria — nada para escrever, só escolher o comando.
   ...Object.keys(CATEGORIA_POR_COMANDO).map((cmdName) =>
-    new SlashCommandBuilder()
-      .setName(cmdName)
-      .setDescription(`Publica o painel de "${CATEGORIA_POR_COMANDO[cmdName]}" neste canal`)
-      .addAttachmentOption((opt) =>
-        opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
-      )
-      .addStringOption((opt) =>
-        opt.setName('imagem').setDescription('URL do banner (opcional, alternativa ao anexo)').setRequired(false)
-      )
-      .addStringOption((opt) =>
-        opt.setName('titulo').setDescription('Título do painel (opcional)').setRequired(false)
-      )
-      .addStringOption((opt) =>
-        opt.setName('descricao').setDescription('Texto do painel (opcional, substitui os bullets)').setRequired(false)
-      )
-      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    addOpcoesPainel(
+      new SlashCommandBuilder()
+        .setName(cmdName)
+        .setDescription(`Publica o painel de "${CATEGORIA_POR_COMANDO[cmdName]}" neste canal`)
+    ).setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   ),
 
   new SlashCommandBuilder()
