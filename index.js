@@ -411,8 +411,13 @@ async function publicarVerificacao(interaction) {
     });
   }
 
+  // Banner por defeito (podes trocar com a opção anexo/imagem ou a variável VERIFY_BANNER_URL).
+  // Atenção: links do Discord (com ?ex=) expiram; para ficar permanente usa a opção `anexo`.
+  const bannerDefeito =
+    process.env.VERIFY_BANNER_URL ||
+    'https://media.discordapp.net/attachments/1545383446208315422/1545780693550891009/banner.png?ex=6aa15874&is=6aa006f4&hm=56751429c4ad74e1edd9ded35491d91681dfed9e4c5e8c0bac13f9039c16369b&=&format=webp&quality=lossless&width=1521&height=856';
   const anexo = interaction.options.getAttachment('anexo');
-  const imagem = anexo?.url || interaction.options.getString('imagem');
+  const imagem = anexo?.url || interaction.options.getString('imagem') || bannerDefeito;
   const titulo = interaction.options.getString('titulo') || '🔒 VERIFICAÇÃO';
   const loja = process.env.STORE_NAME || 'DENVER STORE';
   const descricao =
