@@ -183,6 +183,18 @@ const slashCommands = [
         .setName('categoria')
         .setDescription('Publica só o painel deste canal (ex.: Impulsos). Sem isto, publica tudo.')
         .setRequired(false)
+    )
+    .addAttachmentOption((opt) =>
+      opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('imagem').setDescription('URL do banner (opcional, alternativa ao anexo)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('titulo').setDescription('Título do painel (opcional)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('descricao').setDescription('Texto do painel (opcional, substitui os bullets)').setRequired(false)
     ),
 
   new SlashCommandBuilder()
@@ -264,26 +276,21 @@ async function logToChannel(text) {
   }
 }
 
-function buildLojaEmbedAndRow(products, categoryName) {
-  const embed = new EmbedBuilder()
-    .setTitle(categoryName ? `🎮 Loja — ${categoryName}` : '🎮 Loja de Jogos')
-    .setColor(0x5865f2)
-    .setDescription(
-      products.length
-        ? 'Escolhe uma opção abaixo para comprar. A chave é entregue automaticamente por DM após o pagamento.'
-        : 'Não há produtos disponíveis de momento.'
-    );
+// Devolve "de X€" ou "de X€ a Y€" com o intervalo de preços dos produtos.
+function faixaPrecos(products) {
+  if (products.length === 0) return null;
+  const precos = products.map((p) => p.price_cents);
+  const min = Math.min(...precos);
+  const max = Math.max(...precos);
+  const moeda = products[0].currency;
+  return min === max
+    ? formatPrice(min, moeda)
+    : `de ${formatPrice(min, moeda)} a ${formatPrice(max, moeda)}`;
+}
 
-  for (const p of products) {
-    const stock = db.countAvailableKeys(p.id);
-    embed.addFields({
-      name: `${p.name} — ${formatPrice(p.price_cents, p.currency)}`,
-      value: `${p.description || 'Sem descrição.'}\nStock: **${stock}** ${
-        stock === 0 ? '(esgotado)' : ''
-      }`,
-    });
-  }
-
+// Constrói o menu de seleção com os produtos em stock (usado só depois de
+// se clicar no botão "Comprar" — não vai logo no painel).
+function buildSelectRow(products) {
   const options = products
     .filter((p) => db.countAvailableKeys(p.id) > 0)
     .slice(0, 25)
@@ -292,19 +299,65 @@ function buildLojaEmbedAndRow(products, categoryName) {
       value: String(p.id),
     }));
 
+  if (options.length === 0) return null;
+
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('comprar_select')
+      .setPlaceholder('Seleciona o produto que queres comprar')
+      .addOptions(options)
+  );
+}
+
+// Painel de venda no estilo "banner + título + bullets + preço + botão",
+// em vez da lista de campos por produto. O menu de escolha só aparece depois
+// de se clicar em "Comprar" (ver handler do customId abrir_...).
+function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
+  const { imagem, titulo, descricao } = opts;
+
+  const tituloFinal = titulo || categoryName || 'Loja';
+  const faixa = faixaPrecos(products);
+
+  const descricaoFinal =
+    descricao ||
+    `• Encontra aqui os produtos${
+      categoryName ? ` de **${categoryName}**` : ''
+    }, todos organizados para facilitares a tua escolha e compra de forma rápida e segura.\n` +
+      '• Estamos aqui para garantir que a tua experiência seja simples e satisfatória.\n\n' +
+      // Linha a verde, igual à do painel de verificação (bloco de código ANSI).
+      '```ansi\n\u001b[2;32m⚡ Entrega Automática por DM após confirmação do pagamento!\u001b[0m\n```' +
+      (faixa
+        ? `\n**Preço:** ${faixa}\nClica no botão **"Comprar"** para escolheres o produto.`
+        : '\nNão há produtos disponíveis de momento.');
+
+  const embedTexto = new EmbedBuilder()
+    .setTitle(tituloFinal)
+    .setColor(0x9b59b6)
+    .setDescription(descricaoFinal);
+
+  const embeds = [];
+  if (imagem && /^https?:\/\//i.test(imagem)) {
+    // Imagem POR CIMA: o setImage de um embed aparece em baixo, por isso a
+    // imagem vai num embed próprio (só imagem), enviado antes do do texto.
+    embeds.push(new EmbedBuilder().setColor(0x9b59b6).setImage(imagem));
+  }
+  embeds.push(embedTexto);
+
+  const temStock = products.some((p) => db.countAvailableKeys(p.id) > 0);
   const rows = [];
-  if (options.length > 0) {
+  if (temStock) {
     rows.push(
       new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('comprar_select')
-          .setPlaceholder('Seleciona o jogo que queres comprar')
-          .addOptions(options)
+        new ButtonBuilder()
+          .setLabel('Comprar')
+          .setEmoji('⭐')
+          .setStyle(ButtonStyle.Primary)
+          .setCustomId(`abrir_${encodeURIComponent(categoryName || '')}`)
       )
     );
   }
 
-  return { embed, rows };
+  return { embeds, rows };
 }
 
 // ---------------------------------------------------------------------------
@@ -664,8 +717,17 @@ client.on('interactionCreate', async (interaction) => {
           });
         }
 
-        const { embed, rows } = buildLojaEmbedAndRow(products, categoria);
-        await interaction.channel.send({ embeds: [embed], components: rows });
+        const anexo = interaction.options.getAttachment('anexo');
+        const imagem = anexo?.url || interaction.options.getString('imagem') || null;
+        const titulo = interaction.options.getString('titulo') || null;
+        const descricaoOpt = interaction.options.getString('descricao') || null;
+
+        const { embeds, rows } = buildLojaEmbedAndRow(products, categoria, {
+          imagem,
+          titulo,
+          descricao: descricaoOpt,
+        });
+        await interaction.channel.send({ embeds, components: rows });
         await interaction.reply({
           content: categoria ? `Painel do canal **${categoria}** publicado!` : 'Loja publicada!',
           ephemeral: true,
@@ -700,6 +762,29 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('verificar_')) {
       const roleId = interaction.customId.slice('verificar_'.length);
       await verificarMembro(interaction, roleId);
+    }
+
+    // Botão "⭐ Comprar" do painel — abre (ephemeral) o menu com os produtos
+    // dessa categoria para o cliente escolher qual quer comprar.
+    if (interaction.isButton() && interaction.customId.startsWith('abrir_')) {
+      const categoria = decodeURIComponent(interaction.customId.slice('abrir_'.length)) || null;
+      const products = categoria
+        ? db.listActiveProductsByCategory(categoria)
+        : db.listActiveProducts();
+
+      const row = buildSelectRow(products);
+      if (!row) {
+        return interaction.reply({
+          content: 'Não há produtos disponíveis nesta loja de momento.',
+          ephemeral: true,
+        });
+      }
+
+      await interaction.reply({
+        content: 'Escolhe o produto que queres comprar:',
+        components: [row],
+        ephemeral: true,
+      });
     }
   } catch (err) {
     console.error(err);
