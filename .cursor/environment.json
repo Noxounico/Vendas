@@ -1,0 +1,17 @@
+{
+  "name": "Vendas — Discord Game Shop Bot",
+  "install": "npm ci",
+  "ports": [
+    {
+      "name": "stripe webhook server",
+      "port": 3000
+    }
+  ],
+  "terminals": [
+    {
+      "name": "bot",
+      "command": "npm start",
+      "description": "Runs the Discord bot and the Stripe webhook HTTP server (index.js). Requires the DISCORD_TOKEN and CLIENT_ID secrets to log in and register slash commands, and STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET for checkout and webhook verification. Without DISCORD_TOKEN it exits immediately with a clear 'invalid token' message."
+    }
+  ]
+}
