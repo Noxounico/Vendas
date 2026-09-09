@@ -416,7 +416,8 @@ async function publicarVerificacao(interaction) {
     .setDescription(descricao)
     .addFields({ name: 'Acesso ao servidor', value: 'Clica no botão **Verificar** aqui em baixo. ⬇️' })
     .setFooter({ text: `${loja} • O controle é nosso` });
-  if (imagem) embed.setImage(imagem);
+  // Só mete a imagem se for mesmo um URL (evita rebentar o embed com valores inválidos).
+  if (imagem && /^https?:\/\//i.test(imagem)) embed.setImage(imagem);
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -426,8 +427,20 @@ async function publicarVerificacao(interaction) {
       .setCustomId(`verificar_${cargo.id}`)
   );
 
-  await interaction.channel.send({ embeds: [embed], components: [row] });
-  await interaction.reply({ content: 'Painel de verificação publicado!', ephemeral: true });
+  try {
+    await interaction.channel.send({ embeds: [embed], components: [row] });
+  } catch (err) {
+    console.error('Falha ao publicar verificação:', err);
+    return interaction.reply({
+      content:
+        `Não consegui publicar o painel neste canal (${err.message}).\n` +
+        'Confirma que o bot tem, **neste canal**, as permissões **Ver Canal**, ' +
+        '**Enviar Mensagens** e **Inserir Links/Embeds**.',
+      ephemeral: true,
+    });
+  }
+
+  await interaction.reply({ content: 'Painel de verificação publicado! ✅', ephemeral: true });
 }
 
 async function verificarMembro(interaction, roleId) {
