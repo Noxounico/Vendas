@@ -427,13 +427,19 @@ async function publicarVerificacao(interaction) {
       // Caixa verde "Verifique-se agora!" (bloco de código ANSI a verde).
       '```ansi\n\u001b[2;32mVerifique-se agora!\u001b[0m\n```';
 
-  const embed = new EmbedBuilder()
+  const embedTexto = new EmbedBuilder()
     .setTitle(titulo)
     .setColor(0xe02424)
     .setDescription(descricao)
     .addFields({ name: 'Acesso ao servidor', value: 'Clique no botão **Verificar**' });
-  // Só mete a imagem se for mesmo um URL (evita rebentar o embed com valores inválidos).
-  if (imagem && /^https?:\/\//i.test(imagem)) embed.setImage(imagem);
+
+  // Imagem POR CIMA: o setImage de um embed aparece em baixo, por isso a imagem
+  // vai num embed próprio (só imagem), enviado antes do embed do texto.
+  const embeds = [];
+  if (imagem && /^https?:\/\//i.test(imagem)) {
+    embeds.push(new EmbedBuilder().setColor(0xe02424).setImage(imagem));
+  }
+  embeds.push(embedTexto);
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -444,7 +450,7 @@ async function publicarVerificacao(interaction) {
   );
 
   try {
-    await interaction.channel.send({ embeds: [embed], components: [row] });
+    await interaction.channel.send({ embeds, components: [row] });
   } catch (err) {
     console.error('Falha ao publicar verificação:', err);
     return interaction.reply({
