@@ -228,7 +228,7 @@ async function gerarImagemPainel({ imagemUrl, titulo, bullets, entrega, precoTex
 // comando /loja, que reenvia o ficheiro para o Discord de cada vez.
 const LOJA_BANNER_URL_PADRAO =
   process.env.LOJA_BANNER_URL ||
-  'https://media.discordapp.net/attachments/1534183602764648579/1547718220469903441/image.png?ex=6aa4706a&is=6aa31eea&hm=28617669684dfaf605ba379b152e68fc288b543af22079140f0d7aa3ccc3f89a&=&format=webp&quality=lossless&width=1479&height=832';
+  'https://media.discordapp.net/attachments/1545383446208315422/1545780646473891962/banner-loja.jpg?ex=6aa3fb69&is=6aa2a9e9&hm=f77d4ddcfd49941ea186279776ed50c55ae6aa81d83dc49780ab3ed45926712e&=&format=webp';
 
 // Tickets: categoria, cargos da staff e banner por defeito (env var sobrepõe).
 const TICKETS_CATEGORIA_ID_PADRAO = '1322700826912882779';
@@ -842,70 +842,94 @@ function textoPainel(titulo, bullets, extras = {}) {
 
 const PAINEL_TEXTOS = {
   'Painéis & Métodos': textoPainel('Painéis & Métodos', [
-    'Painéis e métodos digitais prontos pra usar',
-    'SMS, Ifood, internet e outros métodos',
+    'Recebe o painel ou método pronto a usar.',
+    'SMS, Ifood, internet e outros métodos.',
+    'Melhor qualidade.',
+    'Entrega automática no privado.',
   ]),
   Impulsos: textoPainel('Impulsos', [
-    'Impulso para o teu servidor Discord',
-    '2x — 3€ · 6x — 6€ · 8x — 8€ · 14x — 10€ · 14x trimestral — 15€',
+    'Impulso para o teu servidor Discord.',
+    'Ativação rápida.',
+    'Melhor qualidade.',
+    'Sem partilhar a tua conta.',
   ]),
   Nitradas: textoPainel('Nitradas', [
-    'Conta Full Acesso, Muda Email, Senha Etc...',
-    'Mensal — 5€ · Trimensal — 9€ · Anual — 15€',
+    'Recebe uma conta Full Acesso.',
+    'Contas com Nitro Gaming.',
+    'Melhor qualidade.',
+    'Muda e-mail, senha, etc.',
   ]),
   Links: textoPainel('Nitro Links', [
-    'Nitro Link Mensal e Trimensal + ativação',
-    'Mensal — 3€ · Trimensal — 6€ · Ativação do Nitro — 4€',
+    'Nitro Link Mensal e Trimensal.',
+    'Ativação do Nitro incluída.',
+    'Melhor qualidade.',
+    'Só clicar em resgatar.',
   ]),
   trial: textoPainel('Trial Nitro', [
-    'Trial Nitro pra testar a conta',
-    'Trial Nitro — 2€',
+    'Trial Nitro para testar a conta.',
+    'Ativação simples, só resgatar.',
+    'Melhor qualidade.',
+    'Entrega automática no privado.',
   ]),
   virgem: textoPainel('Conta Virgem', [
-    'Contas virgens, nunca usadas, full acesso',
-    'Conta Virgem — 4€',
+    'Recebe uma conta Full Acesso.',
+    'Contas virgens, nunca usadas.',
+    'Sem histórico de Nitro ou tickets.',
+    'Melhor qualidade.',
   ]),
   aged: textoPainel('Contas Aged', [
-    'Contas antigas (2016 a 2022), full acesso',
-    '2016 — 20€ · 2017 — 15€ · 2018 — 10€ · 2019 — 7€ · 2020 — 5€',
+    'Recebe uma conta Full Acesso.',
+    'Contas antigas (2016 a 2022).',
+    'Melhor qualidade.',
+    'Mais confiança e histórico.',
   ]),
-  spotify: textoPainel('Spotify', [
-    'Spotify Premium na tua conta',
-    'Conta Spotify — 8€',
+  spotify: textoPainel('Spotify Premium', [
+    'Recebe uma conta Full Acesso.',
+    'Obrigatório a Troca de Dados.',
+    'Melhor qualidade.',
+    'Garantia de duração.',
+    'Troca apenas com prova.',
+    'site: clique aqui',
   ]),
   membros: textoPainel('Membros', [
-    'Membros para o teu servidor',
-    '100 online — 6€ · 100 offline — 3€',
+    'Membros para o teu servidor.',
+    'Packs de 100 online ou 100 offline.',
+    'Melhor qualidade.',
+    'Entrega automática.',
   ]),
   trampo: textoPainel('Trampo', [
-    'Trampo fazendo dinheiro',
-    'Trampo — 5€',
+    'Recebe o trampo pronto a usar.',
+    'Melhor qualidade.',
+    'Pronto pra começar.',
+    'Suporte após a compra.',
   ]),
   cloner: textoPainel(
     'Clonar Site',
     [
-      'Clonagem de site sob pedido',
-      'Layout igual ao original',
-      'Entrega combinada no ticket',
-      'Suporte até validar',
+      'Clonagem de site sob pedido.',
+      'Layout igual ao original.',
+      'Melhor qualidade.',
+      'Entrega combinada no ticket.',
     ],
     { entrega: '🎫 Entrega via ticket' }
   ),
   roblox: textoPainel('ROBLOX ACC\'S', [
-    'Contas Roblox full access',
-    'Valor = Robux do inventário',
-    'ALL FULL ACCESS',
-    'Entrega automática no privado',
+    'Recebe uma conta Full Acesso.',
+    'Valor = Robux do inventário.',
+    'ALL FULL ACCESS.',
+    'Melhor qualidade.',
   ]),
   fortnite: textoPainel('FORTNITE ACC\'S', [
-    '💥 100–150 Skins — OG + rare mix (Black Knight, Minty Axe) e emotes (Take the L)',
-    '✨ 150–250 Skins — coleção maior de OG & rare, emotes e itens raros',
-    '🔥 100–250 Tryhard — skins sweaty/populares, 50+ do Item Shop',
-    '✨ 250–400 Skins — biblioteca grande com lendários e ultra-rares',
-    'ᴀʟʟ ꜰᴜʟʟ ᴀᴄᴄᴇꜱꜱ',
+    'Recebe uma conta Full Acesso.',
+    'OG, rare e tryhard skins.',
+    'ALL FULL ACCESS.',
+    'Melhor qualidade.',
   ]),
   rockstar: textoPainel('ROCKSTAR ACC\'S', [
-    'ALL FULL ACCESS',
+    'Recebe uma conta Full Acesso.',
+    'ALL FULL ACCESS.',
+    'Melhor qualidade.',
+    'Entrega automática no privado.',
   ]),
 };
 
@@ -929,12 +953,9 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
   const faixa = faixaPrecos(products);
   const imagemFinal = imagem || defaults.imagem || LOJA_BANNER_URL_PADRAO;
   const corFinal = corParaHex(cor) ?? defaults.cor ?? 0x2b2d31;
-  const listaPrecos = products
-    .map((p) => `• ${p.name} — ${formatPrice(p.price_cents, p.currency)}`)
-    .join('\n');
   const bulletsTexto =
     descricao ||
-    [defaults.descricao, listaPrecos].filter(Boolean).join('\n') ||
+    defaults.descricao ||
     '• Produtos de qualidade, com stock verificado antes da compra.\n' +
       '• Preços justos, sempre pensados para o teu bolso.\n' +
       '• Compra rápida, simples e segura — só um clique.';
