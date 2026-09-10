@@ -1,8 +1,8 @@
 // index.js
 // Corre o bot com: npm start
-// Os slash commands são registados automaticamente quando o bot liga.
+// Os comandos do bot usam o prefixo ! (ex.: !loja-rockstar, !verificacao).
 // Bot de vendas com pagamento MANUAL: o cliente compra, um admin confirma o
-// pagamento (botão "Entregar" ou /entregar) e a chave é enviada por DM.
+// pagamento (botão "Entregar" ou !entregar) e a chave é enviada por DM.
 
 require('dotenv').config();
 const {
@@ -29,6 +29,7 @@ const {
   MediaGalleryItemBuilder,
   SectionBuilder,
   Events,
+  Partials,
 } = require('discord.js');
 // Canvas é opcional (só se algum painel antigo ainda gerar imagem).
 // Se o pacote falhar no servidor, o bot continua a ligar na mesma.
@@ -227,24 +228,49 @@ async function gerarImagemPainel({ imagemUrl, titulo, bullets, entrega, precoTex
 // comando /loja, que reenvia o ficheiro para o Discord de cada vez.
 const LOJA_BANNER_URL_PADRAO =
   process.env.LOJA_BANNER_URL ||
-  'https://cdn.discordapp.com/attachments/1534183602764648579/1547712371232084109/content.png?ex=6aa46af8&is=6aa31978&hm=e25af16bb901517989d68003802e826b9b0dcaba72368fa90b3e52a20e6bf435&';
+  'https://media.discordapp.net/attachments/1534183602764648579/1547718220469903441/image.png?ex=6aa4706a&is=6aa31eea&hm=28617669684dfaf605ba379b152e68fc288b543af22079140f0d7aa3ccc3f89a&=&format=webp&quality=lossless&width=1479&height=832';
 
-// Tickets: categoria, cargo da staff e banner por defeito (env var sobrepõe).
+// Tickets: categoria, cargos da staff e banner por defeito (env var sobrepõe).
 const TICKETS_CATEGORIA_ID_PADRAO = '1322700826912882779';
-const TICKETS_CARGO_STAFF_ID_PADRAO = '1443307566921678968';
+const TICKETS_CARGOS_STAFF_PADRAO = ['1443307566921678968', '1318653141453111368'];
 const TICKETS_BANNER_URL_PADRAO =
   'https://media.discordapp.net/attachments/1534183602764648579/1547711353840738425/image.png?ex=6aa46a05&is=6aa31885&hm=add46c54857977892ae15441df5b3e5ac8423cbc068029e98d4b4fdca43cabb4&=&format=webp&quality=lossless&width=1479&height=832';
+const VERIFY_ROLE_ID_PADRAO = '1178495316132110336';
+const LOGS_CANAL_ID_PADRAO = '1545391162305810463';
 
 function ticketsCategoriaId() {
   return process.env.TICKETS_CATEGORIA_ID || TICKETS_CATEGORIA_ID_PADRAO;
 }
 
-function ticketsCargoStaffId() {
-  return process.env.TICKETS_CARGO_STAFF_ID || TICKETS_CARGO_STAFF_ID_PADRAO;
+function ticketsCargosStaffIds() {
+  const extra = (process.env.TICKETS_CARGO_STAFF_ID || '')
+    .split(/[,\s]+/)
+    .filter(Boolean);
+  return [...new Set([...TICKETS_CARGOS_STAFF_PADRAO, ...extra])];
+}
+
+function ticketsStaffMencoes() {
+  return ticketsCargosStaffIds()
+    .map((id) => `<@&${id}>`)
+    .join(' ');
+}
+
+function ehStaffTickets(membro) {
+  if (!membro) return false;
+  if (membro.permissions?.has(PermissionFlagsBits.Administrator)) return true;
+  return ticketsCargosStaffIds().some((id) => membro.roles?.cache?.has(id));
 }
 
 function ticketsBannerUrl() {
   return process.env.TICKETS_BANNER_URL || TICKETS_BANNER_URL_PADRAO;
+}
+
+function logsCanalId() {
+  return process.env.PEDIDOS_CHANNEL_ID || process.env.LOG_CHANNEL_ID || LOGS_CANAL_ID_PADRAO;
+}
+
+function cargoVerificacaoId() {
+  return process.env.VERIFY_ROLE_ID || VERIFY_ROLE_ID_PADRAO;
 }
 
 // "trial" -> "Trial", "link spotify tri" -> "Link Spotify Tri"
@@ -261,7 +287,9 @@ function criarCliente() {
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
+      GatewayIntentBits.DirectMessages,
     ],
+    partials: [Partials.Channel],
   });
 }
 
@@ -356,6 +384,10 @@ const PRODUTOS_SEED = [
   { nome: '150-250 Skins', preco: eur(15), categoria: 'fortnite' },
   { nome: '100-250 Tryhard Skins', preco: eur(20), categoria: 'fortnite' },
   { nome: '250-400 Skins', preco: eur(25), categoria: 'fortnite' },
+
+  // --- Canal Rockstar ACC'S ---
+  { nome: '1 Rockstar Acc', preco: eur(4), categoria: 'rockstar' },
+  { nome: '20 Rockstar Acc', preco: eur(15), categoria: 'rockstar' },
 ];
 
 // Cria os produtos de PRODUTOS_SEED que ainda não existem (por nome).
@@ -383,13 +415,13 @@ function seedProdutosIniciais() {
   }
 
   if (criados > 0) {
-    console.log(`🌱 ${criados} produto(s) novo(s) criado(s). Falta carregar chaves com /chave-adicionar.`);
+    console.log(`🌱 ${criados} produto(s) novo(s) criado(s). Falta carregar chaves com !chave-adicionar.`);
   } else {
     console.log('🌱 Produtos iniciais já existiam, nada foi criado.');
   }
 }
 
-// Categoria fixa de cada comando /loja-XXX — não precisas de escrever nada,
+// Categoria fixa de cada comando !loja-XXX — não precisas de escrever nada,
 // só escolher o comando certo na lista do Discord.
 const CATEGORIA_POR_COMANDO = {
   'loja-paineis': 'Painéis & Métodos',
@@ -405,6 +437,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-cloner': 'cloner',
   'loja-roblox': 'roblox',
   'loja-fortnite': 'fortnite',
+  'loja-rockstar': 'rockstar',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -589,31 +622,26 @@ async function registerSlashCommands() {
 
   const rest = new REST({ version: '10' }).setToken(token);
 
+  // O bot passou a usar só comandos com ! — limpa os slash (/) antigos.
+  await rest.put(Routes.applicationCommands(clientId), { body: [] });
   if (process.env.GUILD_ID) {
-    await rest.put(
-      Routes.applicationGuildCommands(clientId, process.env.GUILD_ID),
-      { body: slashCommands }
-    );
-    console.log(
-      `✅ ${slashCommands.length} comandos registados no servidor ${process.env.GUILD_ID}.`
-    );
-  } else {
-    await rest.put(Routes.applicationCommands(clientId), { body: slashCommands });
-    console.log(
-      `✅ ${slashCommands.length} comandos registados globalmente (pode demorar até 1h a aparecer).`
-    );
+    await rest.put(Routes.applicationGuildCommands(clientId, process.env.GUILD_ID), {
+      body: [],
+    });
   }
+  console.log('✅ Slash commands removidos. Usa !comandos');
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function logToChannel(text) {
-  if (!process.env.LOG_CHANNEL_ID) return;
+async function logToChannel(text, extras = {}) {
+  const channelId = logsCanalId();
+  if (!channelId) return;
   try {
-    const channel = await client.channels.fetch(process.env.LOG_CHANNEL_ID);
-    if (channel?.isTextBased()) await channel.send(text);
+    const channel = await client.channels.fetch(channelId);
+    if (channel?.isTextBased()) await channel.send({ content: text, ...extras });
   } catch (err) {
     console.error('Falha ao escrever no canal de logs:', err.message);
   }
@@ -757,6 +785,12 @@ const PAINEL_TEXTOS = {
     '✨ 250–400 Skins — biblioteca grande com lendários e ultra-rares',
     'ᴀʟʟ ꜰᴜʟʟ ᴀᴄᴄᴇꜱꜱ',
   ]),
+  rockstar: textoPainel('ROCKSTAR ACC\'S', [
+    '1 Rockstar Acc — 4€',
+    '20 Rockstar Acc — 15€',
+    'ALL FULL ACCESS',
+    'Entrega automática no privado',
+  ]),
 };
 
 function textosDaCategoria(categoryName) {
@@ -872,8 +906,8 @@ async function enviarPainel(channel, painel) {
   });
 }
 
-// Publica o painel de uma categoria (chamado tanto por /loja categoria:"..."
-// como pelos comandos fixos /loja-trial, /loja-spotify, etc.)
+// Publica o painel de uma categoria (chamado por !loja <categoria>
+// e pelos comandos fixos !loja-trial, !loja-spotify, etc.)
 async function publicarLoja(interaction, categoria) {
   const products = categoria ? db.listActiveProductsByCategory(categoria) : db.listActiveProducts();
 
@@ -1028,23 +1062,26 @@ function buildBotoesTicket(channelId) {
 
 function textoComandos() {
   const paineis = Object.keys(CATEGORIA_POR_COMANDO)
-    .map((cmd) => `\`!${cmd}\` / \`/${cmd}\``)
+    .map((cmd) => `\`!${cmd}\``)
     .join('\n');
 
   return (
     '## Comandos do bot\n' +
     '**Loja**\n' +
-    '`!loja` / `/loja` — publica todos os painéis (ou uma categoria)\n' +
+    '`!loja` — publica todos os painéis (ou `!loja <categoria>`)\n' +
     `${paineis}\n\n` +
     '**Tickets**\n' +
-    '`!tickets` / `/tickets` — publica o painel de tickets\n' +
-    '`!fechar` / `!close` / `/fechar` — fecha o ticket deste canal\n' +
+    '`!tickets` — publica o painel de tickets\n' +
+    '`!fechar` / `!close` — fecha o ticket deste canal\n' +
     'Dentro do ticket: Adicionar Membro · Criar Call · Pedir Gank · Renomear · Fechar\n\n' +
     '**Geral**\n' +
-    '`!comandos` / `/comandos` — esta lista\n' +
-    '`/verificacao` — painel de verificação\n\n' +
+    '`!comandos` — esta lista\n' +
+    '`!verificacao` — painel de verificação (escolhe o código certo)\n\n' +
     '**Admin**\n' +
-    '`/produtos` · `/chave-adicionar` · `/entregar`'
+    '`!produtos` — lista produtos e stock\n' +
+    '`!produto-criar <preco> <categoria> <nome>`\n' +
+    '`!chave-adicionar <id>` + ficheiro .txt\n' +
+    '`!entregar <pedido_id>`'
   );
 }
 
@@ -1055,9 +1092,7 @@ function ehCanalTicket(canal) {
 
 function podeGerirTicket(membro, canal) {
   if (!membro) return false;
-  if (membro.permissions?.has(PermissionFlagsBits.Administrator)) return true;
-  const staffId = ticketsCargoStaffId();
-  if (staffId && membro.roles?.cache?.has(staffId)) return true;
+  if (ehStaffTickets(membro)) return true;
   const overwrite = canal?.permissionOverwrites?.cache?.get(membro.id);
   if (overwrite?.allow?.has(PermissionFlagsBits.ViewChannel)) return true;
   return false;
@@ -1084,7 +1119,7 @@ async function criarTicket(interaction, tipoKey) {
   if (!tipo) return;
 
   const categoriaId = ticketsCategoriaId();
-  const staffRoleId = ticketsCargoStaffId();
+  const staffRoleIds = ticketsCargosStaffIds();
 
   const overwrites = [
     { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -1106,7 +1141,7 @@ async function criarTicket(interaction, tipoKey) {
       ],
     },
   ];
-  if (staffRoleId) {
+  for (const staffRoleId of staffRoleIds) {
     overwrites.push({
       id: staffRoleId,
       allow: [
@@ -1139,15 +1174,15 @@ async function criarTicket(interaction, tipoKey) {
     imagemUrl: ticketsBannerUrl(),
     accentColor: 0x2b2d31,
     texto:
-      `Olá <@${interaction.user.id}>! Ticket de **${tipo.label}** aberto — em breve alguém da equipa vai responder.` +
-      (staffRoleId ? ` <@&${staffRoleId}>` : ''),
+      `Olá <@${interaction.user.id}>! Ticket de **${tipo.label}** aberto — em breve alguém da equipa vai responder. ` +
+      ticketsStaffMencoes(),
     extraRows: [buildBotoesTicket(canal.id)],
   });
   await canal.send({
     ...painelTicket.payload,
     allowedMentions: {
       users: [interaction.user.id],
-      roles: staffRoleId ? [staffRoleId] : [],
+      roles: staffRoleIds,
     },
   });
 
@@ -1219,11 +1254,8 @@ async function criarCallTicket(interaction, channelId) {
 
 // "Pedir Gank" — chama a staff para este ticket.
 async function pedirGankTicket(interaction) {
-  const staffRoleId = ticketsCargoStaffId();
   await interaction.reply({
-    content: staffRoleId
-      ? `❗ <@&${staffRoleId}> — <@${interaction.user.id}> precisa de ajuda neste ticket!`
-      : `❗ <@${interaction.user.id}> pediu ajuda neste ticket!`,
+    content: `❗ ${ticketsStaffMencoes()} — <@${interaction.user.id}> precisa de ajuda neste ticket!`,
   });
 }
 
@@ -1314,6 +1346,8 @@ async function iniciarCompra(interaction, productId) {
         product.currency
       )}.\n\n` +
       `**Como pagar:** ${instrucoes}\n\n` +
+      `Depois de pagares, **envia uma foto do comprovante** (neste servidor, num ticket ou por DM ao bot). ` +
+      `O bot reconhece a imagem e manda à staff.\n\n` +
       `Assim que um admin confirmar o pagamento, a tua chave chega por DM. 📩`,
     ephemeral: true,
   });
@@ -1324,7 +1358,7 @@ async function iniciarCompra(interaction, productId) {
 // Publica o pedido no canal de admins (PEDIDOS_CHANNEL_ID ou LOG_CHANNEL_ID)
 // com os botões "Entregar chave" e "Cancelar".
 async function notificarPedidoAdmins(interaction, orderId, product) {
-  const channelId = process.env.PEDIDOS_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
+  const channelId = logsCanalId();
   if (!channelId) return;
   try {
     const channel = await client.channels.fetch(channelId);
@@ -1385,7 +1419,7 @@ async function entregarPorAdmin(interaction, orderId) {
   await interaction.reply({
     content: entregue
       ? `✅ Pedido #${orderId} entregue. A chave foi enviada por DM ao cliente.`
-      : `⚠️ Pedido #${orderId}: não há chaves em stock. Usa \`/chave-adicionar\` e tenta de novo.`,
+      : `⚠️ Pedido #${orderId}: não há chaves em stock. Usa \`!chave-adicionar\` e tenta de novo.`,
     ephemeral: true,
   });
 
@@ -1466,35 +1500,47 @@ async function entregarPedido(orderId) {
 }
 
 // ---------------------------------------------------------------------------
-// Verificação: publica um painel com botão que dá um cargo de acesso.
+// Verificação: painel + captcha (3 códigos, só um é o certo, ex. BVC-DGD).
 // ---------------------------------------------------------------------------
 
-async function publicarVerificacao(interaction) {
-  const cargo = interaction.options.getRole('cargo');
-  // Ordem: opção do comando > variável VERIFY_ROLE_ID > cargo por defeito.
-  const roleId = cargo?.id || process.env.VERIFY_ROLE_ID || '1547037277132292146';
-  if (!roleId) {
-    return interaction.reply({
-      content:
-        'Falta o cargo de verificação. Escolhe-o na opção `cargo` do comando, ' +
-        'ou define a variável `VERIFY_ROLE_ID` com o ID do cargo.',
-      ephemeral: true,
-    });
-  }
+const captchasPendentes = new Map();
+const LETRAS_CAPTCHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
-  // Banner por defeito (troca com a opção anexo/imagem ou a variável VERIFY_BANNER_URL).
-  // Atenção: links do Discord (com ?ex=) expiram; para permanente usa a opção `anexo`.
-  const bannerDefeito =
+function blocoCaptcha(tamanho) {
+  let out = '';
+  for (let i = 0; i < tamanho; i++) {
+    out += LETRAS_CAPTCHA[Math.floor(Math.random() * LETRAS_CAPTCHA.length)];
+  }
+  return out;
+}
+
+function gerarCodigoCaptcha() {
+  return `${blocoCaptcha(3)}-${blocoCaptcha(3)}`;
+}
+
+function gerarOpcoesCaptcha() {
+  const certo = gerarCodigoCaptcha();
+  const opcoes = new Set([certo]);
+  while (opcoes.size < 3) opcoes.add(gerarCodigoCaptcha());
+  return { certo, lista: [...opcoes].sort(() => Math.random() - 0.5) };
+}
+
+function bannerVerificacaoPadrao() {
+  return (
     process.env.VERIFY_BANNER_URL ||
-    'https://media.discordapp.net/attachments/1545383446208315422/1545780693550891009/banner.png?ex=6aa15874&is=6aa006f4&hm=56751429c4ad74e1edd9ded35491d91681dfed9e4c5e8c0bac13f9039c16369b&=&format=webp&quality=lossless&width=1521&height=856';
-  const anexo = interaction.options.getAttachment('anexo');
-  const imagem = anexo?.url || interaction.options.getString('imagem') || bannerDefeito;
-  const titulo = interaction.options.getString('titulo') || 'VERIFICAÇÃO';
+    'https://media.discordapp.net/attachments/1545383446208315422/1545780693550891009/banner.png?ex=6aa15874&is=6aa006f4&hm=56751429c4ad74e1edd9ded35491d91681dfed9e4c5e8c0bac13f9039c16369b&=&format=webp&quality=lossless&width=1521&height=856'
+  );
+}
+
+async function publicarVerificacaoNoCanal(channel, opts = {}) {
+  const roleId = opts.roleId || cargoVerificacaoId();
+  const imagem = opts.imagem || bannerVerificacaoPadrao();
+  const titulo = opts.titulo || 'VERIFICAÇÃO';
   const bullets =
-    interaction.options.getString('descricao') ||
+    opts.descricao ||
     '• Clique no botão para se verificar\n' +
-      '• Libera o acesso aos canais do servidor\n' +
-      '• Verificação imediata, só um clique';
+      '• Escolhe o código certo (3 opções, só uma é válida)\n' +
+      '• Libera o acesso aos canais do servidor';
 
   const texto =
     `## ${titulo}\n` +
@@ -1515,8 +1561,19 @@ async function publicarVerificacao(interaction) {
     accessory: botao,
   });
 
+  await enviarPainel(channel, painel);
+}
+
+async function publicarVerificacao(interaction) {
+  const cargo = interaction.options.getRole('cargo');
+  const roleId = cargo?.id || cargoVerificacaoId();
+  const anexo = interaction.options.getAttachment('anexo');
+  const imagem = anexo?.url || interaction.options.getString('imagem') || bannerVerificacaoPadrao();
+  const titulo = interaction.options.getString('titulo') || 'VERIFICAÇÃO';
+  const descricao = interaction.options.getString('descricao') || null;
+
   try {
-    await enviarPainel(interaction.channel, painel);
+    await publicarVerificacaoNoCanal(interaction.channel, { roleId, imagem, titulo, descricao });
   } catch (err) {
     console.error('Falha ao publicar verificação:', err);
     return interaction.reply({
@@ -1531,24 +1588,78 @@ async function publicarVerificacao(interaction) {
   await interaction.reply({ content: 'Painel de verificação publicado! ✅', ephemeral: true });
 }
 
-async function verificarMembro(interaction, roleId) {
+async function pedirCaptchaVerificacao(interaction, roleId) {
   const member = interaction.member;
   if (member?.roles?.cache?.has(roleId)) {
     return interaction.reply({ content: '✅ Já estás verificado!', ephemeral: true });
   }
+
+  const { certo, lista } = gerarOpcoesCaptcha();
+  captchasPendentes.set(interaction.user.id, {
+    roleId,
+    certo,
+    expira: Date.now() + 2 * 60 * 1000,
+  });
+
+  const row = new ActionRowBuilder().addComponents(
+    lista.map((codigo) =>
+      new ButtonBuilder()
+        .setLabel(codigo)
+        .setStyle(ButtonStyle.Secondary)
+        .setCustomId(`vcap_${roleId}_${codigo}`)
+    )
+  );
+
+  await interaction.reply({
+    content: `Para te verificares, escolhe o código **${certo}**:`,
+    components: [row],
+    ephemeral: true,
+  });
+}
+
+async function resolverCaptchaVerificacao(interaction, roleId, codigo) {
+  const pend = captchasPendentes.get(interaction.user.id);
+  if (!pend || pend.roleId !== roleId || Date.now() > pend.expira) {
+    return interaction.update({
+      content: 'Captcha expirado. Clica em **Verificar** outra vez.',
+      components: [],
+    });
+  }
+
+  if (codigo !== pend.certo) {
+    captchasPendentes.delete(interaction.user.id);
+    return interaction.update({
+      content: '❌ Código errado. Clica em **Verificar** e tenta outra vez.',
+      components: [],
+    });
+  }
+
+  captchasPendentes.delete(interaction.user.id);
+  await verificarMembro(interaction, roleId, { viaUpdate: true });
+}
+
+async function verificarMembro(interaction, roleId, opts = {}) {
+  const member = interaction.member;
+  const responder = (payload) =>
+    opts.viaUpdate ? interaction.update(payload) : interaction.reply({ ...payload, ephemeral: true });
+
+  if (member?.roles?.cache?.has(roleId)) {
+    return responder({ content: '✅ Já estás verificado!', components: [] });
+  }
   try {
     await member.roles.add(roleId);
-    await interaction.reply({
+    await responder({
       content: '✅ Verificado! Já tens acesso ao servidor.',
-      ephemeral: true,
+      components: [],
     });
+    await logToChannel(`✅ <@${interaction.user.id}> verificou-se (cargo <@&${roleId}>).`);
   } catch (err) {
     console.error('Falha ao verificar membro:', err.message);
-    await interaction.reply({
+    await responder({
       content:
         'Não consegui dar-te o cargo. Um admin precisa de dar ao bot a permissão **Gerir Cargos** ' +
         'e de colocar o cargo do bot **acima** do cargo de verificação.',
-      ephemeral: true,
+      components: [],
     });
   }
 }
@@ -1596,7 +1707,7 @@ async function aoInteracao(interaction) {
         });
 
         await interaction.reply({
-          content: `Produto criado! **${nome}** (ID: ${id}). Agora usa \`/chave-adicionar produto_id:${id}\` para carregares as chaves.`,
+          content: `Produto criado! **${nome}** (ID: ${id}). Agora usa \`!chave-adicionar ${id}\` com um ficheiro .txt para carregares as chaves.`,
           ephemeral: true,
         });
       }
@@ -1692,7 +1803,15 @@ async function aoInteracao(interaction) {
 
     if (interaction.isButton() && interaction.customId.startsWith('verificar_')) {
       const roleId = interaction.customId.slice('verificar_'.length);
-      await verificarMembro(interaction, roleId);
+      await pedirCaptchaVerificacao(interaction, roleId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('vcap_')) {
+      const resto = interaction.customId.slice('vcap_'.length);
+      const sep = resto.indexOf('_');
+      const roleId = resto.slice(0, sep);
+      const codigo = resto.slice(sep + 1);
+      await resolverCaptchaVerificacao(interaction, roleId, codigo);
     }
 
     // Botão "⭐ Comprar" do painel — abre (ephemeral) o menu com os produtos
@@ -1775,9 +1894,91 @@ async function aoInteracao(interaction) {
 // bot não recebe o texto das mensagens e este bloco não faz nada.
 // ---------------------------------------------------------------------------
 
+function anexosImagem(message) {
+  return [...message.attachments.values()].filter((a) => {
+    if (a.contentType && a.contentType.startsWith('image/')) return true;
+    return /\.(png|jpe?g|webp|gif|bmp)$/i.test(a.name || a.url || '');
+  });
+}
+
+async function encaminharComprovante(message) {
+  const imagens = anexosImagem(message);
+  if (imagens.length === 0) return false;
+  if (message.channelId === logsCanalId()) return false;
+  if (message.guild && ehStaffTickets(message.member)) return false;
+
+  const pending = db.listPendingOrdersByUser(message.author.id);
+  const emTicket = message.guild ? ehCanalTicket(message.channel) : false;
+  const emDm = !message.guild;
+
+  if (!emTicket && !emDm && pending.length === 0) return false;
+
+  const origem = emDm
+    ? 'DM do bot'
+    : `${message.channel} (\`${message.channel.name}\`)`;
+  const pedidos =
+    pending.length > 0
+      ? pending
+          .map(
+            (o) =>
+              `#${o.id} ${o.product_name} — ${formatPrice(o.price_cents, o.currency)}`
+          )
+          .join('\n')
+      : 'Nenhum pedido pendente';
+
+  const dest = await client.channels.fetch(logsCanalId()).catch(() => null);
+  if (!dest?.isTextBased()) return false;
+
+  const row =
+    pending.length > 0
+      ? new ActionRowBuilder().addComponents(
+          pending.slice(0, 5).map((o) =>
+            new ButtonBuilder()
+              .setLabel(`Entregar #${o.id}`)
+              .setStyle(ButtonStyle.Success)
+              .setCustomId(`entregar_${o.id}`)
+          )
+        )
+      : null;
+
+  await dest.send({
+    content:
+      `💸 **Comprovante de pagamento** de <@${message.author.id}>\n` +
+      `Origem: ${origem}\n` +
+      `Pedidos pendentes:\n${pedidos}`,
+    files: imagens.map((a) => ({ attachment: a.url, name: a.name || 'comprovante.png' })),
+    components: row ? [row] : [],
+    allowedMentions: { users: [message.author.id] },
+  });
+
+  try {
+    await message.react('✅');
+  } catch {
+    /* sem permissão para reagir */
+  }
+  return true;
+}
+
+async function apagarComando(message) {
+  try {
+    await message.delete();
+  } catch {
+    /* sem permissão para apagar — não é grave */
+  }
+}
+
 async function aoMensagem(message) {
   try {
     if (message.author.bot) return;
+
+    if (anexosImagem(message).length > 0) {
+      try {
+        await encaminharComprovante(message);
+      } catch (err) {
+        console.error('Falha ao encaminhar comprovante:', err.message);
+      }
+    }
+
     if (!message.content.startsWith(PREFIXO)) return;
 
     const [cmd, ...resto] = message.content.slice(PREFIXO.length).trim().split(/\s+/);
@@ -1812,11 +2013,108 @@ async function aoMensagem(message) {
     if (nomeComando === 'tickets') {
       const painel = gerarPainelTickets({});
       await enviarPainel(message.channel, painel);
+      await apagarComando(message);
+      return;
+    }
+
+    if (nomeComando === 'verificacao' || nomeComando === 'verificação') {
+      const mencionado = message.mentions.roles.first();
+      const roleId = mencionado?.id || (resto[0] && /^\d{17,20}$/.test(resto[0]) ? resto[0] : cargoVerificacaoId());
       try {
-        await message.delete();
-      } catch {
-        /* sem permissão para apagar — não é grave */
+        await publicarVerificacaoNoCanal(message.channel, { roleId });
+        await apagarComando(message);
+      } catch (err) {
+        await message.reply(`Não consegui publicar o painel (${err.message}).`);
       }
+      return;
+    }
+
+    if (nomeComando === 'produtos') {
+      const products = db.listActiveProducts();
+      if (products.length === 0) {
+        await message.reply('Ainda não há produtos criados.');
+        return;
+      }
+      const linhas = products.map(
+        (p) =>
+          `**#${p.id} ${p.name}** — ${formatPrice(p.price_cents, p.currency)}${
+            p.category ? ` — [${p.category}]` : ''
+          } — stock: ${db.countAvailableKeys(p.id)}`
+      );
+      await message.reply(linhas.join('\n'));
+      return;
+    }
+
+    if (nomeComando === 'produto-criar') {
+      const preco = Number(String(resto[0] || '').replace(',', '.'));
+      const categoria = resto[1];
+      const nome = resto.slice(2).join(' ').trim();
+      if (!Number.isFinite(preco) || !categoria || !nome) {
+        await message.reply(
+          'Uso: `!produto-criar <preco> <categoria> <nome>`\nEx.: `!produto-criar 4 rockstar 1 Rockstar Acc`'
+        );
+        return;
+      }
+      const id = db.addProduct({
+        name: nome,
+        description: '',
+        priceCents: Math.round(preco * 100),
+        currency: 'eur',
+        category: categoria,
+      });
+      await message.reply(
+        `Produto criado! **${nome}** (ID: ${id}). Agora usa \`!chave-adicionar ${id}\` com um ficheiro .txt.`
+      );
+      return;
+    }
+
+    if (nomeComando === 'chave-adicionar') {
+      const productId = Number(resto[0]);
+      const product = db.getProduct(productId);
+      if (!product) {
+        await message.reply('Uso: `!chave-adicionar <produto_id>` + ficheiro .txt (ou chaves no texto).');
+        return;
+      }
+      const attachment = message.attachments.find((a) => /\.txt$/i.test(a.name || '')) || message.attachments.first();
+      let linhas = resto.slice(1);
+      if (attachment) {
+        const res = await fetch(attachment.url);
+        const text = await res.text();
+        linhas = text.split('\n');
+      }
+      if (linhas.length === 0) {
+        await message.reply('Anexa um .txt com uma chave por linha, ou escreve as chaves a seguir ao ID.');
+        return;
+      }
+      const added = db.addKeysBulk(productId, linhas);
+      await message.reply(
+        `Foram adicionadas **${added}** chaves ao produto **${product.name}**. Stock atual: ${db.countAvailableKeys(productId)}.`
+      );
+      return;
+    }
+
+    if (nomeComando === 'entregar') {
+      const pedidoId = Number(resto[0]);
+      if (!Number.isFinite(pedidoId)) {
+        await message.reply('Uso: `!entregar <pedido_id>`');
+        return;
+      }
+      const order = db.getOrder(pedidoId);
+      if (!order) {
+        await message.reply(`Não existe o pedido #${pedidoId}.`);
+        return;
+      }
+      if (order.status === 'delivered') {
+        await message.reply(`O pedido #${pedidoId} já foi entregue.`);
+        return;
+      }
+      await entregarPedido(pedidoId);
+      const entregue = db.getOrder(pedidoId).status === 'delivered';
+      await message.reply(
+        entregue
+          ? `✅ Pedido #${pedidoId} entregue. A chave foi enviada por DM ao cliente.`
+          : `⚠️ Pedido #${pedidoId}: não há chaves em stock. Usa \`!chave-adicionar\` e tenta de novo.`
+      );
       return;
     }
 
