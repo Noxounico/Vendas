@@ -358,7 +358,7 @@ const PRODUTOS_SEED = [
   { nome: 'Conta 2022', preco: eur(2), categoria: 'aged' },
 
   // --- Canal Spotify + Canal link Spotify Tri (mesma categoria "spotify") ---
-  { nome: 'Conta Spotify Premium', preco: eur(8), categoria: 'spotify' },
+  { nome: 'Conta Spotify Premium', preco: eur(4), categoria: 'spotify' },
   { nome: 'Link Spotify Trimensal', preco: eur(0.5), categoria: 'spotify' },
 
   // --- Canal membros ---

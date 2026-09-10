@@ -78,7 +78,7 @@ const CATALOG = [
   {
     category: 'spotify',
     products: [
-      { name: 'Conta Spotify Premium', priceCents: cents(8) },
+      { name: 'Conta Spotify Premium', priceCents: cents(4) },
       { name: 'Link Spotify Trimensal', priceCents: cents(0.5) },
     ],
   },
