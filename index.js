@@ -326,47 +326,47 @@ const PRODUTOS_SEED = [
   { nome: 'Modelo loja', preco: eur(1), categoria: 'Painéis & Métodos' },
 
   // --- Canal de impulsos ---
-  { nome: '2x impulsos', preco: eur(1.2), categoria: 'Impulsos' },
-  { nome: '6x impulsos', preco: eur(3), categoria: 'Impulsos' },
-  { nome: '8x impulsos', preco: eur(5), categoria: 'Impulsos' },
-  { nome: '14x impulsos', preco: eur(8), categoria: 'Impulsos' },
-  { nome: '14x impulsos trimensais', preco: eur(10), categoria: 'Impulsos' },
+  { nome: '2x impulsos', preco: eur(3), categoria: 'Impulsos' },
+  { nome: '6x impulsos', preco: eur(6), categoria: 'Impulsos' },
+  { nome: '8x impulsos', preco: eur(8), categoria: 'Impulsos' },
+  { nome: '14x impulsos', preco: eur(10), categoria: 'Impulsos' },
+  { nome: '14x impulsos trimensais', preco: eur(15), categoria: 'Impulsos' },
 
   // --- Canal de nitradas ---
-  { nome: 'Nitrada Mensal', preco: eur(2.55), categoria: 'Nitradas' },
-  { nome: 'Nitrada Trimensal', preco: eur(6.99), categoria: 'Nitradas' },
-  { nome: 'Nitrada Anual', preco: eur(7.99), categoria: 'Nitradas' },
+  { nome: 'Nitrada Mensal', preco: eur(5), categoria: 'Nitradas' },
+  { nome: 'Nitrada Trimensal', preco: eur(9), categoria: 'Nitradas' },
+  { nome: 'Nitrada Anual', preco: eur(15), categoria: 'Nitradas' },
 
   // --- Canal de links ---
-  { nome: 'Nitro Link Mensal', preco: eur(0.8), categoria: 'Links' },
-  { nome: 'Nitro Link Trimensal', preco: eur(2), categoria: 'Links' },
-  { nome: 'Ativação do Nitro', preco: eur(1), categoria: 'Links' },
+  { nome: 'Nitro Link Mensal', preco: eur(3), categoria: 'Links' },
+  { nome: 'Nitro Link Trimensal', preco: eur(6), categoria: 'Links' },
+  { nome: 'Ativação do Nitro', preco: eur(4), categoria: 'Links' },
 
   // --- Canal de trial ---
-  { nome: 'Trial Nitro', preco: eur(0.8), categoria: 'trial' },
+  { nome: 'Trial Nitro', preco: eur(2), categoria: 'trial' },
 
   // --- Canal virgem ---
-  { nome: 'Conta Virgem', preco: eur(0.55), categoria: 'virgem' },
+  { nome: 'Conta Virgem', preco: eur(4), categoria: 'virgem' },
 
   // --- Canal aged ---
-  { nome: 'Conta 2016', preco: eur(12), categoria: 'aged' },
-  { nome: 'Conta 2017', preco: eur(7), categoria: 'aged' },
-  { nome: 'Conta 2018', preco: eur(5), categoria: 'aged' },
-  { nome: 'Conta 2019', preco: eur(4), categoria: 'aged' },
-  { nome: 'Conta 2020', preco: eur(3), categoria: 'aged' },
+  { nome: 'Conta 2016', preco: eur(20), categoria: 'aged' },
+  { nome: 'Conta 2017', preco: eur(15), categoria: 'aged' },
+  { nome: 'Conta 2018', preco: eur(10), categoria: 'aged' },
+  { nome: 'Conta 2019', preco: eur(7), categoria: 'aged' },
+  { nome: 'Conta 2020', preco: eur(5), categoria: 'aged' },
   { nome: 'Conta 2021', preco: eur(2.5), categoria: 'aged' },
   { nome: 'Conta 2022', preco: eur(2), categoria: 'aged' },
 
   // --- Canal Spotify + Canal link Spotify Tri (mesma categoria "spotify") ---
-  { nome: 'Conta Spotify Premium', preco: eur(1.3), categoria: 'spotify' },
+  { nome: 'Conta Spotify Premium', preco: eur(8), categoria: 'spotify' },
   { nome: 'Link Spotify Trimensal', preco: eur(0.5), categoria: 'spotify' },
 
   // --- Canal membros ---
-  { nome: '100x membros online', preco: eur(1.5), categoria: 'membros' },
-  { nome: '100x membros offline', preco: eur(1), categoria: 'membros' },
+  { nome: '100x membros online', preco: eur(6), categoria: 'membros' },
+  { nome: '100x membros offline', preco: eur(3), categoria: 'membros' },
 
   // --- Canal trampo ---
-  { nome: 'Trampo fazendo dinheiro', preco: eur(1.2), categoria: 'trampo' },
+  { nome: 'Trampo fazendo dinheiro', preco: eur(5), categoria: 'trampo' },
 
   // --- Canal clonar site ---
   { nome: 'Clonar site', preco: eur(5), categoria: 'cloner' },
@@ -390,34 +390,50 @@ const PRODUTOS_SEED = [
   { nome: '20 Rockstar Acc', preco: eur(15), categoria: 'rockstar' },
 ];
 
-// Cria os produtos de PRODUTOS_SEED que ainda não existem (por nome).
-// Corre sempre que o bot liga, mas nunca duplica os que já foram criados.
+// Cria produtos em falta e atualiza o preço/categoria dos que já existem.
 function seedProdutosIniciais() {
-  const existentes = new Set(
-    db.listActiveProducts().map((p) => p.name.toLowerCase())
-  );
-
   let criados = 0;
+  let atualizados = 0;
   for (const p of PRODUTOS_SEED) {
-    if (existentes.has(p.nome.toLowerCase())) continue;
+    const existente = db.getProductByName(p.nome);
+    if (!existente) {
+      const id = db.addProduct({
+        name: p.nome,
+        description: p.descricao || '',
+        priceCents: p.preco,
+        currency: 'eur',
+        category: p.categoria,
+        roleId: p.roleId || undefined,
+      });
+      console.log(`✅ produto criado #${id}: ${p.nome} — ${formatPrice(p.preco, 'eur')} [${p.categoria}]`);
+      criados++;
+      continue;
+    }
 
-    const id = db.addProduct({
-      name: p.nome,
-      description: p.descricao || '',
+    const mesmoPreco = existente.price_cents === p.preco;
+    const mesmaMoeda = String(existente.currency || '').toLowerCase() === 'eur';
+    const mesmaCategoria = existente.category === p.categoria;
+    if (mesmoPreco && mesmaMoeda && mesmaCategoria) continue;
+
+    db.updateProduct(existente.id, {
       priceCents: p.preco,
       currency: 'eur',
       category: p.categoria,
-      roleId: p.roleId || undefined,
     });
-
-    console.log(`✅ produto criado #${id}: ${p.nome} — ${formatPrice(p.preco, 'eur')} [${p.categoria}]`);
-    criados++;
+    console.log(
+      `~ preço atualizado #${existente.id}: ${p.nome} — ${formatPrice(p.preco, 'eur')}`
+    );
+    atualizados++;
   }
 
   if (criados > 0) {
-    console.log(`🌱 ${criados} produto(s) novo(s) criado(s). Falta carregar chaves com !chave-adicionar.`);
-  } else {
-    console.log('🌱 Produtos iniciais já existiam, nada foi criado.');
+    console.log(`🌱 ${criados} produto(s) novo(s) criado(s).`);
+  }
+  if (atualizados > 0) {
+    console.log(`🌱 ${atualizados} preço(s) atualizado(s).`);
+  }
+  if (criados === 0 && atualizados === 0) {
+    console.log('🌱 Produtos e preços já estavam em dia.');
   }
 }
 
@@ -667,6 +683,121 @@ function stockDoProduto(product) {
 
 function textoStock(n) {
   return n <= 0 ? 'Esgotado' : String(n);
+}
+
+const SINONIMOS_STOCK = {
+  impulso: 'impulsos',
+  impulsos: 'impulsos',
+  trimensal: 'trimestral',
+  trimensais: 'trimestral',
+  trimestral: 'trimestral',
+  nitrada: 'nitrada',
+  nitradas: 'nitrada',
+  nitro: 'nitro',
+  link: 'link',
+  links: 'link',
+  ativacao: 'ativacao',
+  activacao: 'ativacao',
+  ativar: 'ativacao',
+  virgem: 'virgem',
+  trial: 'trial',
+  spotify: 'spotify',
+  conta: 'conta',
+  contas: 'conta',
+  membro: 'membros',
+  membros: 'membros',
+  online: 'online',
+  offline: 'offline',
+  trampo: 'trampo',
+  mensal: 'mensal',
+  anual: 'anual',
+};
+
+function normalizarTextoProduto(texto) {
+  return String(texto || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9x]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function tokensProduto(texto) {
+  return normalizarTextoProduto(texto)
+    .split(' ')
+    .filter(Boolean)
+    .map((t) => SINONIMOS_STOCK[t] || t);
+}
+
+function tokenCoincide(a, b) {
+  if (a === b) return true;
+  const numA = a.match(/^(\d+)x?$/);
+  const numB = b.match(/^(\d+)x?$/);
+  if (numA && numB) return numA[1] === numB[1];
+  if (/^\d/.test(a) || /^\d/.test(b)) return a === b;
+  return a.startsWith(b) || b.startsWith(a);
+}
+
+function pontuarProduto(produto, query) {
+  const qNorm = normalizarTextoProduto(query);
+  const nNorm = normalizarTextoProduto(produto.name);
+  if (!qNorm) return 0;
+  if (nNorm === qNorm) return 1000;
+
+  const qTokens = tokensProduto(query);
+  const nTokens = tokensProduto(produto.name);
+  if (qTokens.length === 0) return 0;
+  if (qTokens.length === 1 && nTokens.includes(qTokens[0]) && qTokens[0] === nTokens[nTokens.length - 1]) {
+    return 350 - (nTokens.length - 1) * 20;
+  }
+
+  let hits = 0;
+  for (const qt of qTokens) {
+    const ok = nTokens.some((nt) => tokenCoincide(nt, qt));
+    if (ok) hits += 1;
+    else return 0;
+  }
+
+  const extra = nTokens.filter((nt) => !qTokens.some((qt) => tokenCoincide(nt, qt))).length;
+  return hits * 60 - extra * 25;
+}
+
+function encontrarProdutoPorTexto(query) {
+  const texto = String(query || '').trim();
+  if (!texto) return { produto: null, ambiguos: [] };
+  if (/^\d+$/.test(texto)) {
+    const porId = db.getProduct(Number(texto));
+    if (porId) return { produto: porId, ambiguos: [] };
+  }
+
+  const direto = db.getProductByName(texto);
+  if (direto) return { produto: direto, ambiguos: [] };
+
+  const alias = {
+    spotify: 'Conta Spotify Premium',
+    contas: 'Conta Spotify Premium',
+    'conta spotify': 'Conta Spotify Premium',
+  }[normalizarTextoProduto(texto)];
+  if (alias) {
+    const alvo = db.getProductByName(alias);
+    if (alvo) return { produto: alvo, ambiguos: [] };
+  }
+
+  const candidatos = db
+    .listActiveProducts()
+    .map((p) => ({ p, score: pontuarProduto(p, texto) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (candidatos.length === 0) return { produto: null, ambiguos: [] };
+  if (candidatos.length === 1 || candidatos[0].score >= (candidatos[1]?.score || 0) + 20) {
+    return { produto: candidatos[0].p, ambiguos: [] };
+  }
+  return {
+    produto: null,
+    ambiguos: candidatos.slice(0, 5).map((x) => x.p),
+  };
 }
 
 // Constrói o menu de seleção com os produtos da categoria — mostra o preço e o
@@ -1087,7 +1218,8 @@ function textoComandos() {
     '`!verificacao` — painel de verificação (escolhe o código certo)\n\n' +
     '**Admin**\n' +
     '`!produtos` — lista produtos e stock\n' +
-    '`!stock <id> <quantidade>` — define o stock (a staff entrega à mão)\n' +
+    '`!stock adicionar 2x impulso 4` — acrescenta stock pelo nome\n' +
+    '`!stock` — lista o stock\n' +
     '`!produto-criar <preco> <categoria> <nome>`\n' +
     '`!chave-adicionar <id>` + ficheiro .txt (opcional)\n' +
     '`!entregar <pedido_id>`'
@@ -2107,39 +2239,81 @@ async function aoMensagem(message) {
           (p) => `**#${p.id} ${p.name}** — stock: **${stockDoProduto(p)}**`
         );
         await message.reply(
-          'Stock atual (usa `!stock <id> <quantidade>` para alterar):\n' + linhas.join('\n')
+          'Stock atual. Ex.: `!stock adicionar 2x impulso 4`\n' + linhas.join('\n')
         );
         return;
       }
 
-      const qtdRaw = resto.length >= 2 ? resto[resto.length - 1] : null;
-      const chave = resto.length >= 2 ? resto.slice(0, -1).join(' ') : resto[0];
-      const produto = /^\d+$/.test(chave)
-        ? db.getProduct(Number(chave))
-        : db.getProductByName(chave);
-      if (!produto) {
-        await message.reply('Não encontrei esse produto. Usa `!produtos` para ver os IDs.');
+      const acoes = {
+        adicionar: 'add',
+        add: 'add',
+        mais: 'add',
+        remover: 'remove',
+        tirar: 'remove',
+        remove: 'remove',
+        menos: 'remove',
+        definir: 'set',
+        set: 'set',
+        meter: 'set',
+      };
+      let acao = 'set';
+      let args = resto.slice();
+      if (acoes[args[0]?.toLowerCase()]) {
+        acao = acoes[args.shift().toLowerCase()];
+      }
+
+      const qtdRaw = args.length >= 1 ? args[args.length - 1] : null;
+      const temQtd = qtdRaw != null && /^[+-]?\d+$/.test(qtdRaw);
+      const chave = temQtd ? args.slice(0, -1).join(' ') : args.join(' ');
+      if (!chave) {
+        await message.reply('Uso: `!stock adicionar 2x impulso 4`');
         return;
       }
-      if (qtdRaw == null) {
+
+      const { produto, ambiguos } = encontrarProdutoPorTexto(chave);
+      if (!produto) {
+        if (ambiguos.length > 0) {
+          await message.reply(
+            'Há mais do que um produto. Diz o nome mais completo (só um é alterado):\n' +
+              ambiguos.map((p) => `• **#${p.id} ${p.name}**`).join('\n')
+          );
+          return;
+        }
+        await message.reply('Não reconheci esse produto. Ex.: `!stock adicionar 2x impulso 4`');
+        return;
+      }
+      if (!temQtd) {
         await message.reply(
-          `**#${produto.id} ${produto.name}** tem stock **${stockDoProduto(produto)}**. Uso: \`!stock ${produto.id} 20\``
+          `**#${produto.id} ${produto.name}** tem stock **${stockDoProduto(produto)}**.\n` +
+            `Usa \`!stock adicionar ${produto.name} 4\` para acrescentar.`
         );
+        return;
+      }
+
+      const n = parseInt(qtdRaw, 10);
+      if (!Number.isFinite(n)) {
+        await message.reply('Quantidade inválida. Ex.: `!stock adicionar 2x impulso 4`');
         return;
       }
 
       let novo;
-      if (/^[+-]\d+$/.test(qtdRaw)) {
-        novo = db.addStock(produto.id, Number(qtdRaw));
+      let verbo = 'definido como';
+      if (acao === 'add' || (acao === 'set' && /^[+-]\d+$/.test(qtdRaw))) {
+        novo = db.addStock(produto.id, Math.abs(n) * (acao === 'remove' || n < 0 ? -1 : 1));
+        verbo = n < 0 || acao === 'remove' ? 'reduzido para' : 'aumentado para';
+      } else if (acao === 'remove') {
+        novo = db.addStock(produto.id, -Math.abs(n));
+        verbo = 'reduzido para';
       } else {
-        const n = parseInt(qtdRaw, 10);
-        if (!Number.isFinite(n) || n < 0) {
-          await message.reply('Quantidade inválida. Ex.: `!stock 12 20` ou `!stock 12 +5`.');
+        if (n < 0) {
+          await message.reply('Quantidade inválida. Ex.: `!stock adicionar 2x impulso 4`');
           return;
         }
         novo = db.setStock(produto.id, n);
       }
-      await message.reply(`📦 Stock de **#${produto.id} ${produto.name}** atualizado para **${novo}**.`);
+      await message.reply(
+        `📦 Stock de **${produto.name}** ${verbo} **${novo}** (os outros produtos ficaram iguais).`
+      );
       return;
     }
 
@@ -2369,4 +2543,5 @@ module.exports = {
   formatPrice,
   entregarPedido,
   seedProdutosIniciais,
+  encontrarProdutoPorTexto,
 };
