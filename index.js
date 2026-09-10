@@ -237,17 +237,23 @@ function capitalizar(str) {
     .join(' ');
 }
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+function criarCliente() {
+  return new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+  });
+}
 
-const CODIGOS_SEM_RECONNECT = new Set([4004, 4010, 4011, 4013, 4014]);
+let client = criarCliente();
+let jaArrancou = false;
 let aLigar = false;
 let ultimoOk = Date.now();
+let falhasSeguidas = 0;
+
+const CODIGOS_SEM_RECONNECT = new Set([4004, 4010, 4011, 4013, 4014]);
 
 // Prefixo dos comandos de texto — alternativa aos slash commands, para o caso
 // de os slash commands não aparecerem/funcionarem no teu Discord.
@@ -1405,7 +1411,7 @@ async function verificarMembro(interaction, roleId) {
 // Slash commands e interações
 // ---------------------------------------------------------------------------
 
-client.on('interactionCreate', async (interaction) => {
+async function aoInteracao(interaction) {
   try {
     // Autocomplete do campo "categoria" do /loja — mostra as categorias que
     // já existem (trial, virgem, spotify, ...) para escolheres por lista em
@@ -1600,7 +1606,7 @@ client.on('interactionCreate', async (interaction) => {
       else await interaction.reply(msg);
     }
   }
-});
+}
 
 // ---------------------------------------------------------------------------
 // Comandos de texto com "!" — alternativa aos slash commands.
@@ -1610,7 +1616,7 @@ client.on('interactionCreate', async (interaction) => {
 // bot não recebe o texto das mensagens e este bloco não faz nada.
 // ---------------------------------------------------------------------------
 
-client.on('messageCreate', async (message) => {
+async function aoMensagem(message) {
   try {
     if (message.author.bot) return;
     if (!message.content.startsWith(PREFIXO)) return;
@@ -1642,14 +1648,14 @@ client.on('messageCreate', async (message) => {
   } catch (err) {
     console.error(err);
   }
-});
+}
 
-client.on(Events.ClientReady, () => {
+async function aoReady() {
   ultimoOk = Date.now();
+  falhasSeguidas = 0;
   console.log(`Bot ligado como ${client.user.tag}`);
-});
-
-client.once(Events.ClientReady, async () => {
+  if (jaArrancou) return;
+  jaArrancou = true;
   try {
     await registerSlashCommands();
   } catch (err) {
@@ -1660,7 +1666,46 @@ client.once(Events.ClientReady, async () => {
   } catch (err) {
     console.error('❌ Erro ao criar produtos iniciais:', err);
   }
-});
+}
+
+function anexarEventos(c) {
+  c.on('interactionCreate', aoInteracao);
+  c.on('messageCreate', aoMensagem);
+  c.on(Events.ClientReady, aoReady);
+  c.on(Events.Error, (err) => {
+    console.error('Erro do cliente Discord:', err);
+  });
+  c.on(Events.ShardError, (err, id) => {
+    console.error(`Erro no shard ${id}:`, err);
+  });
+  c.on(Events.ShardReconnecting, (id) => {
+    console.log(`A reconectar shard ${id}…`);
+  });
+  c.on(Events.ShardResume, (id) => {
+    ultimoOk = Date.now();
+    console.log(`Shard ${id} reconectado.`);
+  });
+  c.on(Events.ShardDisconnect, (event, id) => {
+    console.error(`Shard ${id} desconectou (código ${event?.code}).`);
+    if (CODIGOS_SEM_RECONNECT.has(event?.code)) {
+      console.error('Este código não permite reconectar (token/intents). Corrige o .env e reinicia.');
+      return;
+    }
+    setTimeout(() => ligarBot({ forcar: true }), 5000);
+  });
+}
+
+anexarEventos(client);
+
+async function novoCliente() {
+  try {
+    await client.destroy();
+  } catch {
+    /* já estava desligado */
+  }
+  client = criarCliente();
+  anexarEventos(client);
+}
 
 // Só liga o bot quando o ficheiro é corrido diretamente (npm start).
 // Assim o módulo pode ser importado em testes sem tentar autenticar no Discord.
@@ -1675,18 +1720,25 @@ async function ligarBot({ forcar = false } = {}) {
 
   aLigar = true;
   try {
-    if (forcar) {
-      try {
-        await client.destroy();
-      } catch {
-        /* já estava desligado */
-      }
+    if (forcar || client.ws?.destroyed) {
+      await novoCliente();
     }
     await client.login(token);
     ultimoOk = Date.now();
+    falhasSeguidas = 0;
   } catch (err) {
-    console.error('❌ Falha ao ligar ao Discord:', err.message);
+    falhasSeguidas += 1;
+    console.error(`❌ Falha ao ligar ao Discord (${falhasSeguidas}x):`, err.message);
     aLigar = false;
+    try {
+      await novoCliente();
+    } catch {
+      /* ignore */
+    }
+    if (falhasSeguidas >= 12) {
+      console.error('❌ Demasiadas falhas. A sair para o host reiniciar o processo…');
+      process.exit(1);
+    }
     setTimeout(() => ligarBot({ forcar: true }), 5000);
     return;
   }
@@ -1699,28 +1751,7 @@ if (require.main === module) {
   });
   process.on('uncaughtException', (err) => {
     console.error('uncaughtException:', err);
-  });
-
-  client.on(Events.Error, (err) => {
-    console.error('Erro do cliente Discord:', err);
-  });
-  client.on(Events.ShardError, (err, id) => {
-    console.error(`Erro no shard ${id}:`, err);
-  });
-  client.on(Events.ShardReconnecting, (id) => {
-    console.log(`A reconectar shard ${id}…`);
-  });
-  client.on(Events.ShardResume, (id) => {
-    ultimoOk = Date.now();
-    console.log(`Shard ${id} reconectado.`);
-  });
-  client.on(Events.ShardDisconnect, (event, id) => {
-    console.error(`Shard ${id} desconectou (código ${event?.code}).`);
-    if (CODIGOS_SEM_RECONNECT.has(event?.code)) {
-      console.error('Este código não permite reconectar (token/intents). Corrige o .env e reinicia.');
-      return;
-    }
-    setTimeout(() => ligarBot({ forcar: true }), 5000);
+    setTimeout(() => ligarBot({ forcar: true }), 3000);
   });
 
   ligarBot();
@@ -1730,12 +1761,21 @@ if (require.main === module) {
       ultimoOk = Date.now();
       return;
     }
-    if (Date.now() - ultimoOk > 120_000) {
-      console.warn('⚠️ Sem ligação ao Discord há 2 min, a tentar reconectar…');
+    if (Date.now() - ultimoOk > 60_000) {
+      console.warn('⚠️ Sem ligação ao Discord há 1 min, a religar do zero…');
       ultimoOk = Date.now();
       ligarBot({ forcar: true });
     }
-  }, 30_000);
+  }, 15_000);
 }
 
-module.exports = { client, gerarPainelLoja, gerarPainelTickets, formatPrice, entregarPedido, seedProdutosIniciais };
+module.exports = {
+  get client() {
+    return client;
+  },
+  gerarPainelLoja,
+  gerarPainelTickets,
+  formatPrice,
+  entregarPedido,
+  seedProdutosIniciais,
+};
