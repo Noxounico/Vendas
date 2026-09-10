@@ -844,62 +844,42 @@ const PAINEL_TEXTOS = {
   'Painéis & Métodos': textoPainel('Painéis & Métodos', [
     'Painéis e métodos digitais prontos pra usar',
     'SMS, Ifood, internet e outros métodos',
-    'Entrega automática no privado',
-    'Qualidade testada antes da venda',
   ]),
   Impulsos: textoPainel('Impulsos', [
     'Impulso para o teu servidor Discord',
-    'Ativação rápida, entrega automática',
-    'Packs de 2x, 6x, 8x e 14x',
-    'Sem partilhar a tua conta',
+    '2x — 3€ · 6x — 6€ · 8x — 8€ · 14x — 10€ · 14x trimestral — 15€',
   ]),
   Nitradas: textoPainel('Nitradas', [
     'Conta Full Acesso, Muda Email, Senha Etc...',
-    'Contas com Nitro Gaming',
-    'Contas Nitradas Possui Nitro.',
-    'Nitradas Na Melhor Qualidade.',
+    'Mensal — 5€ · Trimensal — 9€ · Anual — 15€',
   ]),
   Links: textoPainel('Nitro Links', [
-    'Nitro Link Mensal e Trimensal',
-    'Ativação do Nitro incluída',
-    'Entrega automática no privado',
-    'Só clicar em resgatar',
+    'Nitro Link Mensal e Trimensal + ativação',
+    'Mensal — 3€ · Trimensal — 6€ · Ativação do Nitro — 4€',
   ]),
   trial: textoPainel('Trial Nitro', [
     'Trial Nitro pra testar a conta',
-    'Entrega automática no privado',
-    'Ativação simples, só resgatar',
-    'Ideal pra quem quer testar',
+    'Trial Nitro — 2€',
   ]),
   virgem: textoPainel('Conta Virgem', [
-    'Contas virgens, nunca usadas',
-    'Sem histórico de Nitro ou tickets',
-    'Full acesso, muda e-mail e senha',
-    'Entrega automática no privado',
+    'Contas virgens, nunca usadas, full acesso',
+    'Conta Virgem — 4€',
   ]),
   aged: textoPainel('Contas Aged', [
-    'Contas antigas (2016 a 2022)',
-    'Mais confiança e histórico',
-    'Full acesso, muda e-mail e senha',
-    'Entrega automática no privado',
+    'Contas antigas (2016 a 2022), full acesso',
+    '2016 — 20€ · 2017 — 15€ · 2018 — 10€ · 2019 — 7€ · 2020 — 5€',
   ]),
   spotify: textoPainel('Spotify', [
     'Spotify Premium na tua conta',
-    'Conta completa ou link trimensal',
-    'Entrega automática no privado',
-    'Ativação rápida',
+    'Conta Spotify — 8€',
   ]),
   membros: textoPainel('Membros', [
     'Membros para o teu servidor',
-    'Packs de 100 online ou 100 offline',
-    'Entrega automática',
-    'Ideal pra começar o servidor',
+    '100 online — 6€ · 100 offline — 3€',
   ]),
   trampo: textoPainel('Trampo', [
     'Trampo fazendo dinheiro',
-    'Entrega automática no privado',
-    'Pronto pra começar',
-    'Suporte após a compra',
+    'Trampo — 5€',
   ]),
   cloner: textoPainel(
     'Clonar Site',
@@ -925,10 +905,7 @@ const PAINEL_TEXTOS = {
     'ᴀʟʟ ꜰᴜʟʟ ᴀᴄᴄᴇꜱꜱ',
   ]),
   rockstar: textoPainel('ROCKSTAR ACC\'S', [
-    '1 Rockstar Acc — 4€',
-    '20 Rockstar Acc — 15€',
     'ALL FULL ACCESS',
-    'Entrega automática no privado',
   ]),
 };
 
@@ -952,9 +929,12 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
   const faixa = faixaPrecos(products);
   const imagemFinal = imagem || defaults.imagem || LOJA_BANNER_URL_PADRAO;
   const corFinal = corParaHex(cor) ?? defaults.cor ?? 0x2b2d31;
+  const listaPrecos = products
+    .map((p) => `• ${p.name} — ${formatPrice(p.price_cents, p.currency)}`)
+    .join('\n');
   const bulletsTexto =
     descricao ||
-    defaults.descricao ||
+    [defaults.descricao, listaPrecos].filter(Boolean).join('\n') ||
     '• Produtos de qualidade, com stock verificado antes da compra.\n' +
       '• Preços justos, sempre pensados para o teu bolso.\n' +
       '• Compra rápida, simples e segura — só um clique.';
