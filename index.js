@@ -23,9 +23,178 @@ const {
   ChannelType,
   PermissionFlagsBits,
 } = require('discord.js');
+// Precisas de instalar isto: npm install @napi-rs/canvas
+// (escolhido em vez do pacote "canvas" porque já vem com binários prontos,
+// sem precisar de instalar Cairo/Pango no servidor.)
+const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 const db = require('./db');
 const { formatPrice } = require('./currency');
+
+// ---------------------------------------------------------------------------
+// Geração dos painéis como IMAGEM ÚNICA (banner sempre por cima do texto,
+// sem nenhum espaço — é tudo a mesma imagem, não vários embeds do Discord).
+// ---------------------------------------------------------------------------
+
+// Quebra um texto em várias linhas para caber em maxWidth (usa o ctx só para
+// medir o tamanho do texto com a fonte atual).
+function quebrarLinhas(ctx, texto, maxWidth) {
+  const palavras = texto.split(' ');
+  const linhas = [];
+  let atual = '';
+  for (const palavra of palavras) {
+    const teste = atual ? `${atual} ${palavra}` : palavra;
+    if (atual && ctx.measureText(teste).width > maxWidth) {
+      linhas.push(atual);
+      atual = palavra;
+    } else {
+      atual = teste;
+    }
+  }
+  if (atual) linhas.push(atual);
+  return linhas;
+}
+
+// Desenha um retângulo com cantos arredondados (caminho — ainda precisas de
+// chamar .fill()/.stroke()/.clip() a seguir).
+function desenharRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// A maioria dos servidores Linux não tem fonte de emoji a cores instalada —
+// sem ela, o emoji aparece como um quadrado vazio na imagem. Para não
+// arriscar isso, tira-se o emoji do texto ANTES de desenhar na imagem (o
+// texto dos botões/menus do Discord, esses sim, continuam com emoji certo,
+// porque são renderizados pelo próprio Discord, não pela imagem).
+function removerEmojis(texto) {
+  return texto
+    .replace(/[\u{1F1E6}-\u{1FAFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}\uFE0F]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+// Gera a imagem final (PNG) do painel: banner + título + bullets +
+// (opcional) caixa de entrega + (opcional) preço/instrução.
+// cor: número hex (ex.: 0x9b59b6), igual ao que se passa ao EmbedBuilder.
+async function gerarImagemPainel({ imagemUrl, titulo, bullets, entrega, precoTexto, instrucao, cor }) {
+  const LARGURA = 880;
+  const PAD = 32;
+  const corAccent = '#' + (cor ?? 0x9b59b6).toString(16).padStart(6, '0');
+  titulo = removerEmojis(titulo);
+  entrega = entrega ? removerEmojis(entrega) : entrega;
+  precoTexto = precoTexto ? removerEmojis(precoTexto) : precoTexto;
+  instrucao = instrucao ? removerEmojis(instrucao) : instrucao;
+  bullets = bullets.map((b) => removerEmojis(b));
+
+  // Carregar o banner (se falhar a descarregar, segue sem banner).
+  let banner = null;
+  if (imagemUrl) {
+    try {
+      const res = await fetch(imagemUrl);
+      const buf = Buffer.from(await res.arrayBuffer());
+      banner = await loadImage(buf);
+    } catch (err) {
+      console.error('Falha ao carregar o banner do painel:', err.message);
+    }
+  }
+
+  const larguraUtil = LARGURA - PAD * 2;
+  const alturaBanner = banner ? Math.round(larguraUtil * (banner.height / banner.width)) : 0;
+
+  // Medir o texto num canvas temporário para saber quantas linhas vai ter.
+  const medidor = createCanvas(10, 10).getContext('2d');
+  medidor.font = '400 19px sans-serif';
+  const linhasBullets = [];
+  for (const linha of bullets) {
+    linhasBullets.push(...quebrarLinhas(medidor, linha, larguraUtil));
+  }
+
+  let alturaTexto = 46; // título
+  alturaTexto += linhasBullets.length * 27 + 14;
+  if (entrega) alturaTexto += 58;
+  if (precoTexto) alturaTexto += 30;
+  if (instrucao) alturaTexto += 24;
+
+  const alturaTotal = PAD + (banner ? alturaBanner + 22 : 0) + alturaTexto + PAD;
+
+  const canvas = createCanvas(LARGURA, alturaTotal);
+  const ctx = canvas.getContext('2d');
+
+  // Fundo do cartão (cantos arredondados).
+  desenharRect(ctx, 0, 0, LARGURA, alturaTotal, 20);
+  ctx.fillStyle = '#140c0e';
+  ctx.fill();
+
+  let y = PAD;
+
+  // Banner (cantos arredondados, encostado ao topo).
+  if (banner) {
+    ctx.save();
+    desenharRect(ctx, PAD, y, larguraUtil, alturaBanner, 14);
+    ctx.clip();
+    ctx.drawImage(banner, PAD, y, larguraUtil, alturaBanner);
+    ctx.restore();
+    y += alturaBanner + 22;
+  }
+
+  // Título.
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '700 30px sans-serif';
+  ctx.fillText(titulo, PAD, y + 26);
+  y += 46;
+
+  // Bullets.
+  ctx.font = '400 19px sans-serif';
+  ctx.fillStyle = '#d8d0d2';
+  for (const linha of linhasBullets) {
+    ctx.fillText(linha, PAD, y + 16);
+    y += 27;
+  }
+  y += 8;
+
+  // Caixa de entrega (fundo ligeiramente diferente + borda discreta).
+  if (entrega) {
+    const alturaCaixa = 48;
+    desenharRect(ctx, PAD, y, larguraUtil, alturaCaixa, 10);
+    ctx.fillStyle = '#1e1518';
+    ctx.fill();
+    desenharRect(ctx, PAD, y, larguraUtil, alturaCaixa, 10);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#57f287';
+    ctx.font = '600 18px sans-serif';
+    ctx.fillText(entrega, PAD + 16, y + 30);
+    y += alturaCaixa + 18;
+  }
+
+  // Preço (label "Preço:" destacado + valor).
+  if (precoTexto) {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '700 18px sans-serif';
+    ctx.fillText('Preço:', PAD, y + 16);
+    const larguraLabel = ctx.measureText('Preço: ').width;
+    ctx.fillStyle = corAccent;
+    ctx.font = '600 18px sans-serif';
+    ctx.fillText(precoTexto, PAD + larguraLabel, y + 16);
+    y += 30;
+  }
+
+  // Instrução final.
+  if (instrucao) {
+    ctx.font = '400 16px sans-serif';
+    ctx.fillStyle = '#a89fa1';
+    ctx.fillText(instrucao, PAD, y + 14);
+  }
+
+  return canvas.toBuffer('image/png');
+}
 
 // Nota sobre o banner "colado" ao texto: tentar juntar banner+texto em dois
 // embeds da MESMA mensagem com o mesmo `url` não funciona bem — o Discord
@@ -425,12 +594,10 @@ const PAINEL_TEXTOS = {
   },
 };
 
-// Painel de venda no estilo "banner + título + bullets + caixa de entrega +
-// preço + botão". O menu de escolha só aparece depois de se clicar em
-// "Comprar" (ver handler do customId abrir_...).
-// opts: imagem, titulo, descricao (bullets), entrega (texto da caixa verde),
-//       botaoEmoji, botaoTexto, cor (hex, ex.: "#e02424")
-function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
+// Junta as opções passadas no comando com os defaults da categoria e os
+// defaults genéricos — usado tanto pelo painel da loja como (parcialmente)
+// pelo dos tickets.
+function resolverTextosLoja(products, categoryName, opts = {}) {
   const { imagem, titulo, descricao, entrega, botaoEmoji, botaoTexto, cor } = opts;
   const defaults = PAINEL_TEXTOS[categoryName] || {};
 
@@ -438,7 +605,7 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
   const faixa = faixaPrecos(products);
   const imagemFinal = imagem || defaults.imagem || LOJA_BANNER_URL_PADRAO;
   const corFinal = corParaHex(cor) ?? defaults.cor ?? 0x9b59b6;
-  const bulletsFinal =
+  const bulletsTexto =
     descricao ||
     defaults.descricao ||
     '• Produtos de qualidade, com stock verificado antes da compra.\n' +
@@ -448,51 +615,57 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
   const botaoEmojiFinal = botaoEmoji || defaults.botaoEmoji || '🛒';
   const botaoTextoFinal = botaoTexto || defaults.botaoTexto || 'Comprar';
 
-  const descricaoFinal =
-    `${bulletsFinal}\n\n` +
-    // Caixa com fundo diferente e bordas discretas = bloco de código ANSI a verde.
-    `\`\`\`ansi\n\u001b[2;32m${entregaFinal}\u001b[0m\n\`\`\`` +
-    (faixa
-      ? `\n**Preço:** ${faixa}\nClique no botão **"${botaoTextoFinal}"** para escolheres o produto.`
-      : '\nNão há produtos disponíveis de momento.');
+  return {
+    tituloFinal,
+    bulletsLinhas: bulletsTexto.split('\n').filter(Boolean),
+    entregaFinal,
+    imagemFinal,
+    corFinal,
+    faixa,
+    botaoEmojiFinal,
+    botaoTextoFinal,
+  };
+}
 
-  const embedTexto = new EmbedBuilder()
-    .setTitle(tituloFinal)
-    .setColor(corFinal)
-    .setDescription(descricaoFinal);
+// Gera o painel (banner + título + bullets + caixa de entrega + preço) como
+// UMA ÚNICA IMAGEM (banner sempre por cima, sem nenhum espaço, porque é tudo
+// a mesma imagem) e devolve o botão "Comprar" para ir por baixo.
+async function gerarPainelLoja(products, categoryName, opts = {}) {
+  const t = resolverTextosLoja(products, categoryName, opts);
 
-  let bannerEmbed = null;
-  if (imagemFinal && /^https?:\/\//i.test(imagemFinal)) {
-    bannerEmbed = new EmbedBuilder().setColor(corFinal).setImage(imagemFinal);
-  }
+  const buffer = await gerarImagemPainel({
+    imagemUrl: t.imagemFinal,
+    titulo: t.tituloFinal,
+    bullets: t.bulletsLinhas,
+    entrega: t.entregaFinal,
+    precoTexto: t.faixa || null,
+    instrucao: t.faixa ? `Clique no botão "${t.botaoTextoFinal}" para escolheres o produto.` : 'Não há produtos disponíveis de momento.',
+    cor: t.corFinal,
+  });
 
-  const temProdutos = products.length > 0;
   const rows = [];
-  if (temProdutos) {
+  if (products.length > 0) {
     rows.push(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
-          .setLabel(botaoTextoFinal)
-          .setEmoji(botaoEmojiFinal)
+          .setLabel(t.botaoTextoFinal)
+          .setEmoji(t.botaoEmojiFinal)
           .setStyle(ButtonStyle.Secondary)
           .setCustomId(`abrir_${encodeURIComponent(categoryName || '')}`)
       )
     );
   }
 
-  return { bannerEmbed, embed: embedTexto, rows };
+  return { buffer, rows };
 }
 
-// Manda um painel (banner + caixa de texto/botões) como DUAS mensagens
-// seguidas — é isto que faz ficarem "coladas" visualmente (o Discord
-// agrupa mensagens consecutivas do mesmo bot, sem repetir avatar/espaço).
+// Manda o painel: imagem única (ficheiro) + botão/menu por baixo.
 async function enviarPainel(channel, painel) {
-  if (painel.bannerEmbed) {
-    await channel.send({ embeds: [painel.bannerEmbed] });
-  }
-  return channel.send({ embeds: [painel.embed], components: painel.rows });
+  return channel.send({
+    files: [{ attachment: painel.buffer, name: 'painel.png' }],
+    components: painel.rows,
+  });
 }
-
 
 // Publica o painel de uma categoria (chamado tanto por /loja categoria:"..."
 // como pelos comandos fixos /loja-trial, /loja-spotify, etc.)
@@ -517,7 +690,7 @@ async function publicarLoja(interaction, categoria) {
   const botaoTexto = interaction.options.getString('botao_texto') || null;
   const cor = interaction.options.getString('cor') || null;
 
-  const { embed, bannerEmbed, rows } = buildLojaEmbedAndRow(products, categoria, {
+  const { buffer, rows } = await gerarPainelLoja(products, categoria, {
     imagem,
     titulo,
     descricao: descricaoOpt,
@@ -526,7 +699,7 @@ async function publicarLoja(interaction, categoria) {
     botaoTexto,
     cor,
   });
-  await enviarPainel(interaction.channel, { embed, bannerEmbed, rows });
+  await enviarPainel(interaction.channel, { buffer, rows });
   await interaction.reply({
     content: categoria ? `Painel do canal **${categoria}** publicado!` : 'Loja publicada!',
     ephemeral: true,
@@ -547,8 +720,8 @@ async function publicarLojaTexto(message, categoria) {
     );
   }
 
-  const { embed, bannerEmbed, rows } = buildLojaEmbedAndRow(products, categoria, {});
-  await enviarPainel(message.channel, { embed, bannerEmbed, rows });
+  const { buffer, rows } = await gerarPainelLoja(products, categoria, {});
+  await enviarPainel(message.channel, { buffer, rows });
   try {
     await message.delete();
   } catch {
@@ -581,24 +754,24 @@ function gerarSufixoTicket() {
   return Math.random().toString(36).slice(2, 7); // ex.: "cn3xl"
 }
 
-function buildPainelTickets(opts = {}) {
+async function gerarPainelTickets(opts = {}) {
   const { imagem, titulo, descricao, cor } = opts;
 
-  const embedTexto = new EmbedBuilder()
-    .setTitle(titulo || 'Central de Atendimento')
-    .setColor(corParaHex(cor) ?? 0x9b1e2e)
-    .setDescription(
-      descricao ||
-        '• Após solicitar atendimento, aguarde até que um integrante da equipe responda à sua solicitação.\n\n' +
-          '• O atendimento é realizado de forma privada; contudo, apenas membros autorizados da equipe terão acesso às informações compartilhadas.\n\n' +
-          '• Ressaltamos que a nossa equipe não está disponível 24 horas por dia. Entretanto, dentro dos horários informados anteriormente, estaremos devidamente disponíveis para atendê-lo(a).'
-    );
+  const bulletsTexto =
+    descricao ||
+    '• Após solicitar atendimento, aguarde até que um integrante da equipe responda à sua solicitação.\n' +
+      '• O atendimento é realizado de forma privada; contudo, apenas membros autorizados da equipe terão acesso às informações compartilhadas.\n' +
+      '• Ressaltamos que a nossa equipe não está disponível 24 horas por dia. Entretanto, dentro dos horários informados anteriormente, estaremos devidamente disponíveis para atendê-lo(a).';
 
-  let bannerEmbed = null;
-  const imagemFinal = imagem || LOJA_BANNER_URL_PADRAO;
-  if (imagemFinal && /^https?:\/\//i.test(imagemFinal)) {
-    bannerEmbed = new EmbedBuilder().setColor(0x9b1e2e).setImage(imagemFinal);
-  }
+  const buffer = await gerarImagemPainel({
+    imagemUrl: imagem || LOJA_BANNER_URL_PADRAO,
+    titulo: titulo || 'Central de Atendimento',
+    bullets: bulletsTexto.split('\n').filter(Boolean),
+    entrega: null,
+    precoTexto: null,
+    instrucao: null,
+    cor: corParaHex(cor) ?? 0x9b1e2e,
+  });
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('ticket_tipo_select')
@@ -612,7 +785,7 @@ function buildPainelTickets(opts = {}) {
       }))
     );
 
-  return { bannerEmbed, embed: embedTexto, rows: [new ActionRowBuilder().addComponents(select)] };
+  return { buffer, rows: [new ActionRowBuilder().addComponents(select)] };
 }
 
 // Botões de gestão que aparecem dentro de cada canal de ticket.
@@ -1302,8 +1475,8 @@ client.on('messageCreate', async (message) => {
     }
 
     if (nomeComando === 'tickets') {
-      const { embed, bannerEmbed, rows } = buildPainelTickets({});
-      await enviarPainel(message.channel, { embed, bannerEmbed, rows });
+      const { buffer, rows } = await gerarPainelTickets({});
+      await enviarPainel(message.channel, { buffer, rows });
       try {
         await message.delete();
       } catch {
@@ -1340,4 +1513,4 @@ if (require.main === module) {
   client.login(process.env.DISCORD_TOKEN);
 }
 
-module.exports = { client, buildLojaEmbedAndRow, formatPrice, entregarPedido, seedProdutosIniciais };
+module.exports = { client, gerarPainelLoja, formatPrice, entregarPedido, seedProdutosIniciais };
