@@ -97,6 +97,17 @@ const CATALOG = [
     category: 'cloner',
     products: [{ name: 'Clonar site', priceCents: cents(5) }],
   },
+  {
+    category: 'roblox',
+    products: [
+      { name: '1000-2500 robux acc', priceCents: cents(6) },
+      { name: '2500-5000 robux acc', priceCents: cents(8) },
+      { name: '5000-10000 robux acc', priceCents: cents(12) },
+      { name: '10000-15000 robux acc', priceCents: cents(16) },
+      { name: '15000-25000 robux acc', priceCents: cents(20) },
+      { name: '25000-50000 robux acc', priceCents: cents(25) },
+    ],
+  },
 ];
 
 function seed() {

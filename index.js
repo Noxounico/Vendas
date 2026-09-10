@@ -324,6 +324,14 @@ const PRODUTOS_SEED = [
 
   // --- Canal clonar site ---
   { nome: 'Clonar site', preco: eur(5), categoria: 'cloner' },
+
+  // --- Canal Roblox ACC'S ---
+  { nome: '1000-2500 robux acc', preco: eur(6), categoria: 'roblox' },
+  { nome: '2500-5000 robux acc', preco: eur(8), categoria: 'roblox' },
+  { nome: '5000-10000 robux acc', preco: eur(12), categoria: 'roblox' },
+  { nome: '10000-15000 robux acc', preco: eur(16), categoria: 'roblox' },
+  { nome: '15000-25000 robux acc', preco: eur(20), categoria: 'roblox' },
+  { nome: '25000-50000 robux acc', preco: eur(25), categoria: 'roblox' },
 ];
 
 // Cria os produtos de PRODUTOS_SEED que ainda não existem (por nome).
@@ -371,6 +379,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-membros': 'membros',
   'loja-trampo': 'trampo',
   'loja-cloner': 'cloner',
+  'loja-roblox': 'roblox',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -702,6 +711,12 @@ const PAINEL_TEXTOS = {
     ],
     { entrega: '🎫 Entrega via ticket' }
   ),
+  roblox: textoPainel('ROBLOX ACC\'S', [
+    'Contas Roblox full access',
+    'Valor = Robux do inventário',
+    'ALL FULL ACCESS',
+    'Entrega automática no privado',
+  ]),
 };
 
 function textosDaCategoria(categoryName) {
