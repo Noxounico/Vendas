@@ -108,6 +108,15 @@ const CATALOG = [
       { name: '25000-50000 robux acc', priceCents: cents(25) },
     ],
   },
+  {
+    category: 'fortnite',
+    products: [
+      { name: '100-150 Skins', priceCents: cents(10) },
+      { name: '150-250 Skins', priceCents: cents(15) },
+      { name: '100-250 Tryhard Skins', priceCents: cents(20) },
+      { name: '250-400 Skins', priceCents: cents(25) },
+    ],
+  },
 ];
 
 function seed() {
