@@ -228,7 +228,7 @@ async function gerarImagemPainel({ imagemUrl, titulo, bullets, entrega, precoTex
 // comando /loja, que reenvia o ficheiro para o Discord de cada vez.
 const LOJA_BANNER_URL_PADRAO =
   process.env.LOJA_BANNER_URL ||
-  'https://media.discordapp.net/attachments/1534183602764648579/1547718220469903441/image.png?ex=6aa4706a&is=6aa31eea&hm=28617669684dfaf605ba379b152e68fc288b543af22079140f0d7aa3ccc3f89a&=&format=webp&quality=lossless&width=1479&height=832';
+  'https://media.discordapp.net/attachments/1545383446208315422/1545780646473891962/banner-loja.jpg?ex=6aa3fb69&is=6aa2a9e9&hm=f77d4ddcfd49941ea186279776ed50c55ae6aa81d83dc49780ab3ed45926712e&=&format=webp';
 
 // Tickets: categoria, cargos da staff e banner por defeito (env var sobrepõe).
 const TICKETS_CATEGORIA_ID_PADRAO = '1322700826912882779';
@@ -844,42 +844,62 @@ const PAINEL_TEXTOS = {
   'Painéis & Métodos': textoPainel('Painéis & Métodos', [
     'Painéis e métodos digitais prontos pra usar',
     'SMS, Ifood, internet e outros métodos',
+    'Entrega automática no privado',
+    'Qualidade testada antes da venda',
   ]),
   Impulsos: textoPainel('Impulsos', [
     'Impulso para o teu servidor Discord',
-    '2x — 3€ · 6x — 6€ · 8x — 8€ · 14x — 10€ · 14x trimestral — 15€',
+    'Ativação rápida, entrega automática',
+    'Packs de 2x, 6x, 8x e 14x',
+    'Sem partilhar a tua conta',
   ]),
   Nitradas: textoPainel('Nitradas', [
     'Conta Full Acesso, Muda Email, Senha Etc...',
-    'Mensal — 5€ · Trimensal — 9€ · Anual — 15€',
+    'Contas com Nitro Gaming',
+    'Contas Nitradas Possui Nitro.',
+    'Nitradas Na Melhor Qualidade.',
   ]),
   Links: textoPainel('Nitro Links', [
-    'Nitro Link Mensal e Trimensal + ativação',
-    'Mensal — 3€ · Trimensal — 6€ · Ativação do Nitro — 4€',
+    'Nitro Link Mensal e Trimensal',
+    'Ativação do Nitro incluída',
+    'Entrega automática no privado',
+    'Só clicar em resgatar',
   ]),
   trial: textoPainel('Trial Nitro', [
     'Trial Nitro pra testar a conta',
-    'Trial Nitro — 2€',
+    'Entrega automática no privado',
+    'Ativação simples, só resgatar',
+    'Ideal pra quem quer testar',
   ]),
   virgem: textoPainel('Conta Virgem', [
-    'Contas virgens, nunca usadas, full acesso',
-    'Conta Virgem — 4€',
+    'Contas virgens, nunca usadas',
+    'Sem histórico de Nitro ou tickets',
+    'Full acesso, muda e-mail e senha',
+    'Entrega automática no privado',
   ]),
   aged: textoPainel('Contas Aged', [
-    'Contas antigas (2016 a 2022), full acesso',
-    '2016 — 20€ · 2017 — 15€ · 2018 — 10€ · 2019 — 7€ · 2020 — 5€',
+    'Contas antigas (2016 a 2022)',
+    'Mais confiança e histórico',
+    'Full acesso, muda e-mail e senha',
+    'Entrega automática no privado',
   ]),
   spotify: textoPainel('Spotify', [
     'Spotify Premium na tua conta',
-    'Conta Spotify — 8€',
+    'Conta completa ou link trimensal',
+    'Entrega automática no privado',
+    'Ativação rápida',
   ]),
   membros: textoPainel('Membros', [
     'Membros para o teu servidor',
-    '100 online — 6€ · 100 offline — 3€',
+    'Packs de 100 online ou 100 offline',
+    'Entrega automática',
+    'Ideal pra começar o servidor',
   ]),
   trampo: textoPainel('Trampo', [
     'Trampo fazendo dinheiro',
-    'Trampo — 5€',
+    'Entrega automática no privado',
+    'Pronto pra começar',
+    'Suporte após a compra',
   ]),
   cloner: textoPainel(
     'Clonar Site',
@@ -905,7 +925,10 @@ const PAINEL_TEXTOS = {
     'ᴀʟʟ ꜰᴜʟʟ ᴀᴄᴄᴇꜱꜱ',
   ]),
   rockstar: textoPainel('ROCKSTAR ACC\'S', [
+    'Contas Rockstar full access',
+    '1 Rockstar Acc ou pack de 20',
     'ALL FULL ACCESS',
+    'Entrega automática no privado',
   ]),
 };
 
@@ -929,12 +952,9 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
   const faixa = faixaPrecos(products);
   const imagemFinal = imagem || defaults.imagem || LOJA_BANNER_URL_PADRAO;
   const corFinal = corParaHex(cor) ?? defaults.cor ?? 0x2b2d31;
-  const listaPrecos = products
-    .map((p) => `• ${p.name} — ${formatPrice(p.price_cents, p.currency)}`)
-    .join('\n');
   const bulletsTexto =
     descricao ||
-    [defaults.descricao, listaPrecos].filter(Boolean).join('\n') ||
+    defaults.descricao ||
     '• Produtos de qualidade, com stock verificado antes da compra.\n' +
       '• Preços justos, sempre pensados para o teu bolso.\n' +
       '• Compra rápida, simples e segura — só um clique.';
