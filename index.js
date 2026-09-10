@@ -1256,17 +1256,16 @@ async function fecharTicket(canal, autorTag) {
   }, 5000);
 }
 
-async function criarTicket(interaction, tipoKey) {
+async function criarCanalTicket(guild, userId, tipoKey, nomeExtra) {
   const tipo = TIPOS_TICKET[tipoKey];
-  if (!tipo) return;
+  if (!tipo || !guild) return null;
 
   const categoriaId = ticketsCategoriaId();
   const staffRoleIds = ticketsCargosStaffIds();
-
   const overwrites = [
-    { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+    { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
     {
-      id: interaction.user.id,
+      id: userId,
       allow: [
         PermissionFlagsBits.ViewChannel,
         PermissionFlagsBits.SendMessages,
@@ -1294,14 +1293,44 @@ async function criarTicket(interaction, tipoKey) {
     });
   }
 
+  const base = nomeExtra || `${tipoKey}-${gerarSufixoTicket()}`;
+  const nome = String(base)
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 90);
+
+  return guild.channels.create({
+    name: nome,
+    type: ChannelType.GuildText,
+    parent: categoriaId || undefined,
+    permissionOverwrites: overwrites,
+  });
+}
+
+async function enviarMensagemTicket(canal, { userId, texto, extraRows = [] }) {
+  const painelTicket = montarPainelV2({
+    imagemUrl: ticketsBannerUrl(),
+    accentColor: 0x2b2d31,
+    texto,
+    extraRows: [buildBotoesTicket(canal.id), ...extraRows],
+  });
+  await canal.send({
+    ...painelTicket.payload,
+    allowedMentions: {
+      users: userId ? [userId] : [],
+      roles: ticketsCargosStaffIds(),
+    },
+  });
+}
+
+async function criarTicket(interaction, tipoKey) {
+  const tipo = TIPOS_TICKET[tipoKey];
+  if (!tipo) return;
+
   let canal;
   try {
-    canal = await interaction.guild.channels.create({
-      name: `${tipoKey}-${gerarSufixoTicket()}`,
-      type: ChannelType.GuildText,
-      parent: categoriaId || undefined,
-      permissionOverwrites: overwrites,
-    });
+    canal = await criarCanalTicket(interaction.guild, interaction.user.id, tipoKey);
   } catch (err) {
     console.error('Falha ao criar canal de ticket:', err.message);
     return interaction.reply({
@@ -1312,26 +1341,68 @@ async function criarTicket(interaction, tipoKey) {
     });
   }
 
-  const painelTicket = montarPainelV2({
-    imagemUrl: ticketsBannerUrl(),
-    accentColor: 0x2b2d31,
+  await enviarMensagemTicket(canal, {
+    userId: interaction.user.id,
     texto:
       `Olá <@${interaction.user.id}>! Ticket de **${tipo.label}** aberto — em breve alguém da equipa vai responder. ` +
       ticketsStaffMencoes(),
-    extraRows: [buildBotoesTicket(canal.id)],
-  });
-  await canal.send({
-    ...painelTicket.payload,
-    allowedMentions: {
-      users: [interaction.user.id],
-      roles: staffRoleIds,
-    },
   });
 
   await interaction.reply({
     content: `✅ Ticket criado: <#${canal.id}>`,
     ephemeral: true,
   });
+}
+
+function textoPedidoCliente(orderId, product, quantidade) {
+  const totalCents = product.price_cents * quantidade;
+  const instrucoes =
+    process.env.PAYMENT_INFO ||
+    'Contacta um administrador para efetuares o pagamento. Assim que for confirmado, a staff entrega-te o produto.';
+  return (
+    `🧾 Pedido **#${orderId}** criado — **${quantidade}x ${product.name}** por ${formatPrice(
+      totalCents,
+      product.currency
+    )}.\n\n` +
+    `**Como pagar:** ${instrucoes}\n\n` +
+    `Depois de pagares, **envia uma foto do comprovante** neste ticket (ou por DM ao bot). ` +
+    `O bot reconhece a imagem e manda à staff.\n\n` +
+    `Assim que um admin confirmar, a staff entrega-te o produto. 📩`
+  );
+}
+
+async function abrirTicketPedido(interaction, { orderId, product, quantidade }) {
+  if (!interaction.guild) return null;
+  try {
+    const canal = await criarCanalTicket(
+      interaction.guild,
+      interaction.user.id,
+      'receber-produto',
+      `receber-produto-${orderId}`
+    );
+    const rowPedido = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setLabel('Entregar')
+        .setStyle(ButtonStyle.Success)
+        .setCustomId(`entregar_${orderId}`),
+      new ButtonBuilder()
+        .setLabel('Cancelar')
+        .setStyle(ButtonStyle.Danger)
+        .setCustomId(`cancelar_${orderId}`)
+    );
+    await enviarMensagemTicket(canal, {
+      userId: interaction.user.id,
+      texto:
+        `Olá <@${interaction.user.id}>! Ticket de **Receber Produto**.\n\n` +
+        `${textoPedidoCliente(orderId, product, quantidade)}\n\n` +
+        ticketsStaffMencoes(),
+      extraRows: [rowPedido],
+    });
+    return canal;
+  } catch (err) {
+    console.error('Falha ao criar ticket do pedido:', err.message);
+    return null;
+  }
 }
 
 // "Adicionar Membro" — mostra um seletor de utilizador (ephemeral).
@@ -1521,23 +1592,19 @@ async function confirmarCompraComQuantidade(interaction, productId) {
     return interaction.reply({ content: 'Este produto está esgotado no momento.', ephemeral: true });
   }
 
-  const totalCents = product.price_cents * quantidade;
-  const instrucoes =
-    process.env.PAYMENT_INFO ||
-    'Contacta um administrador para efetuares o pagamento. Assim que for confirmado, a staff entrega-te o produto.';
+  const canalPedido = await abrirTicketPedido(interaction, { orderId, product, quantidade });
 
-  await interaction.reply({
-    content:
-      `🧾 Pedido **#${orderId}** criado — **${quantidade}x ${product.name}** por ${formatPrice(
-        totalCents,
-        product.currency
-      )}.\n\n` +
-      `**Como pagar:** ${instrucoes}\n\n` +
-      `Depois de pagares, **envia uma foto do comprovante** (neste servidor, num ticket ou por DM ao bot). ` +
-      `O bot reconhece a imagem e manda à staff.\n\n` +
-      `Assim que um admin confirmar, a staff entrega-te o produto. 📩`,
-    ephemeral: true,
-  });
+  if (canalPedido) {
+    await interaction.reply({
+      content: `✅ Pedido **#${orderId}** criado. Continua no ticket de receber produto: <#${canalPedido.id}>`,
+      ephemeral: true,
+    });
+  } else {
+    await interaction.reply({
+      content: textoPedidoCliente(orderId, product, quantidade),
+      ephemeral: true,
+    });
+  }
 
   await notificarPedidoAdmins(interaction, orderId, product, quantidade);
 }
