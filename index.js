@@ -341,12 +341,12 @@ function seedProdutosIniciais() {
       name: p.nome,
       description: p.descricao || '',
       priceCents: p.preco,
-      currency: 'brl',
+      currency: 'eur',
       category: p.categoria,
       roleId: p.roleId || undefined,
     });
 
-    console.log(`✅ produto criado #${id}: ${p.nome} — ${formatPrice(p.preco, 'brl')} [${p.categoria}]`);
+    console.log(`✅ produto criado #${id}: ${p.nome} — ${formatPrice(p.preco, 'eur')} [${p.categoria}]`);
     criados++;
   }
 

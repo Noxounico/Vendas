@@ -3,14 +3,12 @@
 // preço/moeda/categoria dos que já existem (não duplica).
 //
 // Uso:   npm run seed
-// Moeda: por omissão 'brl' (R$), para a mensagem do painel sair igual à print
-//        (ex.: Nitradas → "de R$ 2,55 a R$ 7,99").
-//        Outra moeda:  SEED_CURRENCY=eur npm run seed
+// Moeda: por omissão 'eur' (€). Outra moeda:  SEED_CURRENCY=brl npm run seed
 
 const db = require('./db');
 const { formatPrice } = require('./currency');
 
-const currency = (process.env.SEED_CURRENCY || 'brl').toLowerCase();
+const currency = (process.env.SEED_CURRENCY || 'eur').toLowerCase();
 
 function cents(valor) {
   return Math.round(valor * 100);
