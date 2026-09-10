@@ -150,7 +150,7 @@ function seed() {
   const faixaNitradas =
     min === max
       ? formatPrice(min, currency)
-      : `de ${formatPrice(min, currency)} a ${formatPrice(max, currency)}`;
+      : `De ${formatPrice(min, currency)} a ${formatPrice(max, currency)}`;
 
   console.log(
     `\n${created} criado(s), ${updated} atualizado(s), ${unchanged} já certo(s) de ${total}. Moeda: ${currency.toUpperCase()}.`
