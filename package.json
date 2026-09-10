@@ -12,6 +12,7 @@
     "node": "22.x"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.0",
     "better-sqlite3": "^11.3.0",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5"
