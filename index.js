@@ -16,11 +16,24 @@ const {
   ButtonBuilder,
   ButtonStyle,
   StringSelectMenuBuilder,
+  UserSelectMenuBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ChannelType,
   PermissionFlagsBits,
 } = require('discord.js');
 
 const db = require('./db');
 const { formatPrice } = require('./currency');
+
+// URL "âncora" usada em TODOS os embeds de um mesmo painel (banner + caixa de
+// texto). Quando vários embeds da mesma mensagem têm o mesmo `url`, o Discord
+// agrupa-os visualmente sem o espaço/borda entre eles — é assim que se tira
+// aquele "espaço" entre o banner e a caixa de texto. Como consequência o
+// título fica sublinhado/clicável (aponta para este link) — troca por um link
+// teu (ex.: o convite do servidor) se quiseres que sirva para algo.
+const PAINEL_ANCHOR_URL = process.env.PAINEL_LINK || 'https://discord.gg/';
 
 // Banner por defeito de TODOS os painéis da loja — troca por env var LOJA_BANNER_URL
 // se quiseres outra imagem sem tocar no código.
@@ -446,13 +459,16 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
   const embedTexto = new EmbedBuilder()
     .setTitle(tituloFinal)
     .setColor(corFinal)
+    .setURL(PAINEL_ANCHOR_URL)
     .setDescription(descricaoFinal);
 
   const embeds = [];
   if (imagemFinal && /^https?:\/\//i.test(imagemFinal)) {
     // Imagem POR CIMA: o setImage de um embed aparece em baixo, por isso a
     // imagem vai num embed próprio (só imagem), enviado antes do do texto.
-    embeds.push(new EmbedBuilder().setColor(corFinal).setImage(imagemFinal));
+    // O mesmo `url` nos dois embeds é o que faz o Discord juntá-los sem
+    // espaço entre eles.
+    embeds.push(new EmbedBuilder().setColor(corFinal).setURL(PAINEL_ANCHOR_URL).setImage(imagemFinal));
   }
   embeds.push(embedTexto);
 
@@ -533,6 +549,267 @@ async function publicarLojaTexto(message, categoria) {
     await message.delete();
   } catch {
     /* o bot pode não ter permissão para apagar — não é grave */
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sistema de tickets ("!tickets") — painel com banner + regras + menu para
+// escolher o tipo de atendimento; cada escolha cria um canal privado
+// (ticket) com botões para Adicionar Membro / Criar Call / Pedir Gank /
+// Renomear Ticket.
+//
+// Configuração por variáveis de ambiente (todas opcionais):
+//   TICKETS_CATEGORIA_ID  -> categoria onde os canais de ticket são criados
+//   TICKETS_CARGO_STAFF_ID -> cargo da staff (vê os tickets, é chamado no "Pedir Gank")
+// ---------------------------------------------------------------------------
+
+const TIPOS_TICKET = {
+  suporte: { label: 'Suporte', emoji: '📞', descricao: 'Abra um ticket de suporte' },
+  'receber-produto': {
+    label: 'Receber Produto',
+    emoji: '🛒',
+    descricao: 'Abra um ticket para receber o seu produto',
+  },
+  duvidas: { label: 'Duvidas', emoji: '👥', descricao: 'Abra um ticket para tirar a sua Duvida' },
+};
+
+function gerarSufixoTicket() {
+  return Math.random().toString(36).slice(2, 7); // ex.: "cn3xl"
+}
+
+function buildPainelTickets(opts = {}) {
+  const { imagem, titulo, descricao, cor } = opts;
+
+  const embedTexto = new EmbedBuilder()
+    .setTitle(titulo || 'Central de Atendimento')
+    .setColor(corParaHex(cor) ?? 0x9b1e2e)
+    .setURL(PAINEL_ANCHOR_URL)
+    .setDescription(
+      descricao ||
+        '• Após solicitar atendimento, aguarde até que um integrante da equipe responda à sua solicitação.\n\n' +
+          '• O atendimento é realizado de forma privada; contudo, apenas membros autorizados da equipe terão acesso às informações compartilhadas.\n\n' +
+          '• Ressaltamos que a nossa equipe não está disponível 24 horas por dia. Entretanto, dentro dos horários informados anteriormente, estaremos devidamente disponíveis para atendê-lo(a).'
+    );
+
+  const embeds = [];
+  const imagemFinal = imagem || LOJA_BANNER_URL_PADRAO;
+  if (imagemFinal && /^https?:\/\//i.test(imagemFinal)) {
+    embeds.push(new EmbedBuilder().setColor(0x9b1e2e).setURL(PAINEL_ANCHOR_URL).setImage(imagemFinal));
+  }
+  embeds.push(embedTexto);
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('ticket_tipo_select')
+    .setPlaceholder('Selecione o tipo de atendimento')
+    .addOptions(
+      Object.entries(TIPOS_TICKET).map(([value, info]) => ({
+        label: info.label,
+        description: info.descricao,
+        emoji: info.emoji,
+        value,
+      }))
+    );
+
+  return { embeds, rows: [new ActionRowBuilder().addComponents(select)] };
+}
+
+// Botões de gestão que aparecem dentro de cada canal de ticket.
+function buildBotoesTicket(channelId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setLabel('Adicionar Membro')
+      .setEmoji('👤')
+      .setStyle(ButtonStyle.Secondary)
+      .setCustomId(`ticket_addmember_${channelId}`),
+    new ButtonBuilder()
+      .setLabel('Criar Call')
+      .setEmoji('🔔')
+      .setStyle(ButtonStyle.Secondary)
+      .setCustomId(`ticket_call_${channelId}`),
+    new ButtonBuilder()
+      .setLabel('Pedir Gank')
+      .setEmoji('❗')
+      .setStyle(ButtonStyle.Danger)
+      .setCustomId(`ticket_gank_${channelId}`),
+    new ButtonBuilder()
+      .setLabel('Renomear Ticket')
+      .setEmoji('✏️')
+      .setStyle(ButtonStyle.Secondary)
+      .setCustomId(`ticket_rename_${channelId}`)
+  );
+}
+
+async function criarTicket(interaction, tipoKey) {
+  const tipo = TIPOS_TICKET[tipoKey];
+  if (!tipo) return;
+
+  const categoriaId = process.env.TICKETS_CATEGORIA_ID || null;
+  const staffRoleId = process.env.TICKETS_CARGO_STAFF_ID || null;
+
+  const overwrites = [
+    { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+    {
+      id: interaction.user.id,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+      ],
+    },
+    {
+      id: client.user.id,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ManageChannels,
+        PermissionFlagsBits.ManageRoles,
+      ],
+    },
+  ];
+  if (staffRoleId) {
+    overwrites.push({
+      id: staffRoleId,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+      ],
+    });
+  }
+
+  let canal;
+  try {
+    canal = await interaction.guild.channels.create({
+      name: `${tipoKey}-${gerarSufixoTicket()}`,
+      type: ChannelType.GuildText,
+      parent: categoriaId || undefined,
+      permissionOverwrites: overwrites,
+    });
+  } catch (err) {
+    console.error('Falha ao criar canal de ticket:', err.message);
+    return interaction.reply({
+      content:
+        'Não consegui criar o canal do ticket. Confirma que o bot tem a permissão **Gerir Canais** ' +
+        '(e que `TICKETS_CATEGORIA_ID`, se definido, é uma categoria válida).',
+      ephemeral: true,
+    });
+  }
+
+  await canal.send({
+    content: `Olá <@${interaction.user.id}>! Ticket de **${tipo.label}** aberto — em breve alguém da equipa vai responder.${
+      staffRoleId ? ` <@&${staffRoleId}>` : ''
+    }`,
+    components: [buildBotoesTicket(canal.id)],
+  });
+
+  await interaction.reply({
+    content: `✅ Ticket criado: <#${canal.id}>`,
+    ephemeral: true,
+  });
+}
+
+// "Adicionar Membro" — mostra um seletor de utilizador (ephemeral).
+async function abrirSeletorMembro(interaction, channelId) {
+  const select = new UserSelectMenuBuilder()
+    .setCustomId(`ticket_addmember_select_${channelId}`)
+    .setPlaceholder('Escolhe o membro a adicionar')
+    .setMinValues(1)
+    .setMaxValues(1);
+
+  await interaction.reply({
+    content: 'Quem queres adicionar a este ticket?',
+    components: [new ActionRowBuilder().addComponents(select)],
+    ephemeral: true,
+  });
+}
+
+async function adicionarMembroAoTicket(interaction, channelId) {
+  const canal = await interaction.guild.channels.fetch(channelId).catch(() => null);
+  const membro = interaction.users.first();
+  if (!canal || !membro) {
+    return interaction.update({ content: 'Não foi possível adicionar esse membro.', components: [] });
+  }
+
+  await canal.permissionOverwrites.edit(membro.id, {
+    ViewChannel: true,
+    SendMessages: true,
+    ReadMessageHistory: true,
+  });
+
+  await canal.send(`👤 <@${membro.id}> foi adicionado ao ticket por <@${interaction.user.id}>.`);
+  await interaction.update({ content: `✅ <@${membro.id}> adicionado ao ticket.`, components: [] });
+}
+
+// "Criar Call" — canal de voz temporário com os mesmos acessos do ticket.
+async function criarCallTicket(interaction, channelId) {
+  const canalTexto = await interaction.guild.channels.fetch(channelId).catch(() => null);
+  if (!canalTexto) {
+    return interaction.reply({ content: 'Não encontrei o canal deste ticket.', ephemeral: true });
+  }
+
+  try {
+    const canalVoz = await interaction.guild.channels.create({
+      name: `call-${canalTexto.name}`,
+      type: ChannelType.GuildVoice,
+      parent: canalTexto.parentId || undefined,
+      permissionOverwrites: canalTexto.permissionOverwrites.cache.map((o) => ({
+        id: o.id,
+        allow: o.allow,
+        deny: o.deny,
+      })),
+    });
+    await interaction.reply({ content: `🔔 Call criada: <#${canalVoz.id}>`, ephemeral: false });
+  } catch (err) {
+    console.error('Falha ao criar call do ticket:', err.message);
+    await interaction.reply({
+      content: 'Não consegui criar o canal de voz — confirma que o bot tem a permissão **Gerir Canais**.',
+      ephemeral: true,
+    });
+  }
+}
+
+// "Pedir Gank" — chama a staff para este ticket.
+async function pedirGankTicket(interaction) {
+  const staffRoleId = process.env.TICKETS_CARGO_STAFF_ID;
+  await interaction.reply({
+    content: staffRoleId
+      ? `❗ <@&${staffRoleId}> — <@${interaction.user.id}> precisa de ajuda neste ticket!`
+      : `❗ <@${interaction.user.id}> pediu ajuda neste ticket! (define \`TICKETS_CARGO_STAFF_ID\` no .env para chamar um cargo específico)`,
+  });
+}
+
+// "Renomear Ticket" — abre um modal a pedir o novo nome.
+async function abrirModalRenomear(interaction, channelId) {
+  const modal = new ModalBuilder()
+    .setCustomId(`ticket_rename_modal_${channelId}`)
+    .setTitle('Renomear ticket');
+
+  const input = new TextInputBuilder()
+    .setCustomId('novo_nome')
+    .setLabel('Novo nome do canal')
+    .setStyle(TextInputStyle.Short)
+    .setMaxLength(90)
+    .setRequired(true);
+
+  modal.addComponents(new ActionRowBuilder().addComponents(input));
+  await interaction.showModal(modal);
+}
+
+async function renomearTicket(interaction, channelId) {
+  const novoNome = interaction.fields.getTextInputValue('novo_nome');
+  const canal = await interaction.guild.channels.fetch(channelId).catch(() => null);
+  if (!canal) {
+    return interaction.reply({ content: 'Não encontrei este canal.', ephemeral: true });
+  }
+  try {
+    await canal.setName(novoNome);
+    await interaction.reply({ content: `✏️ Ticket renomeado para **${novoNome}**.`, ephemeral: true });
+  } catch (err) {
+    console.error('Falha ao renomear ticket:', err.message);
+    await interaction.reply({
+      content: 'Não consegui renomear (nome inválido ou sem permissão **Gerir Canais**).',
+      ephemeral: true,
+    });
   }
 }
 
@@ -954,6 +1231,41 @@ client.on('interactionCreate', async (interaction) => {
         ephemeral: true,
       });
     }
+
+    // ------------------------- Sistema de tickets -------------------------
+
+    if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_tipo_select') {
+      await criarTicket(interaction, interaction.values[0]);
+    }
+
+    if (interaction.isUserSelectMenu() && interaction.customId.startsWith('ticket_addmember_select_')) {
+      const channelId = interaction.customId.slice('ticket_addmember_select_'.length);
+      await adicionarMembroAoTicket(interaction, channelId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('ticket_addmember_')) {
+      const channelId = interaction.customId.slice('ticket_addmember_'.length);
+      await abrirSeletorMembro(interaction, channelId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('ticket_call_')) {
+      const channelId = interaction.customId.slice('ticket_call_'.length);
+      await criarCallTicket(interaction, channelId);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('ticket_gank_')) {
+      await pedirGankTicket(interaction);
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('ticket_rename_')) {
+      const channelId = interaction.customId.slice('ticket_rename_'.length);
+      await abrirModalRenomear(interaction, channelId);
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('ticket_rename_modal_')) {
+      const channelId = interaction.customId.slice('ticket_rename_modal_'.length);
+      await renomearTicket(interaction, channelId);
+    }
   } catch (err) {
     console.error(err);
     if (interaction.isRepliable()) {
@@ -984,6 +1296,17 @@ client.on('messageCreate', async (message) => {
     if (nomeComando === 'loja') {
       const categoria = resto.join(' ') || null;
       await publicarLojaTexto(message, categoria);
+      return;
+    }
+
+    if (nomeComando === 'tickets') {
+      const { embeds, rows } = buildPainelTickets({});
+      await message.channel.send({ embeds, components: rows });
+      try {
+        await message.delete();
+      } catch {
+        /* sem permissão para apagar — não é grave */
+      }
       return;
     }
 
