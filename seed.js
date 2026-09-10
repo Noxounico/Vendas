@@ -1,85 +1,135 @@
 // seed.js
-// Cria os produtos iniciais da loja. Idempotente: não duplica produtos já criados.
+// Configura os preços da loja. Idempotente: cria produtos novos e atualiza
+// preço/moeda/categoria dos que já existem (não duplica).
 //
 // Uso:   npm run seed
-// Moeda: por omissão 'eur'. Para carregar noutra moeda (ex.: reais), define
-//        SEED_CURRENCY antes de correr, p.ex.:  SEED_CURRENCY=brl npm run seed
-//        (os valores numéricos são os mesmos; não há conversão automática).
+// Moeda: por omissão 'brl' (R$), para a mensagem do painel sair igual à print
+//        (ex.: Nitradas → "de R$ 2,55 a R$ 7,99").
+//        Outra moeda:  SEED_CURRENCY=eur npm run seed
 
 const db = require('./db');
 const { formatPrice } = require('./currency');
 
-const currency = (process.env.SEED_CURRENCY || 'eur').toLowerCase();
+const currency = (process.env.SEED_CURRENCY || 'brl').toLowerCase();
 
-// Catálogo organizado por canal (categoria). Cada canal dá origem a um painel
-// próprio: publica com  /loja categoria:<Canal>  no canal certo.
+function cents(valor) {
+  return Math.round(valor * 100);
+}
+
+// Catálogo organizado por canal (categoria). Os nomes têm de coincidir com os
+// produtos do bot. Os preços das Nitradas são os da print:
+//   Preço: De R$ 2,55 a R$ 7,99
 const CATALOG = [
   {
-    category: null, // Produtos avulsos (sem canal)
+    category: 'Painéis & Métodos',
     products: [
-      { name: 'Painel SMS', priceCents: 100 },
-      { name: 'Painel do 7', priceCents: 100 },
-      { name: 'Método Ifood', priceCents: 120 },
-      { name: 'Método internet grátis', priceCents: 110 },
-      { name: 'Método banir insta', priceCents: 120 },
-      { name: 'Modelo loja', priceCents: 100 },
+      { name: 'Painel SMS', priceCents: cents(1) },
+      { name: 'Painel do 7', priceCents: cents(1) },
+      { name: 'Método Ifood', priceCents: cents(1.2) },
+      { name: 'Método internet grátis', priceCents: cents(1.1) },
+      { name: 'Método banir insta', priceCents: cents(1.2) },
+      { name: 'Modelo loja', priceCents: cents(1) },
     ],
   },
   {
     category: 'Impulsos',
     products: [
-      { name: '2x impulsos', priceCents: 120 },
-      { name: '6x impulsos', priceCents: 300 },
-      { name: '8x impulsos', priceCents: 500 },
-      { name: '14x impulsos', priceCents: 800 },
-      { name: '14x impulsos trimensais', priceCents: 1000 },
+      { name: '2x impulsos', priceCents: cents(1.2) },
+      { name: '6x impulsos', priceCents: cents(3) },
+      { name: '8x impulsos', priceCents: cents(5) },
+      { name: '14x impulsos', priceCents: cents(8) },
+      { name: '14x impulsos trimensais', priceCents: cents(10) },
     ],
   },
   {
     category: 'Nitradas',
     products: [
-      { name: 'Nitrada Mensal', priceCents: 100 },
-      { name: 'Nitrada Trimensal', priceCents: 250 },
-      { name: 'Nitrada Anual', priceCents: 700 },
+      { name: 'Nitrada Mensal', priceCents: cents(2.55) },
+      { name: 'Nitrada Trimensal', priceCents: cents(6.99) },
+      { name: 'Nitrada Anual', priceCents: cents(7.99) },
     ],
   },
   {
     category: 'Links',
     products: [
-      { name: 'Nitro Link Mensal', priceCents: 80 },
-      { name: 'Nitro Link Trimensal', priceCents: 200 },
-      { name: 'Ativação do Nitro', priceCents: 100 },
+      { name: 'Nitro Link Mensal', priceCents: cents(0.8) },
+      { name: 'Nitro Link Trimensal', priceCents: cents(2) },
+      { name: 'Ativação do Nitro', priceCents: cents(1) },
     ],
   },
   {
-    category: 'Trial',
-    products: [{ name: 'Trial Nitro', priceCents: 80 }],
+    category: 'trial',
+    products: [{ name: 'Trial Nitro', priceCents: cents(0.8) }],
   },
   {
-    category: 'Contas',
+    category: 'virgem',
+    products: [{ name: 'Conta Virgem', priceCents: cents(0.55) }],
+  },
+  {
+    category: 'aged',
     products: [
-      { name: 'Conta 2016', priceCents: 1200 },
-      { name: 'Conta 2017', priceCents: 700 },
-      { name: 'Conta 2018', priceCents: 500 },
-      { name: 'Conta 2019', priceCents: 400 },
-      { name: 'Conta 2020', priceCents: 300 },
-      { name: 'Conta 2021', priceCents: 250 },
-      { name: 'Conta 2022', priceCents: 200 },
+      { name: 'Conta 2016', priceCents: cents(12) },
+      { name: 'Conta 2017', priceCents: cents(7) },
+      { name: 'Conta 2018', priceCents: cents(5) },
+      { name: 'Conta 2019', priceCents: cents(4) },
+      { name: 'Conta 2020', priceCents: cents(3) },
+      { name: 'Conta 2021', priceCents: cents(2.5) },
+      { name: 'Conta 2022', priceCents: cents(2) },
     ],
+  },
+  {
+    category: 'spotify',
+    products: [
+      { name: 'Conta Spotify Premium', priceCents: cents(1.3) },
+      { name: 'Link Spotify Trimensal', priceCents: cents(0.5) },
+    ],
+  },
+  {
+    category: 'membros',
+    products: [
+      { name: '100x membros online', priceCents: cents(1.5) },
+      { name: '100x membros offline', priceCents: cents(1) },
+    ],
+  },
+  {
+    category: 'trampo',
+    products: [{ name: 'Trampo fazendo dinheiro', priceCents: cents(1.2) }],
+  },
+  {
+    category: 'cloner',
+    products: [{ name: 'Clonar site', priceCents: cents(5) }],
   },
 ];
 
 function seed() {
-  const existing = new Set(db.listActiveProducts().map((p) => p.name));
   let created = 0;
+  let updated = 0;
+  let unchanged = 0;
   let total = 0;
 
   for (const group of CATALOG) {
     console.log(`\n# Canal: ${group.category || '(avulsos)'}`);
     for (const p of group.products) {
       total += 1;
-      if (existing.has(p.name)) {
-        console.log(`  = já existe: ${p.name}`);
+      const existente = db.getProductByName(p.name);
+      if (existente) {
+        const mesmoPreco = existente.price_cents === p.priceCents;
+        const mesmaMoeda = String(existente.currency || '').toLowerCase() === currency;
+        const mesmaCategoria = existente.category === group.category;
+        if (mesmoPreco && mesmaMoeda && mesmaCategoria) {
+          unchanged += 1;
+          console.log(`  = igual: ${p.name} — ${formatPrice(p.priceCents, currency)}`);
+          continue;
+        }
+        db.updateProduct(existente.id, {
+          priceCents: p.priceCents,
+          currency,
+          category: group.category,
+        });
+        updated += 1;
+        console.log(
+          `  ~ atualizado #${existente.id}: ${p.name} — ${formatPrice(p.priceCents, currency)}`
+        );
         continue;
       }
       const id = db.addProduct({
@@ -94,10 +144,19 @@ function seed() {
     }
   }
 
+  const nitradas = CATALOG.find((g) => g.category === 'Nitradas').products;
+  const min = Math.min(...nitradas.map((p) => p.priceCents));
+  const max = Math.max(...nitradas.map((p) => p.priceCents));
+  const faixaNitradas =
+    min === max
+      ? formatPrice(min, currency)
+      : `de ${formatPrice(min, currency)} a ${formatPrice(max, currency)}`;
+
   console.log(
-    `\n${created} produto(s) criado(s), ${total - created} já existente(s). Moeda: ${currency.toUpperCase()}.`
+    `\n${created} criado(s), ${updated} atualizado(s), ${unchanged} já certo(s) de ${total}. Moeda: ${currency.toUpperCase()}.`
   );
-  console.log('Carrega as chaves com /chave-adicionar e publica cada canal com /loja categoria:<Canal>.');
+  console.log(`Painel Nitradas (print): Preço: ${faixaNitradas}`);
+  console.log('Reinicia o bot e volta a publicar o painel (!loja-nitradas ou /loja-nitradas).');
 }
 
 seed();

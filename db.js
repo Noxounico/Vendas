@@ -93,6 +93,24 @@ function getProduct(id) {
   return db.prepare(`SELECT * FROM products WHERE id = ?`).get(id);
 }
 
+function getProductByName(name) {
+  return db.prepare(`SELECT * FROM products WHERE lower(name) = lower(?)`).get(name);
+}
+
+function updateProduct(id, { priceCents, currency, category }) {
+  const product = getProduct(id);
+  if (!product) return false;
+  db.prepare(
+    `UPDATE products SET price_cents = ?, currency = ?, category = ? WHERE id = ?`
+  ).run(
+    priceCents ?? product.price_cents,
+    currency ?? product.currency,
+    category !== undefined ? category : product.category,
+    id
+  );
+  return true;
+}
+
 function countAvailableKeys(productId) {
   return db
     .prepare(`SELECT COUNT(*) AS n FROM keys WHERE product_id = ? AND used = 0`)
@@ -163,6 +181,8 @@ module.exports = {
   listActiveProductsByCategory,
   listCategories,
   getProduct,
+  getProductByName,
+  updateProduct,
   countAvailableKeys,
   addKeysBulk,
   allocateKeyTxn,
