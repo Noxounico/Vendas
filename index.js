@@ -28,11 +28,17 @@ const {
   MediaGalleryBuilder,
   MediaGalleryItemBuilder,
   SectionBuilder,
+  Events,
 } = require('discord.js');
-// Precisas de instalar isto: npm install @napi-rs/canvas
-// (escolhido em vez do pacote "canvas" porque já vem com binários prontos,
-// sem precisar de instalar Cairo/Pango no servidor.)
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+// Canvas é opcional (só se algum painel antigo ainda gerar imagem).
+// Se o pacote falhar no servidor, o bot continua a ligar na mesma.
+let createCanvas;
+let loadImage;
+try {
+  ({ createCanvas, loadImage } = require('@napi-rs/canvas'));
+} catch (err) {
+  console.warn('Canvas indisponível (os painéis V2 não precisam):', err.message);
+}
 
 const db = require('./db');
 const { formatPrice } = require('./currency');
@@ -89,6 +95,9 @@ function removerEmojis(texto) {
 // (opcional) caixa de entrega + (opcional) preço/instrução.
 // cor: número hex (ex.: 0x9b59b6), igual ao que se passa ao EmbedBuilder.
 async function gerarImagemPainel({ imagemUrl, titulo, bullets, entrega, precoTexto, instrucao, cor }) {
+  if (!createCanvas || !loadImage) {
+    throw new Error('Canvas não está instalado neste servidor.');
+  }
   const LARGURA = 880;
   const PAD = 32;
   const corAccent = '#' + (cor ?? 0x9b59b6).toString(16).padStart(6, '0');
@@ -235,6 +244,10 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
+
+const CODIGOS_SEM_RECONNECT = new Set([4004, 4010, 4011, 4013, 4014]);
+let aLigar = false;
+let ultimoOk = Date.now();
 
 // Prefixo dos comandos de texto — alternativa aos slash commands, para o caso
 // de os slash commands não aparecerem/funcionarem no teu Discord.
@@ -1631,8 +1644,12 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-client.once('ready', async () => {
+client.on(Events.ClientReady, () => {
+  ultimoOk = Date.now();
   console.log(`Bot ligado como ${client.user.tag}`);
+});
+
+client.once(Events.ClientReady, async () => {
   try {
     await registerSlashCommands();
   } catch (err) {
@@ -1647,8 +1664,78 @@ client.once('ready', async () => {
 
 // Só liga o bot quando o ficheiro é corrido diretamente (npm start).
 // Assim o módulo pode ser importado em testes sem tentar autenticar no Discord.
+async function ligarBot({ forcar = false } = {}) {
+  const token = process.env.DISCORD_TOKEN;
+  if (!token) {
+    console.error('❌ Falta DISCORD_TOKEN no .env.');
+    process.exit(1);
+  }
+  if (aLigar) return;
+  if (client.isReady() && !forcar) return;
+
+  aLigar = true;
+  try {
+    if (forcar) {
+      try {
+        await client.destroy();
+      } catch {
+        /* já estava desligado */
+      }
+    }
+    await client.login(token);
+    ultimoOk = Date.now();
+  } catch (err) {
+    console.error('❌ Falha ao ligar ao Discord:', err.message);
+    aLigar = false;
+    setTimeout(() => ligarBot({ forcar: true }), 5000);
+    return;
+  }
+  aLigar = false;
+}
+
 if (require.main === module) {
-  client.login(process.env.DISCORD_TOKEN);
+  process.on('unhandledRejection', (err) => {
+    console.error('unhandledRejection:', err);
+  });
+  process.on('uncaughtException', (err) => {
+    console.error('uncaughtException:', err);
+  });
+
+  client.on(Events.Error, (err) => {
+    console.error('Erro do cliente Discord:', err);
+  });
+  client.on(Events.ShardError, (err, id) => {
+    console.error(`Erro no shard ${id}:`, err);
+  });
+  client.on(Events.ShardReconnecting, (id) => {
+    console.log(`A reconectar shard ${id}…`);
+  });
+  client.on(Events.ShardResume, (id) => {
+    ultimoOk = Date.now();
+    console.log(`Shard ${id} reconectado.`);
+  });
+  client.on(Events.ShardDisconnect, (event, id) => {
+    console.error(`Shard ${id} desconectou (código ${event?.code}).`);
+    if (CODIGOS_SEM_RECONNECT.has(event?.code)) {
+      console.error('Este código não permite reconectar (token/intents). Corrige o .env e reinicia.');
+      return;
+    }
+    setTimeout(() => ligarBot({ forcar: true }), 5000);
+  });
+
+  ligarBot();
+
+  setInterval(() => {
+    if (client.isReady()) {
+      ultimoOk = Date.now();
+      return;
+    }
+    if (Date.now() - ultimoOk > 120_000) {
+      console.warn('⚠️ Sem ligação ao Discord há 2 min, a tentar reconectar…');
+      ultimoOk = Date.now();
+      ligarBot({ forcar: true });
+    }
+  }, 30_000);
 }
 
 module.exports = { client, gerarPainelLoja, gerarPainelTickets, formatPrice, entregarPedido, seedProdutosIniciais };
