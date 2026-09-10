@@ -227,7 +227,25 @@ async function gerarImagemPainel({ imagemUrl, titulo, bullets, entrega, precoTex
 // comando /loja, que reenvia o ficheiro para o Discord de cada vez.
 const LOJA_BANNER_URL_PADRAO =
   process.env.LOJA_BANNER_URL ||
-  'https://media.discordapp.net/attachments/1545383446208315422/1545780646473891962/banner-loja.jpg?ex=6aa2a9e9&is=6aa15869&hm=404cc600d7d05b1b6913c6f5570112197949aa98e2d14b023a24c6b2ccc76e1c&=&format=webp';
+  'https://cdn.discordapp.com/attachments/1534183602764648579/1547712371232084109/content.png?ex=6aa46af8&is=6aa31978&hm=e25af16bb901517989d68003802e826b9b0dcaba72368fa90b3e52a20e6bf435&';
+
+// Tickets: categoria, cargo da staff e banner por defeito (env var sobrepõe).
+const TICKETS_CATEGORIA_ID_PADRAO = '1322700826912882779';
+const TICKETS_CARGO_STAFF_ID_PADRAO = '1443307566921678968';
+const TICKETS_BANNER_URL_PADRAO =
+  'https://media.discordapp.net/attachments/1534183602764648579/1547711353840738425/image.png?ex=6aa46a05&is=6aa31885&hm=add46c54857977892ae15441df5b3e5ac8423cbc068029e98d4b4fdca43cabb4&=&format=webp&quality=lossless&width=1479&height=832';
+
+function ticketsCategoriaId() {
+  return process.env.TICKETS_CATEGORIA_ID || TICKETS_CATEGORIA_ID_PADRAO;
+}
+
+function ticketsCargoStaffId() {
+  return process.env.TICKETS_CARGO_STAFF_ID || TICKETS_CARGO_STAFF_ID_PADRAO;
+}
+
+function ticketsBannerUrl() {
+  return process.env.TICKETS_BANNER_URL || TICKETS_BANNER_URL_PADRAO;
+}
 
 // "trial" -> "Trial", "link spotify tri" -> "Link Spotify Tri"
 function capitalizar(str) {
@@ -332,6 +350,12 @@ const PRODUTOS_SEED = [
   { nome: '10000-15000 robux acc', preco: eur(16), categoria: 'roblox' },
   { nome: '15000-25000 robux acc', preco: eur(20), categoria: 'roblox' },
   { nome: '25000-50000 robux acc', preco: eur(25), categoria: 'roblox' },
+
+  // --- Canal Fortnite ACC'S ---
+  { nome: '100-150 Skins', preco: eur(10), categoria: 'fortnite' },
+  { nome: '150-250 Skins', preco: eur(15), categoria: 'fortnite' },
+  { nome: '100-250 Tryhard Skins', preco: eur(20), categoria: 'fortnite' },
+  { nome: '250-400 Skins', preco: eur(25), categoria: 'fortnite' },
 ];
 
 // Cria os produtos de PRODUTOS_SEED que ainda não existem (por nome).
@@ -380,6 +404,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-trampo': 'trampo',
   'loja-cloner': 'cloner',
   'loja-roblox': 'roblox',
+  'loja-fortnite': 'fortnite',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -537,6 +562,14 @@ const slashCommands = [
       opt.setName('descricao').setDescription('Texto do painel (opcional)').setRequired(false)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
+    .setName('comandos')
+    .setDescription('Lista todos os comandos do bot'),
+
+  new SlashCommandBuilder()
+    .setName('fechar')
+    .setDescription('Fecha o ticket deste canal'),
 ].map((cmd) => cmd.toJSON());
 
 async function registerSlashCommands() {
@@ -716,6 +749,13 @@ const PAINEL_TEXTOS = {
     'Valor = Robux do inventário',
     'ALL FULL ACCESS',
     'Entrega automática no privado',
+  ]),
+  fortnite: textoPainel('FORTNITE ACC\'S', [
+    '💥 100–150 Skins — OG + rare mix (Black Knight, Minty Axe) e emotes (Take the L)',
+    '✨ 150–250 Skins — coleção maior de OG & rare, emotes e itens raros',
+    '🔥 100–250 Tryhard — skins sweaty/populares, 50+ do Item Shop',
+    '✨ 250–400 Skins — biblioteca grande com lendários e ultra-rares',
+    'ᴀʟʟ ꜰᴜʟʟ ᴀᴄᴄᴇꜱꜱ',
   ]),
 };
 
@@ -900,9 +940,10 @@ async function publicarLojaTexto(message, categoria) {
 // (ticket) com botões para Adicionar Membro / Criar Call / Pedir Gank /
 // Renomear Ticket.
 //
-// Configuração por variáveis de ambiente (todas opcionais):
+// Configuração (env var sobrepõe o valor por defeito):
 //   TICKETS_CATEGORIA_ID  -> categoria onde os canais de ticket são criados
 //   TICKETS_CARGO_STAFF_ID -> cargo da staff (vê os tickets, é chamado no "Pedir Gank")
+//   TICKETS_BANNER_URL    -> imagem do painel e do canal de ticket
 // ---------------------------------------------------------------------------
 
 const TIPOS_TICKET = {
@@ -946,7 +987,7 @@ function gerarPainelTickets(opts = {}) {
     );
 
   return montarPainelV2({
-    imagemUrl: imagem || process.env.TICKETS_BANNER_URL || LOJA_BANNER_URL_PADRAO,
+    imagemUrl: imagem || ticketsBannerUrl(),
     accentColor: corParaHex(cor) ?? 0x2b2d31,
     texto,
     rodape: 'Escolha o tipo de atendimento\nClique no menu abaixo',
@@ -976,16 +1017,74 @@ function buildBotoesTicket(channelId) {
       .setLabel('Renomear Ticket')
       .setEmoji('✏️')
       .setStyle(ButtonStyle.Secondary)
-      .setCustomId(`ticket_rename_${channelId}`)
+      .setCustomId(`ticket_rename_${channelId}`),
+    new ButtonBuilder()
+      .setLabel('Fechar Ticket')
+      .setEmoji('🔒')
+      .setStyle(ButtonStyle.Danger)
+      .setCustomId(`ticket_fechar_${channelId}`)
   );
+}
+
+function textoComandos() {
+  const paineis = Object.keys(CATEGORIA_POR_COMANDO)
+    .map((cmd) => `\`!${cmd}\` / \`/${cmd}\``)
+    .join('\n');
+
+  return (
+    '## Comandos do bot\n' +
+    '**Loja**\n' +
+    '`!loja` / `/loja` — publica todos os painéis (ou uma categoria)\n' +
+    `${paineis}\n\n` +
+    '**Tickets**\n' +
+    '`!tickets` / `/tickets` — publica o painel de tickets\n' +
+    '`!fechar` / `!close` / `/fechar` — fecha o ticket deste canal\n' +
+    'Dentro do ticket: Adicionar Membro · Criar Call · Pedir Gank · Renomear · Fechar\n\n' +
+    '**Geral**\n' +
+    '`!comandos` / `/comandos` — esta lista\n' +
+    '`/verificacao` — painel de verificação\n\n' +
+    '**Admin**\n' +
+    '`/produtos` · `/chave-adicionar` · `/entregar`'
+  );
+}
+
+function ehCanalTicket(canal) {
+  if (!canal) return false;
+  return canal.parentId === ticketsCategoriaId() || /^(suporte|receber-produto|duvidas)-/i.test(canal.name);
+}
+
+function podeGerirTicket(membro, canal) {
+  if (!membro) return false;
+  if (membro.permissions?.has(PermissionFlagsBits.Administrator)) return true;
+  const staffId = ticketsCargoStaffId();
+  if (staffId && membro.roles?.cache?.has(staffId)) return true;
+  const overwrite = canal?.permissionOverwrites?.cache?.get(membro.id);
+  if (overwrite?.allow?.has(PermissionFlagsBits.ViewChannel)) return true;
+  return false;
+}
+
+async function fecharTicket(canal, autorTag) {
+  const aviso =
+    `🔒 Ticket fechado por ${autorTag}. Este canal será apagado em 5 segundos.\n\n` +
+    textoComandos();
+  try {
+    await canal.send({ content: aviso });
+  } catch {
+    /* canal já pode estar sem permissões */
+  }
+  setTimeout(() => {
+    canal.delete('Ticket fechado').catch((err) => {
+      console.error('Falha ao apagar ticket:', err.message);
+    });
+  }, 5000);
 }
 
 async function criarTicket(interaction, tipoKey) {
   const tipo = TIPOS_TICKET[tipoKey];
   if (!tipo) return;
 
-  const categoriaId = process.env.TICKETS_CATEGORIA_ID || null;
-  const staffRoleId = process.env.TICKETS_CARGO_STAFF_ID || null;
+  const categoriaId = ticketsCategoriaId();
+  const staffRoleId = ticketsCargoStaffId();
 
   const overwrites = [
     { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -1031,16 +1130,25 @@ async function criarTicket(interaction, tipoKey) {
     return interaction.reply({
       content:
         'Não consegui criar o canal do ticket. Confirma que o bot tem a permissão **Gerir Canais** ' +
-        '(e que `TICKETS_CATEGORIA_ID`, se definido, é uma categoria válida).',
+        'e que a categoria de tickets existe.',
       ephemeral: true,
     });
   }
 
+  const painelTicket = montarPainelV2({
+    imagemUrl: ticketsBannerUrl(),
+    accentColor: 0x2b2d31,
+    texto:
+      `Olá <@${interaction.user.id}>! Ticket de **${tipo.label}** aberto — em breve alguém da equipa vai responder.` +
+      (staffRoleId ? ` <@&${staffRoleId}>` : ''),
+    extraRows: [buildBotoesTicket(canal.id)],
+  });
   await canal.send({
-    content: `Olá <@${interaction.user.id}>! Ticket de **${tipo.label}** aberto — em breve alguém da equipa vai responder.${
-      staffRoleId ? ` <@&${staffRoleId}>` : ''
-    }`,
-    components: [buildBotoesTicket(canal.id)],
+    ...painelTicket.payload,
+    allowedMentions: {
+      users: [interaction.user.id],
+      roles: staffRoleId ? [staffRoleId] : [],
+    },
   });
 
   await interaction.reply({
@@ -1111,12 +1219,35 @@ async function criarCallTicket(interaction, channelId) {
 
 // "Pedir Gank" — chama a staff para este ticket.
 async function pedirGankTicket(interaction) {
-  const staffRoleId = process.env.TICKETS_CARGO_STAFF_ID;
+  const staffRoleId = ticketsCargoStaffId();
   await interaction.reply({
     content: staffRoleId
       ? `❗ <@&${staffRoleId}> — <@${interaction.user.id}> precisa de ajuda neste ticket!`
-      : `❗ <@${interaction.user.id}> pediu ajuda neste ticket! (define \`TICKETS_CARGO_STAFF_ID\` no .env para chamar um cargo específico)`,
+      : `❗ <@${interaction.user.id}> pediu ajuda neste ticket!`,
   });
+}
+
+async function pedirFecharTicket(interaction, channelId) {
+  const canal = channelId
+    ? await interaction.guild.channels.fetch(channelId).catch(() => null)
+    : interaction.channel;
+
+  if (!canal || !ehCanalTicket(canal)) {
+    return interaction.reply({
+      content: 'Este comando só funciona dentro de um ticket.',
+      ephemeral: true,
+    });
+  }
+
+  if (!podeGerirTicket(interaction.member, canal)) {
+    return interaction.reply({
+      content: 'Não tens permissão para fechar este ticket.',
+      ephemeral: true,
+    });
+  }
+
+  await interaction.reply({ content: 'A fechar o ticket…', ephemeral: true });
+  await fecharTicket(canal, `<@${interaction.user.id}>`);
 }
 
 // "Renomear Ticket" — abre um modal a pedir o novo nome.
@@ -1534,6 +1665,14 @@ async function aoInteracao(interaction) {
       if (commandName === 'verificacao') {
         await publicarVerificacao(interaction);
       }
+
+      if (commandName === 'comandos') {
+        await interaction.reply({ content: textoComandos(), ephemeral: true });
+      }
+
+      if (commandName === 'fechar') {
+        await pedirFecharTicket(interaction, interaction.channelId);
+      }
     }
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'comprar_select') {
@@ -1613,6 +1752,11 @@ async function aoInteracao(interaction) {
       const channelId = interaction.customId.slice('ticket_rename_modal_'.length);
       await renomearTicket(interaction, channelId);
     }
+
+    if (interaction.isButton() && interaction.customId.startsWith('ticket_fechar_')) {
+      const channelId = interaction.customId.slice('ticket_fechar_'.length);
+      await pedirFecharTicket(interaction, channelId);
+    }
   } catch (err) {
     console.error(err);
     if (interaction.isRepliable()) {
@@ -1635,10 +1779,29 @@ async function aoMensagem(message) {
   try {
     if (message.author.bot) return;
     if (!message.content.startsWith(PREFIXO)) return;
-    if (!message.member?.permissions?.has(PermissionFlagsBits.Administrator)) return;
 
     const [cmd, ...resto] = message.content.slice(PREFIXO.length).trim().split(/\s+/);
     const nomeComando = (cmd || '').toLowerCase();
+
+    if (nomeComando === 'comandos' || nomeComando === 'cmds' || nomeComando === 'help') {
+      await message.reply({ content: textoComandos() });
+      return;
+    }
+
+    if (nomeComando === 'fechar' || nomeComando === 'close') {
+      if (!ehCanalTicket(message.channel)) {
+        await message.reply('Este comando só funciona dentro de um ticket.');
+        return;
+      }
+      if (!podeGerirTicket(message.member, message.channel)) {
+        await message.reply('Não tens permissão para fechar este ticket.');
+        return;
+      }
+      await fecharTicket(message.channel, `<@${message.author.id}>`);
+      return;
+    }
+
+    if (!message.member?.permissions?.has(PermissionFlagsBits.Administrator)) return;
 
     if (nomeComando === 'loja') {
       const categoria = resto.join(' ') || null;
