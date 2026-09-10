@@ -236,7 +236,8 @@ const TICKETS_CARGOS_STAFF_PADRAO = ['1443307566921678968', '1318653141453111368
 const TICKETS_BANNER_URL_PADRAO =
   'https://media.discordapp.net/attachments/1534183602764648579/1547711353840738425/image.png?ex=6aa46a05&is=6aa31885&hm=add46c54857977892ae15441df5b3e5ac8423cbc068029e98d4b4fdca43cabb4&=&format=webp&quality=lossless&width=1479&height=832';
 const VERIFY_ROLE_ID_PADRAO = '1178495316132110336';
-const LOGS_CANAL_ID_PADRAO = '1547721266566402200';
+const LOGS_COMPRAS_CANAL_ID_PADRAO = '1443334209182765147';
+const TICKETS_FECHAR_ID_PADRAO = '1318660945064755291';
 
 function ticketsCategoriaId() {
   return process.env.TICKETS_CATEGORIA_ID || TICKETS_CATEGORIA_ID_PADRAO;
@@ -258,6 +259,7 @@ function ticketsStaffMencoes() {
 function ehStaffTickets(membro) {
   if (!membro) return false;
   if (membro.permissions?.has(PermissionFlagsBits.Administrator)) return true;
+  if (membro.roles?.cache?.has(ticketsFecharId())) return true;
   return ticketsCargosStaffIds().some((id) => membro.roles?.cache?.has(id));
 }
 
@@ -266,7 +268,15 @@ function ticketsBannerUrl() {
 }
 
 function logsCanalId() {
-  return process.env.PEDIDOS_CHANNEL_ID || process.env.LOG_CHANNEL_ID || LOGS_CANAL_ID_PADRAO;
+  return (
+    process.env.PEDIDOS_CHANNEL_ID ||
+    process.env.LOG_CHANNEL_ID ||
+    LOGS_COMPRAS_CANAL_ID_PADRAO
+  );
+}
+
+function ticketsFecharId() {
+  return process.env.TICKETS_CARGO_FECHAR_ID || TICKETS_FECHAR_ID_PADRAO;
 }
 
 function cargoVerificacaoId() {
@@ -1240,15 +1250,28 @@ function podeGerirTicket(membro, canal) {
   return false;
 }
 
+async function registarFechoTicket(canal, autorTag) {
+  const destId = process.env.TICKETS_LOGS_FECHO_ID || ticketsFecharId();
+  if (!destId || destId === logsCanalId()) return;
+  try {
+    const dest = await client.channels.fetch(destId);
+    if (!dest?.isTextBased()) return;
+    await dest.send({
+      content: `🔒 Ticket **#${canal.name}** (\`${canal.id}\`) fechado por ${autorTag}.`,
+    });
+  } catch {
+    /* se o ID for um cargo e não um canal, ignora */
+  }
+}
+
 async function fecharTicket(canal, autorTag) {
-  const aviso =
-    `🔒 Ticket fechado por ${autorTag}. Este canal será apagado em 5 segundos.\n\n` +
-    textoComandos();
+  const aviso = `🔒 Ticket fechado por ${autorTag}. Este canal será apagado em 5 segundos.`;
   try {
     await canal.send({ content: aviso });
   } catch {
     /* canal já pode estar sem permissões */
   }
+  await registarFechoTicket(canal, autorTag);
   setTimeout(() => {
     canal.delete('Ticket fechado').catch((err) => {
       console.error('Falha ao apagar ticket:', err.message);
