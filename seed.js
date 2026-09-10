@@ -16,7 +16,7 @@ function cents(valor) {
 
 // Catálogo organizado por canal (categoria). Os nomes têm de coincidir com os
 // produtos do bot. Os preços das Nitradas:
-//   Preço: De 2,55 € a 7,99 €
+//   Preço: De 5,00 € a 15,00 €
 const CATALOG = [
   {
     category: 'Painéis & Métodos',
@@ -32,45 +32,45 @@ const CATALOG = [
   {
     category: 'Impulsos',
     products: [
-      { name: '2x impulsos', priceCents: cents(1.2) },
-      { name: '6x impulsos', priceCents: cents(3) },
-      { name: '8x impulsos', priceCents: cents(5) },
-      { name: '14x impulsos', priceCents: cents(8) },
-      { name: '14x impulsos trimensais', priceCents: cents(10) },
+      { name: '2x impulsos', priceCents: cents(3) },
+      { name: '6x impulsos', priceCents: cents(6) },
+      { name: '8x impulsos', priceCents: cents(8) },
+      { name: '14x impulsos', priceCents: cents(10) },
+      { name: '14x impulsos trimensais', priceCents: cents(15) },
     ],
   },
   {
     category: 'Nitradas',
     products: [
-      { name: 'Nitrada Mensal', priceCents: cents(2.55) },
-      { name: 'Nitrada Trimensal', priceCents: cents(6.99) },
-      { name: 'Nitrada Anual', priceCents: cents(7.99) },
+      { name: 'Nitrada Mensal', priceCents: cents(5) },
+      { name: 'Nitrada Trimensal', priceCents: cents(9) },
+      { name: 'Nitrada Anual', priceCents: cents(15) },
     ],
   },
   {
     category: 'Links',
     products: [
-      { name: 'Nitro Link Mensal', priceCents: cents(0.8) },
-      { name: 'Nitro Link Trimensal', priceCents: cents(2) },
-      { name: 'Ativação do Nitro', priceCents: cents(1) },
+      { name: 'Nitro Link Mensal', priceCents: cents(3) },
+      { name: 'Nitro Link Trimensal', priceCents: cents(6) },
+      { name: 'Ativação do Nitro', priceCents: cents(4) },
     ],
   },
   {
     category: 'trial',
-    products: [{ name: 'Trial Nitro', priceCents: cents(0.8) }],
+    products: [{ name: 'Trial Nitro', priceCents: cents(2) }],
   },
   {
     category: 'virgem',
-    products: [{ name: 'Conta Virgem', priceCents: cents(0.55) }],
+    products: [{ name: 'Conta Virgem', priceCents: cents(4) }],
   },
   {
     category: 'aged',
     products: [
-      { name: 'Conta 2016', priceCents: cents(12) },
-      { name: 'Conta 2017', priceCents: cents(7) },
-      { name: 'Conta 2018', priceCents: cents(5) },
-      { name: 'Conta 2019', priceCents: cents(4) },
-      { name: 'Conta 2020', priceCents: cents(3) },
+      { name: 'Conta 2016', priceCents: cents(20) },
+      { name: 'Conta 2017', priceCents: cents(15) },
+      { name: 'Conta 2018', priceCents: cents(10) },
+      { name: 'Conta 2019', priceCents: cents(7) },
+      { name: 'Conta 2020', priceCents: cents(5) },
       { name: 'Conta 2021', priceCents: cents(2.5) },
       { name: 'Conta 2022', priceCents: cents(2) },
     ],
@@ -78,20 +78,20 @@ const CATALOG = [
   {
     category: 'spotify',
     products: [
-      { name: 'Conta Spotify Premium', priceCents: cents(1.3) },
+      { name: 'Conta Spotify Premium', priceCents: cents(8) },
       { name: 'Link Spotify Trimensal', priceCents: cents(0.5) },
     ],
   },
   {
     category: 'membros',
     products: [
-      { name: '100x membros online', priceCents: cents(1.5) },
-      { name: '100x membros offline', priceCents: cents(1) },
+      { name: '100x membros online', priceCents: cents(6) },
+      { name: '100x membros offline', priceCents: cents(3) },
     ],
   },
   {
     category: 'trampo',
-    products: [{ name: 'Trampo fazendo dinheiro', priceCents: cents(1.2) }],
+    products: [{ name: 'Trampo fazendo dinheiro', priceCents: cents(5) }],
   },
   {
     category: 'cloner',
