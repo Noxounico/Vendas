@@ -1,0 +1,11 @@
+{
+  "name": "Game Shop Bot",
+  "install": "npm install",
+  "terminals": [
+    {
+      "name": "bot",
+      "command": "npm start",
+      "description": "Runs the Discord game-shop bot (node index.js). Requires the DISCORD_TOKEN and CLIENT_ID secrets to connect; it registers slash commands and seeds the initial products on startup."
+    }
+  ]
+}
