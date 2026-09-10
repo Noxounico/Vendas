@@ -44,19 +44,28 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 `);
 
-// Migração: adiciona a coluna "category" a bases de dados criadas antes dos canais.
-const hasCategory = db
-  .prepare(`PRAGMA table_info(products)`)
-  .all()
-  .some((col) => col.name === 'category');
-if (!hasCategory) {
+function temColuna(tabela, coluna) {
+  return db
+    .prepare(`PRAGMA table_info(${tabela})`)
+    .all()
+    .some((col) => col.name === coluna);
+}
+
+// Migrações para bases de dados antigas.
+if (!temColuna('products', 'category')) {
   db.exec(`ALTER TABLE products ADD COLUMN category TEXT`);
+}
+if (!temColuna('products', 'stock_qty')) {
+  db.exec(`ALTER TABLE products ADD COLUMN stock_qty INTEGER NOT NULL DEFAULT 10`);
+}
+if (!temColuna('orders', 'quantity')) {
+  db.exec(`ALTER TABLE orders ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1`);
 }
 
 // ---------- Produtos ----------
-function addProduct({ name, description, priceCents, currency, category, roleId }) {
+function addProduct({ name, description, priceCents, currency, category, roleId, stockQty }) {
   const stmt = db.prepare(
-    `INSERT INTO products (name, description, price_cents, currency, category, role_id) VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO products (name, description, price_cents, currency, category, role_id, stock_qty) VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
   const info = stmt.run(
     name,
@@ -64,7 +73,8 @@ function addProduct({ name, description, priceCents, currency, category, roleId 
     priceCents,
     currency || 'eur',
     category || null,
-    roleId || null
+    roleId || null,
+    stockQty == null ? 10 : Math.max(0, Math.round(Number(stockQty) || 0))
   );
   return info.lastInsertRowid;
 }
@@ -117,6 +127,27 @@ function countAvailableKeys(productId) {
     .get(productId).n;
 }
 
+function getStock(productId) {
+  const row = db.prepare(`SELECT stock_qty FROM products WHERE id = ?`).get(productId);
+  return row ? Number(row.stock_qty) || 0 : 0;
+}
+
+function setStock(productId, qty) {
+  const n = Math.max(0, Math.round(Number(qty) || 0));
+  const info = db.prepare(`UPDATE products SET stock_qty = ? WHERE id = ?`).run(n, productId);
+  return info.changes > 0 ? n : null;
+}
+
+function addStock(productId, delta) {
+  return db.transaction(() => {
+    const row = db.prepare(`SELECT stock_qty FROM products WHERE id = ?`).get(productId);
+    if (!row) return null;
+    const next = Math.max(0, (Number(row.stock_qty) || 0) + delta);
+    db.prepare(`UPDATE products SET stock_qty = ? WHERE id = ?`).run(next, productId);
+    return next;
+  })();
+}
+
 // ---------- Chaves ----------
 function addKeysBulk(productId, keyList) {
   const insert = db.prepare(`INSERT INTO keys (product_id, key_value) VALUES (?, ?)`);
@@ -147,12 +178,29 @@ function getKeyValue(keyId) {
   return db.prepare(`SELECT key_value FROM keys WHERE id = ?`).get(keyId)?.key_value;
 }
 
+function allocateKeys(productId, discordUserId, quantity) {
+  const qty = Math.max(1, Math.round(Number(quantity) || 1));
+  const ids = [];
+  for (let i = 0; i < qty; i++) {
+    const id = allocateKeyTxn(productId, discordUserId);
+    if (!id) break;
+    ids.push(id);
+  }
+  return ids;
+}
+
 // ---------- Pedidos ----------
-function createOrder({ productId, discordUserId }) {
-  const info = db
-    .prepare(`INSERT INTO orders (product_id, discord_user_id) VALUES (?, ?)`)
-    .run(productId, discordUserId);
-  return info.lastInsertRowid;
+function createOrder({ productId, discordUserId, quantity = 1 }) {
+  const qty = Math.max(1, Math.round(Number(quantity) || 1));
+  return db.transaction(() => {
+    const row = db.prepare(`SELECT stock_qty FROM products WHERE id = ?`).get(productId);
+    if (!row || (Number(row.stock_qty) || 0) < qty) return null;
+    db.prepare(`UPDATE products SET stock_qty = stock_qty - ? WHERE id = ?`).run(qty, productId);
+    const info = db
+      .prepare(`INSERT INTO orders (product_id, discord_user_id, quantity) VALUES (?, ?, ?)`)
+      .run(productId, discordUserId, qty);
+    return info.lastInsertRowid;
+  })();
 }
 
 function attachStripeSession(orderId, sessionId) {
@@ -196,8 +244,12 @@ module.exports = {
   getProductByName,
   updateProduct,
   countAvailableKeys,
+  getStock,
+  setStock,
+  addStock,
   addKeysBulk,
   allocateKeyTxn,
+  allocateKeys,
   getKeyValue,
   createOrder,
   attachStripeSession,

@@ -659,16 +659,24 @@ function faixaPrecos(products) {
     : `De ${formatPrice(min, moeda)} a ${formatPrice(max, moeda)}`;
 }
 
+function stockDoProduto(product) {
+  if (!product) return 0;
+  if (product.stock_qty != null) return Math.max(0, Number(product.stock_qty) || 0);
+  return db.getStock(product.id);
+}
+
+function textoStock(n) {
+  return n <= 0 ? 'Esgotado' : String(n);
+}
+
 // Constrói o menu de seleção com os produtos da categoria — mostra o preço e o
 // stock em cada opção (mesmo quando esgotado), tal como no exemplo que mandaste.
 function buildSelectRow(products) {
   const options = products.slice(0, 25).map((p) => {
-    const stock = db.countAvailableKeys(p.id);
+    const stock = stockDoProduto(p);
     return {
       label: p.name,
-      description: `Valor: ${formatPrice(p.price_cents, p.currency)} · 📦 Estoque: ${
-        stock === 0 ? 'Esgotado' : stock
-      }`,
+      description: `Valor: ${formatPrice(p.price_cents, p.currency)} · 📦 Estoque: ${textoStock(stock)}`,
       value: String(p.id),
       emoji: '⭐',
     };
@@ -1079,8 +1087,9 @@ function textoComandos() {
     '`!verificacao` — painel de verificação (escolhe o código certo)\n\n' +
     '**Admin**\n' +
     '`!produtos` — lista produtos e stock\n' +
+    '`!stock <id> <quantidade>` — define o stock (a staff entrega à mão)\n' +
     '`!produto-criar <preco> <categoria> <nome>`\n' +
-    '`!chave-adicionar <id>` + ficheiro .txt\n' +
+    '`!chave-adicionar <id>` + ficheiro .txt (opcional)\n' +
     '`!entregar <pedido_id>`'
   );
 }
@@ -1328,57 +1337,103 @@ async function iniciarCompra(interaction, productId) {
     return interaction.reply({ content: 'Este produto já não está disponível.', ephemeral: true });
   }
 
-  const stock = db.countAvailableKeys(product.id);
+  const stock = stockDoProduto(product);
   if (stock <= 0) {
     return interaction.reply({ content: 'Este produto está esgotado no momento.', ephemeral: true });
   }
 
-  const orderId = db.createOrder({ productId: product.id, discordUserId: interaction.user.id });
+  const modal = new ModalBuilder()
+    .setCustomId(`comprar_qty_${product.id}`)
+    .setTitle('Quantidade');
 
+  const input = new TextInputBuilder()
+    .setCustomId('quantidade')
+    .setLabel(`Quantos queres? (1 a ${Math.min(stock, 99)})`)
+    .setStyle(TextInputStyle.Short)
+    .setMinLength(1)
+    .setMaxLength(3)
+    .setValue('1')
+    .setRequired(true)
+    .setPlaceholder('1');
+
+  modal.addComponents(new ActionRowBuilder().addComponents(input));
+  await interaction.showModal(modal);
+}
+
+async function confirmarCompraComQuantidade(interaction, productId) {
+  const product = db.getProduct(productId);
+  if (!product || !product.active) {
+    return interaction.reply({ content: 'Este produto já não está disponível.', ephemeral: true });
+  }
+
+  const raw = (interaction.fields.getTextInputValue('quantidade') || '').trim();
+  const quantidade = parseInt(raw, 10);
+  const stock = stockDoProduto(product);
+  if (!Number.isFinite(quantidade) || quantidade < 1) {
+    return interaction.reply({ content: 'Quantidade inválida. Usa um número maior que 0.', ephemeral: true });
+  }
+  if (quantidade > stock) {
+    return interaction.reply({
+      content: `Só há **${stock}** em stock de **${product.name}**.`,
+      ephemeral: true,
+    });
+  }
+
+  const orderId = db.createOrder({
+    productId: product.id,
+    discordUserId: interaction.user.id,
+    quantity: quantidade,
+  });
+  if (!orderId) {
+    return interaction.reply({ content: 'Este produto está esgotado no momento.', ephemeral: true });
+  }
+
+  const totalCents = product.price_cents * quantidade;
   const instrucoes =
     process.env.PAYMENT_INFO ||
-    'Contacta um administrador para efetuares o pagamento. Assim que for confirmado, recebes a tua chave por DM.';
+    'Contacta um administrador para efetuares o pagamento. Assim que for confirmado, a staff entrega-te o produto.';
 
   await interaction.reply({
     content:
-      `🧾 Pedido **#${orderId}** criado — **${product.name}** por ${formatPrice(
-        product.price_cents,
+      `🧾 Pedido **#${orderId}** criado — **${quantidade}x ${product.name}** por ${formatPrice(
+        totalCents,
         product.currency
       )}.\n\n` +
       `**Como pagar:** ${instrucoes}\n\n` +
       `Depois de pagares, **envia uma foto do comprovante** (neste servidor, num ticket ou por DM ao bot). ` +
       `O bot reconhece a imagem e manda à staff.\n\n` +
-      `Assim que um admin confirmar o pagamento, a tua chave chega por DM. 📩`,
+      `Assim que um admin confirmar, a staff entrega-te o produto. 📩`,
     ephemeral: true,
   });
 
-  await notificarPedidoAdmins(interaction, orderId, product);
+  await notificarPedidoAdmins(interaction, orderId, product, quantidade);
 }
 
 // Publica o pedido no canal de admins (PEDIDOS_CHANNEL_ID ou LOG_CHANNEL_ID)
 // com os botões "Entregar chave" e "Cancelar".
-async function notificarPedidoAdmins(interaction, orderId, product) {
+async function notificarPedidoAdmins(interaction, orderId, product, quantidade = 1) {
   const channelId = logsCanalId();
   if (!channelId) return;
   try {
     const channel = await client.channels.fetch(channelId);
     if (!channel?.isTextBased()) return;
 
+    const qty = Math.max(1, Number(quantidade) || 1);
     const embed = new EmbedBuilder()
       .setTitle(`🛒 Novo pedido #${orderId}`)
       .setColor(0xfaa61a)
       .addFields(
         {
           name: 'Produto',
-          value: `${product.name} — ${formatPrice(product.price_cents, product.currency)}`,
+          value: `${qty}x ${product.name} — ${formatPrice(product.price_cents * qty, product.currency)}`,
         },
         { name: 'Cliente', value: `<@${interaction.user.id}>` },
-        { name: 'Estado', value: 'Aguarda confirmação de pagamento' }
+        { name: 'Estado', value: 'Aguarda confirmação de pagamento (a staff entrega à mão)' }
       );
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setLabel('Entregar chave')
+        .setLabel('Entregar')
         .setStyle(ButtonStyle.Success)
         .setCustomId(`entregar_${orderId}`),
       new ButtonBuilder()
@@ -1418,8 +1473,8 @@ async function entregarPorAdmin(interaction, orderId) {
 
   await interaction.reply({
     content: entregue
-      ? `✅ Pedido #${orderId} entregue. A chave foi enviada por DM ao cliente.`
-      : `⚠️ Pedido #${orderId}: não há chaves em stock. Usa \`!chave-adicionar\` e tenta de novo.`,
+      ? `✅ Pedido #${orderId} marcado como entregue. Se havia chaves, foram enviadas por DM; senão a staff entrega à mão.`
+      : `⚠️ Pedido #${orderId}: não consegui concluir a entrega.`,
     ephemeral: true,
   });
 
@@ -1439,8 +1494,12 @@ async function cancelarPedido(interaction, orderId) {
       ephemeral: true,
     });
   }
+  const order = db.getOrder(orderId);
+  if (order && order.status === 'pending') {
+    db.addStock(order.product_id, order.quantity || 1);
+  }
   db.markOrderStatus(orderId, 'expired');
-  await interaction.reply({ content: `Pedido #${orderId} cancelado.`, ephemeral: true });
+  await interaction.reply({ content: `Pedido #${orderId} cancelado. Stock devolvido.`, ephemeral: true });
   if (interaction.message) {
     try {
       await interaction.message.edit({ components: [] });
@@ -1459,27 +1518,28 @@ async function entregarPedido(orderId) {
   if (!order || order.status === 'delivered') return; // já entregue, evita duplicar
 
   const product = db.getProduct(order.product_id);
-  const keyId = db.allocateKeyTxn(order.product_id, order.discord_user_id);
+  const quantidade = Math.max(1, Number(order.quantity) || 1);
+  const keyIds = db.allocateKeys(order.product_id, order.discord_user_id, quantidade);
+  const chaves = keyIds.map((id) => db.getKeyValue(id)).filter(Boolean);
 
-  if (!keyId) {
-    db.markOrderStatus(order.id, 'paid'); // pago mas sem stock -> tratar manualmente
-    await logToChannel(
-      `⚠️ Pedido #${order.id} (${product?.name}) foi pago mas **não há chaves em stock**. Entrega manual necessária para <@${order.discord_user_id}>.`
-    );
-    return;
-  }
-
-  const keyValue = db.getKeyValue(keyId);
-  db.markOrderDelivered(order.id, keyId);
+  db.markOrderDelivered(order.id, keyIds[0] || null);
 
   try {
     const user = await client.users.fetch(order.discord_user_id);
-    await user.send(
-      `✅ Pagamento confirmado! Aqui está a tua chave de **${product.name}**:\n\`\`\`${keyValue}\`\`\`\nObrigado pela compra!`
-    );
+    if (chaves.length > 0) {
+      const bloco = chaves.map((k) => `\`${k}\``).join('\n');
+      await user.send(
+        `✅ Pagamento confirmado! Aqui ${chaves.length === 1 ? 'está a tua chave' : 'estão as tuas chaves'} de **${quantidade}x ${product.name}**:\n${bloco}\nObrigado pela compra!`
+      );
+    } else {
+      await user.send(
+        `✅ Pagamento confirmado! A staff vai entregar-te **${quantidade}x ${product.name}**. Obrigado pela compra!`
+      );
+    }
   } catch (err) {
     await logToChannel(
-      `⚠️ Pedido #${order.id}: pagamento confirmado mas não consegui enviar DM a <@${order.discord_user_id}> (tem as DMs fechadas?). Chave: \`${keyValue}\``
+      `⚠️ Pedido #${order.id}: pagamento confirmado mas não consegui enviar DM a <@${order.discord_user_id}> (tem as DMs fechadas?).` +
+        (chaves.length ? ` Chaves: ${chaves.map((k) => `\`${k}\``).join(', ')}` : ' Entrega à mão.')
     );
   }
 
@@ -1495,7 +1555,7 @@ async function entregarPedido(orderId) {
   }
 
   await logToChannel(
-    `💰 Venda concluída: **${product.name}** para <@${order.discord_user_id}> (pedido #${order.id}).`
+    `💰 Venda concluída: **${quantidade}x ${product.name}** para <@${order.discord_user_id}> (pedido #${order.id}).`
   );
 }
 
@@ -1729,9 +1789,8 @@ async function aoInteracao(interaction) {
         const added = db.addKeysBulk(productId, lines);
 
         await interaction.editReply(
-          `Foram adicionadas **${added}** chaves ao produto **${product.name}**. Stock atual: ${db.countAvailableKeys(
-            productId
-          )}.`
+          `Foram adicionadas **${added}** chaves ao produto **${product.name}**. ` +
+            `O stock da loja continua a ser o número do \`!stock\` (agora: ${db.getStock(productId)}).`
         );
       }
 
@@ -1744,7 +1803,7 @@ async function aoInteracao(interaction) {
           (p) =>
             `**#${p.id} ${p.name}** — ${formatPrice(p.price_cents, p.currency)}${
               p.category ? ` — [${p.category}]` : ''
-            } — stock: ${db.countAvailableKeys(p.id)}`
+            } — stock: ${stockDoProduto(p)}`
         );
         await interaction.reply({ content: linhas.join('\n'), ephemeral: true });
       }
@@ -1789,6 +1848,11 @@ async function aoInteracao(interaction) {
     if (interaction.isStringSelectMenu() && interaction.customId === 'comprar_select') {
       const productId = Number(interaction.values[0]);
       await iniciarCompra(interaction, productId);
+    }
+
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('comprar_qty_')) {
+      const productId = Number(interaction.customId.slice('comprar_qty_'.length));
+      await confirmarCompraComQuantidade(interaction, productId);
     }
 
     if (interaction.isButton() && interaction.customId.startsWith('entregar_')) {
@@ -1921,7 +1985,10 @@ async function encaminharComprovante(message) {
       ? pending
           .map(
             (o) =>
-              `#${o.id} ${o.product_name} — ${formatPrice(o.price_cents, o.currency)}`
+              `#${o.id} ${o.quantity || 1}x ${o.product_name} — ${formatPrice(
+                o.price_cents * (o.quantity || 1),
+                o.currency
+              )}`
           )
           .join('\n')
       : 'Nenhum pedido pendente';
@@ -2029,6 +2096,53 @@ async function aoMensagem(message) {
       return;
     }
 
+    if (nomeComando === 'stock' || nomeComando === 'estoque') {
+      const products = db.listActiveProducts();
+      if (resto.length === 0) {
+        if (products.length === 0) {
+          await message.reply('Ainda não há produtos criados.');
+          return;
+        }
+        const linhas = products.map(
+          (p) => `**#${p.id} ${p.name}** — stock: **${stockDoProduto(p)}**`
+        );
+        await message.reply(
+          'Stock atual (usa `!stock <id> <quantidade>` para alterar):\n' + linhas.join('\n')
+        );
+        return;
+      }
+
+      const qtdRaw = resto.length >= 2 ? resto[resto.length - 1] : null;
+      const chave = resto.length >= 2 ? resto.slice(0, -1).join(' ') : resto[0];
+      const produto = /^\d+$/.test(chave)
+        ? db.getProduct(Number(chave))
+        : db.getProductByName(chave);
+      if (!produto) {
+        await message.reply('Não encontrei esse produto. Usa `!produtos` para ver os IDs.');
+        return;
+      }
+      if (qtdRaw == null) {
+        await message.reply(
+          `**#${produto.id} ${produto.name}** tem stock **${stockDoProduto(produto)}**. Uso: \`!stock ${produto.id} 20\``
+        );
+        return;
+      }
+
+      let novo;
+      if (/^[+-]\d+$/.test(qtdRaw)) {
+        novo = db.addStock(produto.id, Number(qtdRaw));
+      } else {
+        const n = parseInt(qtdRaw, 10);
+        if (!Number.isFinite(n) || n < 0) {
+          await message.reply('Quantidade inválida. Ex.: `!stock 12 20` ou `!stock 12 +5`.');
+          return;
+        }
+        novo = db.setStock(produto.id, n);
+      }
+      await message.reply(`📦 Stock de **#${produto.id} ${produto.name}** atualizado para **${novo}**.`);
+      return;
+    }
+
     if (nomeComando === 'produtos') {
       const products = db.listActiveProducts();
       if (products.length === 0) {
@@ -2039,7 +2153,7 @@ async function aoMensagem(message) {
         (p) =>
           `**#${p.id} ${p.name}** — ${formatPrice(p.price_cents, p.currency)}${
             p.category ? ` — [${p.category}]` : ''
-          } — stock: ${db.countAvailableKeys(p.id)}`
+          } — stock: ${stockDoProduto(p)}`
       );
       await message.reply(linhas.join('\n'));
       return;
@@ -2063,7 +2177,7 @@ async function aoMensagem(message) {
         category: categoria,
       });
       await message.reply(
-        `Produto criado! **${nome}** (ID: ${id}). Agora usa \`!chave-adicionar ${id}\` com um ficheiro .txt.`
+        `Produto criado! **${nome}** (ID: ${id}, stock 10). Altera com \`!stock ${id} <quantidade>\`.`
       );
       return;
     }
@@ -2088,7 +2202,8 @@ async function aoMensagem(message) {
       }
       const added = db.addKeysBulk(productId, linhas);
       await message.reply(
-        `Foram adicionadas **${added}** chaves ao produto **${product.name}**. Stock atual: ${db.countAvailableKeys(productId)}.`
+        `Foram adicionadas **${added}** chaves ao produto **${product.name}**. ` +
+          `O stock da loja continua a ser o número do \`!stock\` (agora: ${db.getStock(productId)}).`
       );
       return;
     }
@@ -2112,8 +2227,8 @@ async function aoMensagem(message) {
       const entregue = db.getOrder(pedidoId).status === 'delivered';
       await message.reply(
         entregue
-          ? `✅ Pedido #${pedidoId} entregue. A chave foi enviada por DM ao cliente.`
-          : `⚠️ Pedido #${pedidoId}: não há chaves em stock. Usa \`!chave-adicionar\` e tenta de novo.`
+          ? `✅ Pedido #${pedidoId} marcado como entregue. Se havia chaves, foram enviadas por DM; senão a staff entrega à mão.`
+          : `⚠️ Pedido #${pedidoId}: não consegui concluir a entrega.`
       );
       return;
     }
