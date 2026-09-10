@@ -175,6 +175,18 @@ function markOrderStatus(orderId, status) {
   db.prepare(`UPDATE orders SET status = ? WHERE id = ?`).run(status, orderId);
 }
 
+function listPendingOrdersByUser(discordUserId) {
+  return db
+    .prepare(
+      `SELECT o.*, p.name AS product_name, p.price_cents, p.currency
+       FROM orders o
+       JOIN products p ON p.id = o.product_id
+       WHERE o.discord_user_id = ? AND o.status = 'pending'
+       ORDER BY o.id DESC`
+    )
+    .all(discordUserId);
+}
+
 module.exports = {
   addProduct,
   listActiveProducts,
@@ -193,4 +205,5 @@ module.exports = {
   getOrderBySessionId,
   markOrderDelivered,
   markOrderStatus,
+  listPendingOrdersByUser,
 };

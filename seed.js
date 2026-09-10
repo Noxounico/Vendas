@@ -117,6 +117,13 @@ const CATALOG = [
       { name: '250-400 Skins', priceCents: cents(25) },
     ],
   },
+  {
+    category: 'rockstar',
+    products: [
+      { name: '1 Rockstar Acc', priceCents: cents(4) },
+      { name: '20 Rockstar Acc', priceCents: cents(15) },
+    ],
+  },
 ];
 
 function seed() {
