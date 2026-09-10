@@ -27,13 +27,13 @@ const {
 const db = require('./db');
 const { formatPrice } = require('./currency');
 
-// URL "âncora" usada em TODOS os embeds de um mesmo painel (banner + caixa de
-// texto). Quando vários embeds da mesma mensagem têm o mesmo `url`, o Discord
-// agrupa-os visualmente sem o espaço/borda entre eles — é assim que se tira
-// aquele "espaço" entre o banner e a caixa de texto. Como consequência o
-// título fica sublinhado/clicável (aponta para este link) — troca por um link
-// teu (ex.: o convite do servidor) se quiseres que sirva para algo.
-const PAINEL_ANCHOR_URL = process.env.PAINEL_LINK || 'https://discord.gg/';
+// Nota sobre o banner "colado" ao texto: tentar juntar banner+texto em dois
+// embeds da MESMA mensagem com o mesmo `url` não funciona bem — o Discord
+// trata-os como uma galeria e chega a esconder o título/descrição do segundo
+// embed (foi o que aconteceu). A forma que realmente funciona é mandar o
+// banner e a caixa de texto como DUAS MENSAGENS seguidas do bot — o Discord
+// agrupa mensagens consecutivas do mesmo autor sem repetir o avatar/nome,
+// ficando visualmente colado. Ver enviarPainel() mais abaixo.
 
 // Banner por defeito de TODOS os painéis da loja — troca por env var LOJA_BANNER_URL
 // se quiseres outra imagem sem tocar no código.
@@ -459,18 +459,12 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
   const embedTexto = new EmbedBuilder()
     .setTitle(tituloFinal)
     .setColor(corFinal)
-    .setURL(PAINEL_ANCHOR_URL)
     .setDescription(descricaoFinal);
 
-  const embeds = [];
+  let bannerEmbed = null;
   if (imagemFinal && /^https?:\/\//i.test(imagemFinal)) {
-    // Imagem POR CIMA: o setImage de um embed aparece em baixo, por isso a
-    // imagem vai num embed próprio (só imagem), enviado antes do do texto.
-    // O mesmo `url` nos dois embeds é o que faz o Discord juntá-los sem
-    // espaço entre eles.
-    embeds.push(new EmbedBuilder().setColor(corFinal).setURL(PAINEL_ANCHOR_URL).setImage(imagemFinal));
+    bannerEmbed = new EmbedBuilder().setColor(corFinal).setImage(imagemFinal);
   }
-  embeds.push(embedTexto);
 
   const temProdutos = products.length > 0;
   const rows = [];
@@ -486,7 +480,17 @@ function buildLojaEmbedAndRow(products, categoryName, opts = {}) {
     );
   }
 
-  return { embeds, rows };
+  return { bannerEmbed, embed: embedTexto, rows };
+}
+
+// Manda um painel (banner + caixa de texto/botões) como DUAS mensagens
+// seguidas — é isto que faz ficarem "coladas" visualmente (o Discord
+// agrupa mensagens consecutivas do mesmo bot, sem repetir avatar/espaço).
+async function enviarPainel(channel, painel) {
+  if (painel.bannerEmbed) {
+    await channel.send({ embeds: [painel.bannerEmbed] });
+  }
+  return channel.send({ embeds: [painel.embed], components: painel.rows });
 }
 
 
@@ -513,7 +517,7 @@ async function publicarLoja(interaction, categoria) {
   const botaoTexto = interaction.options.getString('botao_texto') || null;
   const cor = interaction.options.getString('cor') || null;
 
-  const { embeds, rows } = buildLojaEmbedAndRow(products, categoria, {
+  const { embed, bannerEmbed, rows } = buildLojaEmbedAndRow(products, categoria, {
     imagem,
     titulo,
     descricao: descricaoOpt,
@@ -522,7 +526,7 @@ async function publicarLoja(interaction, categoria) {
     botaoTexto,
     cor,
   });
-  await interaction.channel.send({ embeds, components: rows });
+  await enviarPainel(interaction.channel, { embed, bannerEmbed, rows });
   await interaction.reply({
     content: categoria ? `Painel do canal **${categoria}** publicado!` : 'Loja publicada!',
     ephemeral: true,
@@ -543,8 +547,8 @@ async function publicarLojaTexto(message, categoria) {
     );
   }
 
-  const { embeds, rows } = buildLojaEmbedAndRow(products, categoria, {});
-  await message.channel.send({ embeds, components: rows });
+  const { embed, bannerEmbed, rows } = buildLojaEmbedAndRow(products, categoria, {});
+  await enviarPainel(message.channel, { embed, bannerEmbed, rows });
   try {
     await message.delete();
   } catch {
@@ -583,7 +587,6 @@ function buildPainelTickets(opts = {}) {
   const embedTexto = new EmbedBuilder()
     .setTitle(titulo || 'Central de Atendimento')
     .setColor(corParaHex(cor) ?? 0x9b1e2e)
-    .setURL(PAINEL_ANCHOR_URL)
     .setDescription(
       descricao ||
         '• Após solicitar atendimento, aguarde até que um integrante da equipe responda à sua solicitação.\n\n' +
@@ -591,12 +594,11 @@ function buildPainelTickets(opts = {}) {
           '• Ressaltamos que a nossa equipe não está disponível 24 horas por dia. Entretanto, dentro dos horários informados anteriormente, estaremos devidamente disponíveis para atendê-lo(a).'
     );
 
-  const embeds = [];
+  let bannerEmbed = null;
   const imagemFinal = imagem || LOJA_BANNER_URL_PADRAO;
   if (imagemFinal && /^https?:\/\//i.test(imagemFinal)) {
-    embeds.push(new EmbedBuilder().setColor(0x9b1e2e).setURL(PAINEL_ANCHOR_URL).setImage(imagemFinal));
+    bannerEmbed = new EmbedBuilder().setColor(0x9b1e2e).setImage(imagemFinal);
   }
-  embeds.push(embedTexto);
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('ticket_tipo_select')
@@ -610,7 +612,7 @@ function buildPainelTickets(opts = {}) {
       }))
     );
 
-  return { embeds, rows: [new ActionRowBuilder().addComponents(select)] };
+  return { bannerEmbed, embed: embedTexto, rows: [new ActionRowBuilder().addComponents(select)] };
 }
 
 // Botões de gestão que aparecem dentro de cada canal de ticket.
@@ -1300,8 +1302,8 @@ client.on('messageCreate', async (message) => {
     }
 
     if (nomeComando === 'tickets') {
-      const { embeds, rows } = buildPainelTickets({});
-      await message.channel.send({ embeds, components: rows });
+      const { embed, bannerEmbed, rows } = buildPainelTickets({});
+      await enviarPainel(message.channel, { embed, bannerEmbed, rows });
       try {
         await message.delete();
       } catch {
