@@ -22,6 +22,12 @@ const {
   TextInputStyle,
   ChannelType,
   PermissionFlagsBits,
+  MessageFlags,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  MediaGalleryBuilder,
+  MediaGalleryItemBuilder,
+  SectionBuilder,
 } = require('discord.js');
 // Precisas de instalar isto: npm install @napi-rs/canvas
 // (escolhido em vez do pacote "canvas" porque já vem com binários prontos,
@@ -262,9 +268,9 @@ const PRODUTOS_SEED = [
   { nome: '14x impulsos trimensais', preco: eur(10), categoria: 'Impulsos' },
 
   // --- Canal de nitradas ---
-  { nome: 'Nitrada Mensal', preco: eur(1), categoria: 'Nitradas' },
-  { nome: 'Nitrada Trimensal', preco: eur(2.5), categoria: 'Nitradas' },
-  { nome: 'Nitrada Anual', preco: eur(7), categoria: 'Nitradas' },
+  { nome: 'Nitrada Mensal', preco: eur(2.55), categoria: 'Nitradas' },
+  { nome: 'Nitrada Trimensal', preco: eur(6.99), categoria: 'Nitradas' },
+  { nome: 'Nitrada Anual', preco: eur(7.99), categoria: 'Nitradas' },
 
   // --- Canal de links ---
   { nome: 'Nitro Link Mensal', preco: eur(0.8), categoria: 'Links' },
@@ -316,12 +322,12 @@ function seedProdutosIniciais() {
       name: p.nome,
       description: p.descricao || '',
       priceCents: p.preco,
-      currency: 'eur',
+      currency: 'brl',
       category: p.categoria,
       roleId: p.roleId || undefined,
     });
 
-    console.log(`✅ produto criado #${id}: ${p.nome} — ${(p.preco / 100).toFixed(2)}€ [${p.categoria}]`);
+    console.log(`✅ produto criado #${id}: ${p.nome} — ${formatPrice(p.preco, 'brl')} [${p.categoria}]`);
     criados++;
   }
 
@@ -535,7 +541,7 @@ async function logToChannel(text) {
   }
 }
 
-// Devolve "de X€" ou "de X€ a Y€" com o intervalo de preços dos produtos.
+// Devolve "De X a Y" (ou só X se for um único preço), no estilo da print.
 function faixaPrecos(products) {
   if (products.length === 0) return null;
   const precos = products.map((p) => p.price_cents);
@@ -544,7 +550,7 @@ function faixaPrecos(products) {
   const moeda = products[0].currency;
   return min === max
     ? formatPrice(min, moeda)
-    : `de ${formatPrice(min, moeda)} a ${formatPrice(max, moeda)}`;
+    : `De ${formatPrice(min, moeda)} a ${formatPrice(max, moeda)}`;
 }
 
 // Constrói o menu de seleção com os produtos da categoria — mostra o preço e o
@@ -590,7 +596,7 @@ const PAINEL_TEXTOS = {
       '• Contas Nitradas Possui Nitro.\n' +
       '• Nitradas Na Melhor Qualidade.',
     entrega: '⚡ Entrega Automática!',
-    cor: 0x8b1e1e,
+    cor: 0x2b2d31,
   },
 };
 
@@ -627,40 +633,53 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
   };
 }
 
-// Gera o painel (banner + título + bullets + caixa de entrega + preço) como
-// UMA ÚNICA IMAGEM (banner sempre por cima, sem nenhum espaço, porque é tudo
-// a mesma imagem) e devolve o botão "Comprar" para ir por baixo.
-async function gerarPainelLoja(products, categoryName, opts = {}) {
+// Painel da loja no formato da print: banner no topo, texto, caixa verde
+// ANSI, preço à esquerda e botão Comprar à direita (Components V2).
+function gerarPainelLoja(products, categoryName, opts = {}) {
   const t = resolverTextosLoja(products, categoryName, opts);
+  const container = new ContainerBuilder().setAccentColor(t.corFinal);
 
-  const buffer = await gerarImagemPainel({
-    imagemUrl: t.imagemFinal,
-    titulo: t.tituloFinal,
-    bullets: t.bulletsLinhas,
-    entrega: t.entregaFinal,
-    precoTexto: t.faixa || null,
-    instrucao: t.faixa ? `Clique no botão "${t.botaoTextoFinal}" para escolheres o produto.` : 'Não há produtos disponíveis de momento.',
-    cor: t.corFinal,
-  });
-
-  const rows = [];
-  if (products.length > 0) {
-    rows.push(
-      new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setLabel(t.botaoTextoFinal)
-          .setEmoji(t.botaoEmojiFinal)
-          .setStyle(ButtonStyle.Secondary)
-          .setCustomId(`abrir_${encodeURIComponent(categoryName || '')}`)
-      )
+  if (t.imagemFinal && /^https?:\/\//i.test(t.imagemFinal)) {
+    container.addMediaGalleryComponents(
+      new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(t.imagemFinal))
     );
   }
 
-  return { buffer, rows };
+  const texto =
+    `## ${t.tituloFinal}\n` +
+    t.bulletsLinhas.join('\n') +
+    `\n\n\`\`\`ansi\n\u001b[2;32m${t.entregaFinal}\u001b[0m\n\`\`\``;
+
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(texto));
+
+  const rodape = t.faixa
+    ? `Preço: **${t.faixa}**\nClique no botão **"${t.botaoTextoFinal}"**`
+    : 'Não há produtos disponíveis de momento.';
+
+  const botao = new ButtonBuilder()
+    .setLabel(t.botaoTextoFinal)
+    .setEmoji(t.botaoEmojiFinal)
+    .setStyle(ButtonStyle.Secondary)
+    .setCustomId(`abrir_${encodeURIComponent(categoryName || '')}`)
+    .setDisabled(products.length === 0);
+
+  container.addSectionComponents(
+    new SectionBuilder()
+      .addTextDisplayComponents(new TextDisplayBuilder().setContent(rodape))
+      .setButtonAccessory(botao)
+  );
+
+  return {
+    payload: {
+      flags: MessageFlags.IsComponentsV2,
+      components: [container],
+    },
+  };
 }
 
-// Manda o painel: imagem única (ficheiro) + botão/menu por baixo.
+// Manda o painel da loja (Components V2) ou o dos tickets (imagem + botões).
 async function enviarPainel(channel, painel) {
+  if (painel.payload) return channel.send(painel.payload);
   return channel.send({
     files: [{ attachment: painel.buffer, name: 'painel.png' }],
     components: painel.rows,
@@ -690,7 +709,7 @@ async function publicarLoja(interaction, categoria) {
   const botaoTexto = interaction.options.getString('botao_texto') || null;
   const cor = interaction.options.getString('cor') || null;
 
-  const { buffer, rows } = await gerarPainelLoja(products, categoria, {
+  const painel = gerarPainelLoja(products, categoria, {
     imagem,
     titulo,
     descricao: descricaoOpt,
@@ -699,7 +718,7 @@ async function publicarLoja(interaction, categoria) {
     botaoTexto,
     cor,
   });
-  await enviarPainel(interaction.channel, { buffer, rows });
+  await enviarPainel(interaction.channel, painel);
   await interaction.reply({
     content: categoria ? `Painel do canal **${categoria}** publicado!` : 'Loja publicada!',
     ephemeral: true,
@@ -720,8 +739,8 @@ async function publicarLojaTexto(message, categoria) {
     );
   }
 
-  const { buffer, rows } = await gerarPainelLoja(products, categoria, {});
-  await enviarPainel(message.channel, { buffer, rows });
+  const painel = gerarPainelLoja(products, categoria, {});
+  await enviarPainel(message.channel, painel);
   try {
     await message.delete();
   } catch {
