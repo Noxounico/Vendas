@@ -28,11 +28,17 @@ const {
   MediaGalleryBuilder,
   MediaGalleryItemBuilder,
   SectionBuilder,
+  Events,
 } = require('discord.js');
-// Precisas de instalar isto: npm install @napi-rs/canvas
-// (escolhido em vez do pacote "canvas" porque já vem com binários prontos,
-// sem precisar de instalar Cairo/Pango no servidor.)
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
+// Canvas é opcional (só se algum painel antigo ainda gerar imagem).
+// Se o pacote falhar no servidor, o bot continua a ligar na mesma.
+let createCanvas;
+let loadImage;
+try {
+  ({ createCanvas, loadImage } = require('@napi-rs/canvas'));
+} catch (err) {
+  console.warn('Canvas indisponível (os painéis V2 não precisam):', err.message);
+}
 
 const db = require('./db');
 const { formatPrice } = require('./currency');
@@ -89,6 +95,9 @@ function removerEmojis(texto) {
 // (opcional) caixa de entrega + (opcional) preço/instrução.
 // cor: número hex (ex.: 0x9b59b6), igual ao que se passa ao EmbedBuilder.
 async function gerarImagemPainel({ imagemUrl, titulo, bullets, entrega, precoTexto, instrucao, cor }) {
+  if (!createCanvas || !loadImage) {
+    throw new Error('Canvas não está instalado neste servidor.');
+  }
   const LARGURA = 880;
   const PAD = 32;
   const corAccent = '#' + (cor ?? 0x9b59b6).toString(16).padStart(6, '0');
@@ -228,13 +237,23 @@ function capitalizar(str) {
     .join(' ');
 }
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+function criarCliente() {
+  return new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+  });
+}
+
+let client = criarCliente();
+let jaArrancou = false;
+let aLigar = false;
+let ultimoOk = Date.now();
+let falhasSeguidas = 0;
+
+const CODIGOS_SEM_RECONNECT = new Set([4004, 4010, 4011, 4013, 4014]);
 
 // Prefixo dos comandos de texto — alternativa aos slash commands, para o caso
 // de os slash commands não aparecerem/funcionarem no teu Discord.
@@ -471,6 +490,23 @@ const slashCommands = [
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
   new SlashCommandBuilder()
+    .setName('tickets')
+    .setDescription('Publica o painel de tickets neste canal')
+    .addAttachmentOption((opt) =>
+      opt.setName('anexo').setDescription('Imagem/banner do painel (opcional)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('imagem').setDescription('URL do banner (opcional, alternativa ao anexo)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('titulo').setDescription('Título do painel (opcional)').setRequired(false)
+    )
+    .addStringOption((opt) =>
+      opt.setName('descricao').setDescription('Texto do painel (opcional)').setRequired(false)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  new SlashCommandBuilder()
     .setName('verificacao')
     .setDescription('Publica um painel de verificação neste canal')
     .addRoleOption((opt) =>
@@ -585,32 +621,109 @@ function corParaHex(cor) {
   return Number.isNaN(n) ? null : n;
 }
 
-// Textos/estilo específicos por categoria — usados quando ninguém passa uma
-// opção manual no comando. Acrescenta aqui outras categorias sempre que
-// quiseres bullets/entrega/cor próprios para esse canal.
+// Textos/estilo específicos por categoria — cada painel tem a sua mensagem.
+function textoPainel(titulo, bullets, extras = {}) {
+  return {
+    titulo,
+    descricao: bullets.map((b) => (b.startsWith('•') ? b : `• ${b}`)).join('\n'),
+    entrega: extras.entrega || '⚡ Entrega Automática!',
+    cor: extras.cor ?? 0x2b2d31,
+  };
+}
+
 const PAINEL_TEXTOS = {
-  Nitradas: {
-    descricao:
-      '• Conta Full Acesso, Muda Email, Senha Etc...\n' +
-      '• Contas com Nitro Gaming\n' +
-      '• Contas Nitradas Possui Nitro.\n' +
-      '• Nitradas Na Melhor Qualidade.',
-    entrega: '⚡ Entrega Automática!',
-    cor: 0x2b2d31,
-  },
+  'Painéis & Métodos': textoPainel('Painéis & Métodos', [
+    'Painéis e métodos digitais prontos pra usar',
+    'SMS, Ifood, internet e outros métodos',
+    'Entrega automática no privado',
+    'Qualidade testada antes da venda',
+  ]),
+  Impulsos: textoPainel('Impulsos', [
+    'Impulso para o teu servidor Discord',
+    'Ativação rápida, entrega automática',
+    'Packs de 2x, 6x, 8x e 14x',
+    'Sem partilhar a tua conta',
+  ]),
+  Nitradas: textoPainel('Nitradas', [
+    'Conta Full Acesso, Muda Email, Senha Etc...',
+    'Contas com Nitro Gaming',
+    'Contas Nitradas Possui Nitro.',
+    'Nitradas Na Melhor Qualidade.',
+  ]),
+  Links: textoPainel('Nitro Links', [
+    'Nitro Link Mensal e Trimensal',
+    'Ativação do Nitro incluída',
+    'Entrega automática no privado',
+    'Só clicar em resgatar',
+  ]),
+  trial: textoPainel('Trial Nitro', [
+    'Trial Nitro pra testar a conta',
+    'Entrega automática no privado',
+    'Ativação simples, só resgatar',
+    'Ideal pra quem quer testar',
+  ]),
+  virgem: textoPainel('Conta Virgem', [
+    'Contas virgens, nunca usadas',
+    'Sem histórico de Nitro ou tickets',
+    'Full acesso, muda e-mail e senha',
+    'Entrega automática no privado',
+  ]),
+  aged: textoPainel('Contas Aged', [
+    'Contas antigas (2016 a 2022)',
+    'Mais confiança e histórico',
+    'Full acesso, muda e-mail e senha',
+    'Entrega automática no privado',
+  ]),
+  spotify: textoPainel('Spotify', [
+    'Spotify Premium na tua conta',
+    'Conta completa ou link trimensal',
+    'Entrega automática no privado',
+    'Ativação rápida',
+  ]),
+  membros: textoPainel('Membros', [
+    'Membros para o teu servidor',
+    'Packs de 100 online ou 100 offline',
+    'Entrega automática',
+    'Ideal pra começar o servidor',
+  ]),
+  trampo: textoPainel('Trampo', [
+    'Trampo fazendo dinheiro',
+    'Entrega automática no privado',
+    'Pronto pra começar',
+    'Suporte após a compra',
+  ]),
+  cloner: textoPainel(
+    'Clonar Site',
+    [
+      'Clonagem de site sob pedido',
+      'Layout igual ao original',
+      'Entrega combinada no ticket',
+      'Suporte até validar',
+    ],
+    { entrega: '🎫 Entrega via ticket' }
+  ),
 };
+
+function textosDaCategoria(categoryName) {
+  if (!categoryName) return {};
+  if (PAINEL_TEXTOS[categoryName]) return PAINEL_TEXTOS[categoryName];
+  const key = Object.keys(PAINEL_TEXTOS).find(
+    (k) => k.toLowerCase() === String(categoryName).toLowerCase()
+  );
+  return key ? PAINEL_TEXTOS[key] : {};
+}
 
 // Junta as opções passadas no comando com os defaults da categoria e os
 // defaults genéricos — usado tanto pelo painel da loja como (parcialmente)
 // pelo dos tickets.
 function resolverTextosLoja(products, categoryName, opts = {}) {
   const { imagem, titulo, descricao, entrega, botaoEmoji, botaoTexto, cor } = opts;
-  const defaults = PAINEL_TEXTOS[categoryName] || {};
+  const defaults = textosDaCategoria(categoryName);
 
   const tituloFinal = titulo || defaults.titulo || (categoryName ? capitalizar(categoryName) : 'Loja');
   const faixa = faixaPrecos(products);
   const imagemFinal = imagem || defaults.imagem || LOJA_BANNER_URL_PADRAO;
-  const corFinal = corParaHex(cor) ?? defaults.cor ?? 0x9b59b6;
+  const corFinal = corParaHex(cor) ?? defaults.cor ?? 0x2b2d31;
   const bulletsTexto =
     descricao ||
     defaults.descricao ||
@@ -633,24 +746,47 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
   };
 }
 
-// Painel da loja no formato da print: banner no topo, texto, caixa verde
-// ANSI, preço à esquerda e botão Comprar à direita (Components V2).
-function gerarPainelLoja(products, categoryName, opts = {}) {
-  const t = resolverTextosLoja(products, categoryName, opts);
-  const container = new ContainerBuilder().setAccentColor(t.corFinal);
+// Cartão V2 igual à print: banner no topo, texto, caixa verde, rodapé + botão
+// à direita (ou menu em baixo, no caso dos tickets).
+function montarPainelV2({ imagemUrl, accentColor, texto, rodape, accessory, extraRows = [] }) {
+  const container = new ContainerBuilder().setAccentColor(accentColor ?? 0x2b2d31);
 
-  if (t.imagemFinal && /^https?:\/\//i.test(t.imagemFinal)) {
+  if (imagemUrl && /^https?:\/\//i.test(imagemUrl)) {
     container.addMediaGalleryComponents(
-      new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(t.imagemFinal))
+      new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(imagemUrl))
     );
   }
 
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(texto));
+
+  if (rodape && accessory) {
+    container.addSectionComponents(
+      new SectionBuilder()
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(rodape))
+        .setButtonAccessory(accessory)
+    );
+  } else if (rodape) {
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(rodape));
+  }
+
+  for (const row of extraRows) {
+    container.addActionRowComponents(row);
+  }
+
+  return {
+    payload: {
+      flags: MessageFlags.IsComponentsV2,
+      components: [container],
+    },
+  };
+}
+
+function gerarPainelLoja(products, categoryName, opts = {}) {
+  const t = resolverTextosLoja(products, categoryName, opts);
   const texto =
     `## ${t.tituloFinal}\n` +
     t.bulletsLinhas.join('\n') +
     `\n\n\`\`\`ansi\n\u001b[2;32m${t.entregaFinal}\u001b[0m\n\`\`\``;
-
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(texto));
 
   const rodape = t.faixa
     ? `Preço: **${t.faixa}**\nClique no botão **"${t.botaoTextoFinal}"**`
@@ -663,18 +799,13 @@ function gerarPainelLoja(products, categoryName, opts = {}) {
     .setCustomId(`abrir_${encodeURIComponent(categoryName || '')}`)
     .setDisabled(products.length === 0);
 
-  container.addSectionComponents(
-    new SectionBuilder()
-      .addTextDisplayComponents(new TextDisplayBuilder().setContent(rodape))
-      .setButtonAccessory(botao)
-  );
-
-  return {
-    payload: {
-      flags: MessageFlags.IsComponentsV2,
-      components: [container],
-    },
-  };
+  return montarPainelV2({
+    imagemUrl: t.imagemFinal,
+    accentColor: t.corFinal,
+    texto,
+    rodape,
+    accessory: botao,
+  });
 }
 
 // Manda o painel da loja (Components V2) ou o dos tickets (imagem + botões).
@@ -773,24 +904,19 @@ function gerarSufixoTicket() {
   return Math.random().toString(36).slice(2, 7); // ex.: "cn3xl"
 }
 
-async function gerarPainelTickets(opts = {}) {
+function gerarPainelTickets(opts = {}) {
   const { imagem, titulo, descricao, cor } = opts;
-
+  const tituloFinal = titulo || 'Central de Atendimento';
   const bulletsTexto =
     descricao ||
-    '• Após solicitar atendimento, aguarde até que um integrante da equipe responda à sua solicitação.\n' +
-      '• O atendimento é realizado de forma privada; contudo, apenas membros autorizados da equipe terão acesso às informações compartilhadas.\n' +
-      '• Ressaltamos que a nossa equipe não está disponível 24 horas por dia. Entretanto, dentro dos horários informados anteriormente, estaremos devidamente disponíveis para atendê-lo(a).';
+    '• Após solicitar atendimento, aguarde até que um integrante da equipe responda.\n' +
+      '• O atendimento é privado: só tu e a staff autorizada vêem o que for partilhado.\n' +
+      '• A equipe não está disponível 24 horas, mas dentro do horário vamos atender-te.';
 
-  const buffer = await gerarImagemPainel({
-    imagemUrl: imagem || LOJA_BANNER_URL_PADRAO,
-    titulo: titulo || 'Central de Atendimento',
-    bullets: bulletsTexto.split('\n').filter(Boolean),
-    entrega: null,
-    precoTexto: null,
-    instrucao: null,
-    cor: corParaHex(cor) ?? 0x9b1e2e,
-  });
+  const texto =
+    `## ${tituloFinal}\n` +
+    bulletsTexto.split('\n').filter(Boolean).join('\n') +
+    '\n\n```ansi\n\u001b[2;32m🎫 Abra um ticket agora\u001b[0m\n```';
 
   const select = new StringSelectMenuBuilder()
     .setCustomId('ticket_tipo_select')
@@ -804,7 +930,13 @@ async function gerarPainelTickets(opts = {}) {
       }))
     );
 
-  return { buffer, rows: [new ActionRowBuilder().addComponents(select)] };
+  return montarPainelV2({
+    imagemUrl: imagem || process.env.TICKETS_BANNER_URL || LOJA_BANNER_URL_PADRAO,
+    accentColor: corParaHex(cor) ?? 0x2b2d31,
+    texto,
+    rodape: 'Escolha o tipo de atendimento\nClique no menu abaixo',
+    extraRows: [new ActionRowBuilder().addComponents(select)],
+  });
 }
 
 // Botões de gestão que aparecem dentro de cada canal de ticket.
@@ -1212,38 +1344,33 @@ async function publicarVerificacao(interaction) {
   const anexo = interaction.options.getAttachment('anexo');
   const imagem = anexo?.url || interaction.options.getString('imagem') || bannerDefeito;
   const titulo = interaction.options.getString('titulo') || 'VERIFICAÇÃO';
-  const descricao =
+  const bullets =
     interaction.options.getString('descricao') ||
     '• Clique no botão para se verificar\n' +
       '• Libera o acesso aos canais do servidor\n' +
-      '• Verificação imediata, só um clique\n' +
-      // Caixa verde "Verifique-se agora!" (bloco de código ANSI a verde).
-      '```ansi\n\u001b[2;32mVerifique-se agora!\u001b[0m\n```';
+      '• Verificação imediata, só um clique';
 
-  const embedTexto = new EmbedBuilder()
-    .setTitle(titulo)
-    .setColor(0xe02424)
-    .setDescription(descricao)
-    .addFields({ name: 'Acesso ao servidor', value: 'Clique no botão **Verificar**' });
+  const texto =
+    `## ${titulo}\n` +
+    bullets.split('\n').filter(Boolean).join('\n') +
+    '\n\n```ansi\n\u001b[2;32m✅ Verifique-se agora!\u001b[0m\n```';
 
-  // Imagem POR CIMA: o setImage de um embed aparece em baixo, por isso a imagem
-  // vai num embed próprio (só imagem), enviado antes do embed do texto.
-  const embeds = [];
-  if (imagem && /^https?:\/\//i.test(imagem)) {
-    embeds.push(new EmbedBuilder().setColor(0xe02424).setImage(imagem));
-  }
-  embeds.push(embedTexto);
+  const botao = new ButtonBuilder()
+    .setLabel('Verificar')
+    .setEmoji('✅')
+    .setStyle(ButtonStyle.Success)
+    .setCustomId(`verificar_${roleId}`);
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setLabel('Verificar')
-      .setEmoji('✅')
-      .setStyle(ButtonStyle.Success)
-      .setCustomId(`verificar_${roleId}`)
-  );
+  const painel = montarPainelV2({
+    imagemUrl: imagem,
+    accentColor: 0x2b2d31,
+    texto,
+    rodape: 'Acesso ao servidor\nClique no botão **"Verificar"**',
+    accessory: botao,
+  });
 
   try {
-    await interaction.channel.send({ embeds, components: [row] });
+    await enviarPainel(interaction.channel, painel);
   } catch (err) {
     console.error('Falha ao publicar verificação:', err);
     return interaction.reply({
@@ -1284,7 +1411,7 @@ async function verificarMembro(interaction, roleId) {
 // Slash commands e interações
 // ---------------------------------------------------------------------------
 
-client.on('interactionCreate', async (interaction) => {
+async function aoInteracao(interaction) {
   try {
     // Autocomplete do campo "categoria" do /loja — mostra as categorias que
     // já existem (trial, virgem, spotify, ...) para escolheres por lista em
@@ -1378,6 +1505,17 @@ client.on('interactionCreate', async (interaction) => {
         await entregarPorAdmin(interaction, pedidoId);
       }
 
+      if (commandName === 'tickets') {
+        const anexo = interaction.options.getAttachment('anexo');
+        const painel = gerarPainelTickets({
+          imagem: anexo?.url || interaction.options.getString('imagem') || null,
+          titulo: interaction.options.getString('titulo') || null,
+          descricao: interaction.options.getString('descricao') || null,
+        });
+        await enviarPainel(interaction.channel, painel);
+        await interaction.reply({ content: 'Painel de tickets publicado!', ephemeral: true });
+      }
+
       if (commandName === 'verificacao') {
         await publicarVerificacao(interaction);
       }
@@ -1468,7 +1606,7 @@ client.on('interactionCreate', async (interaction) => {
       else await interaction.reply(msg);
     }
   }
-});
+}
 
 // ---------------------------------------------------------------------------
 // Comandos de texto com "!" — alternativa aos slash commands.
@@ -1478,7 +1616,7 @@ client.on('interactionCreate', async (interaction) => {
 // bot não recebe o texto das mensagens e este bloco não faz nada.
 // ---------------------------------------------------------------------------
 
-client.on('messageCreate', async (message) => {
+async function aoMensagem(message) {
   try {
     if (message.author.bot) return;
     if (!message.content.startsWith(PREFIXO)) return;
@@ -1494,8 +1632,8 @@ client.on('messageCreate', async (message) => {
     }
 
     if (nomeComando === 'tickets') {
-      const { buffer, rows } = await gerarPainelTickets({});
-      await enviarPainel(message.channel, { buffer, rows });
+      const painel = gerarPainelTickets({});
+      await enviarPainel(message.channel, painel);
       try {
         await message.delete();
       } catch {
@@ -1510,10 +1648,14 @@ client.on('messageCreate', async (message) => {
   } catch (err) {
     console.error(err);
   }
-});
+}
 
-client.once('ready', async () => {
+async function aoReady() {
+  ultimoOk = Date.now();
+  falhasSeguidas = 0;
   console.log(`Bot ligado como ${client.user.tag}`);
+  if (jaArrancou) return;
+  jaArrancou = true;
   try {
     await registerSlashCommands();
   } catch (err) {
@@ -1524,12 +1666,116 @@ client.once('ready', async () => {
   } catch (err) {
     console.error('❌ Erro ao criar produtos iniciais:', err);
   }
-});
+}
+
+function anexarEventos(c) {
+  c.on('interactionCreate', aoInteracao);
+  c.on('messageCreate', aoMensagem);
+  c.on(Events.ClientReady, aoReady);
+  c.on(Events.Error, (err) => {
+    console.error('Erro do cliente Discord:', err);
+  });
+  c.on(Events.ShardError, (err, id) => {
+    console.error(`Erro no shard ${id}:`, err);
+  });
+  c.on(Events.ShardReconnecting, (id) => {
+    console.log(`A reconectar shard ${id}…`);
+  });
+  c.on(Events.ShardResume, (id) => {
+    ultimoOk = Date.now();
+    console.log(`Shard ${id} reconectado.`);
+  });
+  c.on(Events.ShardDisconnect, (event, id) => {
+    console.error(`Shard ${id} desconectou (código ${event?.code}).`);
+    if (CODIGOS_SEM_RECONNECT.has(event?.code)) {
+      console.error('Este código não permite reconectar (token/intents). Corrige o .env e reinicia.');
+      return;
+    }
+    setTimeout(() => ligarBot({ forcar: true }), 5000);
+  });
+}
+
+anexarEventos(client);
+
+async function novoCliente() {
+  try {
+    await client.destroy();
+  } catch {
+    /* já estava desligado */
+  }
+  client = criarCliente();
+  anexarEventos(client);
+}
 
 // Só liga o bot quando o ficheiro é corrido diretamente (npm start).
 // Assim o módulo pode ser importado em testes sem tentar autenticar no Discord.
-if (require.main === module) {
-  client.login(process.env.DISCORD_TOKEN);
+async function ligarBot({ forcar = false } = {}) {
+  const token = process.env.DISCORD_TOKEN;
+  if (!token) {
+    console.error('❌ Falta DISCORD_TOKEN no .env.');
+    process.exit(1);
+  }
+  if (aLigar) return;
+  if (client.isReady() && !forcar) return;
+
+  aLigar = true;
+  try {
+    if (forcar || client.ws?.destroyed) {
+      await novoCliente();
+    }
+    await client.login(token);
+    ultimoOk = Date.now();
+    falhasSeguidas = 0;
+  } catch (err) {
+    falhasSeguidas += 1;
+    console.error(`❌ Falha ao ligar ao Discord (${falhasSeguidas}x):`, err.message);
+    aLigar = false;
+    try {
+      await novoCliente();
+    } catch {
+      /* ignore */
+    }
+    if (falhasSeguidas >= 12) {
+      console.error('❌ Demasiadas falhas. A sair para o host reiniciar o processo…');
+      process.exit(1);
+    }
+    setTimeout(() => ligarBot({ forcar: true }), 5000);
+    return;
+  }
+  aLigar = false;
 }
 
-module.exports = { client, gerarPainelLoja, formatPrice, entregarPedido, seedProdutosIniciais };
+if (require.main === module) {
+  process.on('unhandledRejection', (err) => {
+    console.error('unhandledRejection:', err);
+  });
+  process.on('uncaughtException', (err) => {
+    console.error('uncaughtException:', err);
+    setTimeout(() => ligarBot({ forcar: true }), 3000);
+  });
+
+  ligarBot();
+
+  setInterval(() => {
+    if (client.isReady()) {
+      ultimoOk = Date.now();
+      return;
+    }
+    if (Date.now() - ultimoOk > 60_000) {
+      console.warn('⚠️ Sem ligação ao Discord há 1 min, a religar do zero…');
+      ultimoOk = Date.now();
+      ligarBot({ forcar: true });
+    }
+  }, 15_000);
+}
+
+module.exports = {
+  get client() {
+    return client;
+  },
+  gerarPainelLoja,
+  gerarPainelTickets,
+  formatPrice,
+  entregarPedido,
+  seedProdutosIniciais,
+};
