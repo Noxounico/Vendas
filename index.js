@@ -1132,7 +1132,7 @@ const PAINEL_TEXTOS = {
     'Entrega automática no privado.',
   ]),
   combos: {
-    titulo: 'Stopped Combos',
+    titulo: 'Combos',
     descricao:
       `${EMOJI_PACK} Semanal ( sp00fer e Rock )\n` +
       `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Semanal\n` +
@@ -1178,7 +1178,7 @@ const PAINEL_TEXTOS = {
     imagemFile: BANNER_LIFETIME_FILE,
   },
   box: {
-    titulo: 'Stopped Box',
+    titulo: 'Denver Box',
     descricao:
       '• Ganhe produtos da nossa loja!\n' +
       '• Teste sua sorte agora e receba recompensas exclusivas!\n' +

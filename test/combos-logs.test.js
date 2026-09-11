@@ -51,7 +51,7 @@ assert.strictEqual(presenca.activities[0].emoji.id, '1453368332622495775');
 assert.strictEqual(presenca.activities[0].emoji.name, '1192548293067165838');
 assert.strictEqual(presenca.activities[0].emoji.animated, true);
 
-assert.strictEqual(bot.PAINEL_TEXTOS.combos.titulo, 'Stopped Combos');
+assert.strictEqual(bot.PAINEL_TEXTOS.combos.titulo, 'Combos');
 const painel = bot.PAINEL_TEXTOS.combos.descricao;
 for (const trecho of [
   `${bot.EMOJI_PACK} Semanal ( sp00fer e Rock )`,
@@ -84,7 +84,7 @@ assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} Melhor VPN
 assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} Não compre mais de 1`));
 assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} NFA`));
 assert(!bot.PAINEL_TEXTOS.vps.descricao.includes('€'));
-assert.strictEqual(bot.PAINEL_TEXTOS.box.titulo, 'Stopped Box');
+assert.strictEqual(bot.PAINEL_TEXTOS.box.titulo, 'Denver Box');
 assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Stopped Box Gold`));
 assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Stopped Box Platina`));
 assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Stopped Box Diamante`));
@@ -275,7 +275,7 @@ assert.match(byName['🕐 Open Time'], /setembro de 2026/);
 assert.match(byName['🕐 Open Time'], /às/);
 
 const aberto = formatarPainelCombos();
-assert(aberto.includes('Stopped Combos'));
+assert(aberto.includes('Combos'));
 assert(aberto.includes(`${bot.EMOJI_PACK} Semanal ( sp00fer e Rock )`));
 assert(aberto.includes(`${bot.EMOJI_BOLINHA} 1x Sp00fer 1 Click Semanal`));
 assert(aberto.includes('attachment://banner-combos.png'));
@@ -300,7 +300,7 @@ assert(aberto.includes(`${bot.EMOJI_BOLINHA} 50x conta Rockst4r Novas.`));
 
 const boxPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('box'), 'box').payload);
 assert(boxPainel.includes('attachment://banner-box.png'));
-assert(boxPainel.includes('Stopped Box'));
+assert(boxPainel.includes('Denver Box'));
 assert(boxPainel.includes('Stopped Box Gold'));
 assert(boxPainel.includes('Stopped Box Platina'));
 assert(boxPainel.includes('Stopped Box Diamante'));
