@@ -460,6 +460,12 @@ const PRODUTOS_SEED = [
 
   // --- Canal Sp00fer Permanente ---
   { nome: 'Sp00fer 1 Click Lifetime', preco: eur(50), categoria: 'lifetime' },
+  {
+    nome: 'Combo Lifetime (sp00fer e Rock)',
+    preco: eur(50),
+    categoria: 'lifetime',
+    descricao: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
+  },
 ];
 
 // Cria produtos em falta e atualiza o preço/categoria dos que já existem.
@@ -485,23 +491,19 @@ function seedProdutosIniciais() {
     const mesmoPreco = existente.price_cents === p.preco;
     const mesmaMoeda = String(existente.currency || '').toLowerCase() === 'eur';
     const mesmaCategoria = existente.category === p.categoria;
-    if (mesmoPreco && mesmaMoeda && mesmaCategoria) continue;
+    const mesmoAtivo = Boolean(existente.active);
+    if (mesmoPreco && mesmaMoeda && mesmaCategoria && mesmoAtivo) continue;
 
     db.updateProduct(existente.id, {
       priceCents: p.preco,
       currency: 'eur',
       category: p.categoria,
+      active: true,
     });
     console.log(
       `~ preço atualizado #${existente.id}: ${p.nome} — ${formatPrice(p.preco, 'eur')}`
     );
     atualizados++;
-  }
-
-  const comboLifetime = db.getProductByName('Combo Lifetime (sp00fer e Rock)');
-  if (comboLifetime?.active) {
-    db.setProductActive(comboLifetime.id, false);
-    console.log('~ Combo Lifetime desativado (saiu do painel de combos).');
   }
 
   if (criados > 0) {
@@ -1093,7 +1095,11 @@ const PAINEL_TEXTOS = {
     titulo: 'SPOOFER PERMANENTE',
     descricao:
       '💠 Lifetime — **50€**\n' +
-      '🔵 1x Sp00fer 1 Click Lifetime',
+      '🔵 1x Sp00fer 1 Click Lifetime\n' +
+      '\n' +
+      '💠 Lifetime ( sp00fer e Rock ) — **50€**\n' +
+      '🔵 1x Sp00fer 1 Click Lifetime\n' +
+      '🔵 50x conta Rockst4r Novas.',
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_LIFETIME_URL,

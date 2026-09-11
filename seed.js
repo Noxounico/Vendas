@@ -148,7 +148,14 @@ const CATALOG = [
   },
   {
     category: 'lifetime',
-    products: [{ name: 'Sp00fer 1 Click Lifetime', priceCents: cents(50) }],
+    products: [
+      { name: 'Sp00fer 1 Click Lifetime', priceCents: cents(50) },
+      {
+        name: 'Combo Lifetime (sp00fer e Rock)',
+        priceCents: cents(50),
+        description: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
+      },
+    ],
   },
 ];
 
@@ -167,7 +174,8 @@ function seed() {
         const mesmoPreco = existente.price_cents === p.priceCents;
         const mesmaMoeda = String(existente.currency || '').toLowerCase() === currency;
         const mesmaCategoria = existente.category === group.category;
-        if (mesmoPreco && mesmaMoeda && mesmaCategoria) {
+        const mesmoAtivo = Boolean(existente.active);
+        if (mesmoPreco && mesmaMoeda && mesmaCategoria && mesmoAtivo) {
           unchanged += 1;
           console.log(`  = igual: ${p.name} — ${formatPrice(p.priceCents, currency)}`);
           continue;
@@ -176,6 +184,7 @@ function seed() {
           priceCents: p.priceCents,
           currency,
           category: group.category,
+          active: true,
         });
         updated += 1;
         console.log(
@@ -193,12 +202,6 @@ function seed() {
       created += 1;
       console.log(`  + criado #${id}: ${p.name} — ${formatPrice(p.priceCents, currency)}`);
     }
-  }
-
-  const comboLifetime = db.getProductByName('Combo Lifetime (sp00fer e Rock)');
-  if (comboLifetime?.active) {
-    db.setProductActive(comboLifetime.id, false);
-    console.log('  ~ desativado: Combo Lifetime (sp00fer e Rock) — saiu do painel de combos');
   }
 
   const nitradas = CATALOG.find((g) => g.category === 'Nitradas').products;

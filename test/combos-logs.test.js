@@ -65,7 +65,9 @@ assert(bot.PAINEL_TEXTOS.combos.imagemFile.endsWith('banner-combos.png'));
 assert(bot.PAINEL_TEXTOS.spofer.imagemFile.endsWith('banner-spofer.png'));
 assert(bot.PAINEL_TEXTOS.lifetime.imagemFile.endsWith('banner-lifetime.png'));
 assert(bot.PAINEL_TEXTOS.spofer.descricao.includes('Sp00fer 1 Click Semanal'));
-assert(bot.PAINEL_TEXTOS.lifetime.descricao.includes('Sp00fer 1 Click Lifetime'));
+assert.strictEqual(bot.PAINEL_TEXTOS.lifetime.descricao.includes('Sp00fer 1 Click Lifetime'), true);
+assert(bot.PAINEL_TEXTOS.lifetime.descricao.includes('Lifetime ( sp00fer e Rock )'));
+assert(bot.PAINEL_TEXTOS.lifetime.descricao.includes('50x conta Rockst4r Novas.'));
 
 const combosSeed = bot.PRODUTOS_SEED.filter((p) => p.categoria === 'combos');
 assert.strictEqual(combosSeed.length, 2);
@@ -89,24 +91,18 @@ assert.strictEqual(db.listActiveProductsByCategory('combos').length, 2);
 const spoferSem = db.getProductByName('Sp00fer 1 Click Semanal');
 const spoferMen = db.getProductByName('Sp00fer 1 Click Mensal');
 const spoferLife = db.getProductByName('Sp00fer 1 Click Lifetime');
-assert.ok(spoferSem && spoferMen && spoferLife);
+const comboLife = db.getProductByName('Combo Lifetime (sp00fer e Rock)');
+assert.ok(spoferSem && spoferMen && spoferLife && comboLife);
 assert.strictEqual(spoferSem.category, 'spofer');
 assert.strictEqual(spoferMen.category, 'spofer');
 assert.strictEqual(spoferLife.category, 'lifetime');
+assert.strictEqual(comboLife.category, 'lifetime');
+assert.strictEqual(comboLife.active, 1);
 assert.strictEqual(spoferSem.price_cents, 800);
 assert.strictEqual(spoferMen.price_cents, 1500);
 assert.strictEqual(spoferLife.price_cents, 5000);
-
-db.addProduct({
-  name: 'Combo Lifetime (sp00fer e Rock)',
-  priceCents: 5000,
-  currency: 'eur',
-  category: 'combos',
-});
-assert.strictEqual(db.getProductByName('Combo Lifetime (sp00fer e Rock)').active, 1);
-bot.seedProdutosIniciais();
-assert.strictEqual(db.getProductByName('Combo Lifetime (sp00fer e Rock)').active, 0);
-assert.strictEqual(db.listActiveProductsByCategory('combos').length, 2);
+assert.strictEqual(comboLife.price_cents, 5000);
+assert.strictEqual(db.listActiveProductsByCategory('lifetime').length, 2);
 
 const staffCache = {
   permissions: { has: () => false },
@@ -198,7 +194,8 @@ const lifePainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCat
 assert(lifePainel.includes('attachment://banner-lifetime.png'));
 assert(lifePainel.includes('SPOOFER PERMANENTE'));
 assert(lifePainel.includes('50€'));
-assert(!aberto.includes('Lifetime'));
+assert(lifePainel.includes('Lifetime ( sp00fer e Rock )'));
+assert(!aberto.includes('Lifetime ( sp00fer e Rock )'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
