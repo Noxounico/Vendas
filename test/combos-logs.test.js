@@ -11,6 +11,7 @@ delete process.env.LOG_CHANNEL_ID;
 delete process.env.PEDIDOS_CHANNEL_ID;
 delete process.env.LOGS_ENTREGA_CHANNEL_ID;
 delete process.env.TICKETS_LOGS_CHANNEL_ID;
+delete process.env.LOGS_VERIFICACAO_CHANNEL_ID;
 
 const db = require('../db');
 const bot = require('../index');
@@ -21,20 +22,30 @@ function fail(msg) {
   throw new Error(msg);
 }
 
-assert.strictEqual(bot.logsCanalId(), '1545391162305810463');
+assert.strictEqual(bot.logsCanalId(), '1443334209182765147');
 assert.strictEqual(bot.ticketsLogsCanalId(), '1318660945064755291');
+assert.strictEqual(bot.verificacoesLogsCanalId(), '1547721266566402200');
 
 process.env.LOG_CHANNEL_ID = '999999999999999999';
 assert.strictEqual(
   bot.logsCanalId(),
-  '1545391162305810463',
+  '1443334209182765147',
   'LOG_CHANNEL_ID antigo não pode desviar os logs de entrega'
+);
+assert.strictEqual(
+  bot.verificacoesLogsCanalId(),
+  '1547721266566402200',
+  'LOG_CHANNEL_ID antigo não pode desviar os logs de verificação'
 );
 delete process.env.LOG_CHANNEL_ID;
 
 process.env.LOGS_ENTREGA_CHANNEL_ID = '111';
 assert.strictEqual(bot.logsCanalId(), '111');
 delete process.env.LOGS_ENTREGA_CHANNEL_ID;
+
+process.env.LOGS_VERIFICACAO_CHANNEL_ID = '222';
+assert.strictEqual(bot.verificacoesLogsCanalId(), '222');
+delete process.env.LOGS_VERIFICACAO_CHANNEL_ID;
 
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-combos'], 'combos');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-spofer'], 'spofer');

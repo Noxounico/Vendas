@@ -284,8 +284,9 @@ const TICKETS_CARGOS_STAFF_PADRAO = ['1443307566921678968', '1318653141453111368
 const TICKETS_BANNER_URL_PADRAO =
   'https://media.discordapp.net/attachments/1534183602764648579/1547711353840738425/image.png?ex=6aa46a05&is=6aa31885&hm=add46c54857977892ae15441df5b3e5ac8423cbc068029e98d4b4fdca43cabb4&=&format=webp&quality=lossless&width=1479&height=832';
 const VERIFY_ROLE_ID_PADRAO = '1178495316132110336';
-const LOGS_ENTREGA_CANAL_ID_PADRAO = '1545391162305810463';
-const TICKETS_LOGS_CANAL_ID_PADRAO = '1318660945064755291';
+const LOGS_ENTREGA_CANAL_ID_PADRAO = '1443334209182765147'; // logs compras
+const TICKETS_LOGS_CANAL_ID_PADRAO = '1318660945064755291'; // logs tickets
+const LOGS_VERIFICACAO_CANAL_ID_PADRAO = '1547721266566402200'; // logs verificações
 
 function ticketsCategoriaId() {
   return process.env.TICKETS_CATEGORIA_ID || TICKETS_CATEGORIA_ID_PADRAO;
@@ -345,6 +346,10 @@ function logsCanalId() {
 
 function ticketsLogsCanalId() {
   return process.env.TICKETS_LOGS_CHANNEL_ID || TICKETS_LOGS_CANAL_ID_PADRAO;
+}
+
+function verificacoesLogsCanalId() {
+  return process.env.LOGS_VERIFICACAO_CHANNEL_ID || LOGS_VERIFICACAO_CANAL_ID_PADRAO;
 }
 
 function cargoVerificacaoId() {
@@ -864,8 +869,7 @@ async function registerSlashCommands() {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function logToChannel(text, extras = {}) {
-  const channelId = logsCanalId();
+async function enviarLog(channelId, text, extras = {}) {
   if (!channelId) return;
   try {
     const channel = await client.channels.fetch(channelId);
@@ -873,6 +877,14 @@ async function logToChannel(text, extras = {}) {
   } catch (err) {
     console.error('Falha ao escrever no canal de logs:', err.message);
   }
+}
+
+async function logToChannel(text, extras = {}) {
+  return enviarLog(logsCanalId(), text, extras);
+}
+
+async function logVerificacao(text, extras = {}) {
+  return enviarLog(verificacoesLogsCanalId(), text, extras);
 }
 
 function parseSqliteDate(valor) {
@@ -2428,7 +2440,7 @@ async function verificarMembro(interaction, roleId, opts = {}) {
       content: '✅ Verificado! Já tens acesso ao servidor.',
       components: [],
     });
-    await logToChannel(`✅ <@${interaction.user.id}> verificou-se (cargo <@&${roleId}>).`);
+    await logVerificacao(`✅ <@${interaction.user.id}> verificou-se (cargo <@&${roleId}>).`);
   } catch (err) {
     console.error('Falha ao verificar membro:', err.message);
     await responder({
@@ -2684,7 +2696,13 @@ function anexosImagem(message) {
 async function encaminharComprovante(message) {
   const imagens = anexosImagem(message);
   if (imagens.length === 0) return false;
-  if (message.channelId === logsCanalId()) return false;
+  if (
+    message.channelId === logsCanalId() ||
+    message.channelId === ticketsLogsCanalId() ||
+    message.channelId === verificacoesLogsCanalId()
+  ) {
+    return false;
+  }
   if (message.guild && ehStaffTickets(message.member)) return false;
 
   const pending = db.listPendingOrdersByUser(message.author.id);
@@ -3184,6 +3202,7 @@ module.exports = {
   encontrarProdutoPorTexto,
   logsCanalId,
   ticketsLogsCanalId,
+  verificacoesLogsCanalId,
   ehStaffTickets,
   podeEntregarPedidos,
   montarEmbedTicketFechado,
