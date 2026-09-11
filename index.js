@@ -1145,42 +1145,25 @@ const PAINEL_TEXTOS = {
   spofer: {
     titulo: 'SPOOFER ONE CLICK',
     descricao:
-      `${EMOJI_PACK} Hora\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Hora\n` +
-      '\n' +
-      `${EMOJI_PACK} Diário\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Diário\n` +
-      '\n' +
-      `${EMOJI_PACK} Semanal\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Semanal\n` +
-      '\n' +
-      `${EMOJI_PACK} Mensal\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Mensal\n` +
-      '\n' +
-      `${EMOJI_PACK} Lifetime\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Lifetime`,
+      `${EMOJI_BOLINHA} Remove ban Global/HWID.\n` +
+      `${EMOJI_BOLINHA} Sp00fer consta com tutorial.\n` +
+      `${EMOJI_BOLINHA} Nvidia・100%\n` +
+      `${EMOJI_BOLINHA} AMD・100%\n` +
+      `${EMOJI_BOLINHA} Melhor sp00fer para remover B4N de cidades one click`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_SPOFER_URL,
     imagemFile: BANNER_SPOFER_FILE,
   },
   lifetime: {
-    titulo: 'SPOOFER PERMANENTE',
+    titulo: 'SP00FER 1 CLICK PERMANENTE',
     descricao:
-      `${EMOJI_PACK} Diário\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Diário\n` +
-      '\n' +
-      `${EMOJI_PACK} Semanal\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Semanal\n` +
-      '\n' +
-      `${EMOJI_PACK} Mensal\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Mensal\n` +
-      '\n' +
-      `${EMOJI_PACK} Trimensal\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Trimensal\n` +
-      '\n' +
-      `${EMOJI_PACK} Lifetime\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Lifetime`,
+      `${EMOJI_BOLINHA} REMOVE O BANIMENTO PARA SEMPRE COM 1 CLICK\n` +
+      `${EMOJI_BOLINHA} NÃO PRECISA DAR FLASH NA BIOS\n` +
+      `${EMOJI_BOLINHA} PODE REINICIAR E DESLIGAR O COMPUTADOR QUE O BAN NÃO VOLTA\n` +
+      `${EMOJI_BOLINHA} AMD 100%\n` +
+      `${EMOJI_BOLINHA} NVIDIA 100%\n` +
+      `${EMOJI_BOLINHA} MELHOR SP00FER PARA REMOVER B4N GLOBAL`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_LIFETIME_URL,
