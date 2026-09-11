@@ -243,7 +243,13 @@ const BANNER_COMBOS_FILE = path.join(__dirname, 'assets', 'banner-combos.png');
 const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
 const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
 const STATUS_BOT = 'processando pagamento...';
-const STATUS_BOT_EMOJI_ID = process.env.STATUS_BOT_EMOJI_ID || '1192548293067165838';
+// <a:1192548293067165838:1453368332622495775>
+const STATUS_BOT_EMOJI = {
+  name: '1192548293067165838',
+  id: '1453368332622495775',
+  animated: true,
+};
+const STATUS_BOT_EMOJI_ID = STATUS_BOT_EMOJI.id;
 
 // Tickets: categoria, cargos da staff e banner por defeito (env var sobrepõe).
 const TICKETS_CATEGORIA_ID_PADRAO = '1322700826912882779';
@@ -2792,8 +2798,7 @@ function anexarEventos(c) {
 }
 
 function emojiDoStatus() {
-  const id = STATUS_BOT_EMOJI_ID;
-  if (!id) return null;
+  const id = STATUS_BOT_EMOJI.id;
   if (client.guilds?.cache) {
     for (const guild of client.guilds.cache.values()) {
       const emoji = guild.emojis.cache.get(id);
@@ -2802,7 +2807,7 @@ function emojiDoStatus() {
       }
     }
   }
-  return { name: 'status', id, animated: false };
+  return { ...STATUS_BOT_EMOJI };
 }
 
 function montarPresencaStatus() {
@@ -2933,6 +2938,7 @@ module.exports = {
   PAINEL_TEXTOS,
   PRODUTOS_SEED,
   STATUS_BOT,
+  STATUS_BOT_EMOJI,
   STATUS_BOT_EMOJI_ID,
   montarPresencaStatus,
   definirStatusBot,
