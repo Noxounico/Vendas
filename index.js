@@ -242,8 +242,8 @@ const BANNER_LIFETIME_URL =
 const BANNER_COMBOS_FILE = path.join(__dirname, 'assets', 'banner-combos.png');
 const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
 const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
-const EMOJI_PACK = '<:stoppedemoji:1377737580816109809>';
-const EMOJI_BOLINHA = '<:bolinha:1377885173747548252>';
+const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
+const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const STATUS_BOT = '⏳ processando pagamento...';
 // <a:1192548293067165838:1453368332622495775>
 const STATUS_BOT_EMOJI = {
@@ -455,6 +455,12 @@ const PRODUTOS_SEED = [
     categoria: 'combos',
     descricao: '1x Sp00fer 1 Click Mensal + 10x conta Rockst4r Novas',
   },
+  {
+    nome: 'Combo Lifetime (sp00fer e Rock)',
+    preco: eur(50),
+    categoria: 'combos',
+    descricao: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
+  },
 
   // --- Canal Sp00fer 1 Click ---
   { nome: 'Sp00fer 1 Click Semanal', preco: eur(8), categoria: 'spofer' },
@@ -462,12 +468,6 @@ const PRODUTOS_SEED = [
 
   // --- Canal Sp00fer Permanente ---
   { nome: 'Sp00fer 1 Click Lifetime', preco: eur(50), categoria: 'lifetime' },
-  {
-    nome: 'Combo Lifetime (sp00fer e Rock)',
-    preco: eur(50),
-    categoria: 'lifetime',
-    descricao: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
-  },
 ];
 
 // Cria produtos em falta e atualiza o preço/categoria dos que já existem.
@@ -1066,7 +1066,7 @@ const PAINEL_TEXTOS = {
     'Entrega automática no privado.',
   ]),
   combos: {
-    titulo: 'COMBOS',
+    titulo: 'Stopped Combos',
     descricao:
       `${EMOJI_PACK} Semanal ( sp00fer e Rock )\n` +
       `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Semanal\n` +
@@ -1074,7 +1074,11 @@ const PAINEL_TEXTOS = {
       '\n' +
       `${EMOJI_PACK} Mensal ( sp00fer e Rock )\n` +
       `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Mensal\n` +
-      `${EMOJI_BOLINHA} 10x conta Rockst4r Novas.`,
+      `${EMOJI_BOLINHA} 10x conta Rockst4r Novas.\n` +
+      '\n' +
+      `${EMOJI_PACK} Lifetime ( sp00fer e Rock )\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Lifetime\n` +
+      `${EMOJI_BOLINHA} 50x conta Rockst4r Novas.`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_COMBOS_URL,
@@ -1096,12 +1100,8 @@ const PAINEL_TEXTOS = {
   lifetime: {
     titulo: 'SPOOFER PERMANENTE',
     descricao:
-      `${EMOJI_PACK} Lifetime — **50€**\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Lifetime\n` +
-      '\n' +
-      `${EMOJI_PACK} Lifetime ( sp00fer e Rock ) — **50€**\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Lifetime\n` +
-      `${EMOJI_BOLINHA} 50x conta Rockst4r Novas.`,
+      `${EMOJI_PACK} Lifetime\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Lifetime`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_LIFETIME_URL,

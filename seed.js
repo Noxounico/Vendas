@@ -137,6 +137,11 @@ const CATALOG = [
         priceCents: cents(20),
         description: '1x Sp00fer 1 Click Mensal + 10x conta Rockst4r Novas',
       },
+      {
+        name: 'Combo Lifetime (sp00fer e Rock)',
+        priceCents: cents(50),
+        description: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
+      },
     ],
   },
   {
@@ -148,14 +153,7 @@ const CATALOG = [
   },
   {
     category: 'lifetime',
-    products: [
-      { name: 'Sp00fer 1 Click Lifetime', priceCents: cents(50) },
-      {
-        name: 'Combo Lifetime (sp00fer e Rock)',
-        priceCents: cents(50),
-        description: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
-      },
-    ],
+    products: [{ name: 'Sp00fer 1 Click Lifetime', priceCents: cents(50) }],
   },
 ];
 
