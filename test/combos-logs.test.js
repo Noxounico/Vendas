@@ -41,6 +41,7 @@ assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-spofer'], 'spofer');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-lifetime'], 'lifetime');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-box'], 'box');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-vps'], 'vps');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-steam'], 'steam');
 assert.strictEqual(bot.STATUS_BOT, '⏳ processando pagamento...');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
@@ -73,6 +74,15 @@ assert(bot.PAINEL_TEXTOS.spofer.imagemFile.endsWith('banner-spofer.png'));
 assert(bot.PAINEL_TEXTOS.lifetime.imagemFile.endsWith('banner-lifetime.png'));
 assert(bot.PAINEL_TEXTOS.box.imagemFile.endsWith('banner-box.png'));
 assert(bot.PAINEL_TEXTOS.vps.imagemFile.endsWith('banner-vps.png'));
+assert(bot.PAINEL_TEXTOS.steam.imagemFile.endsWith('banner-steam.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.steam.titulo, 'C0nta Steam');
+assert.strictEqual(bot.EMOJI_PONTO_NOME, 'b_pontobranco_voltz');
+assert.strictEqual(bot.emojiPonto(), ':b_pontobranco_voltz:');
+assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.emojiPonto()} C0nt4s Steam`));
+assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.emojiPonto()} Full Acesso`));
+assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.emojiPonto()} C0nt4s nova e só sua`));
+assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.emojiPonto()} Assim que receber, troque tudo imediatamente`));
+assert(!bot.PAINEL_TEXTOS.steam.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.vps.titulo, 'VPN IP VANISH NFA');
 assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_PACK} 5 Dias`));
 assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} 1x Ip Vanish 5 Dias`));
@@ -186,6 +196,12 @@ assert.strictEqual(vanishMes.category, 'vps');
 assert.strictEqual(vanish5.price_cents, 300);
 assert.strictEqual(vanishMes.price_cents, 1000);
 assert.strictEqual(db.listActiveProductsByCategory('vps').length, 2);
+
+const steamAcc = db.getProductByName('C0nta Steam');
+assert.ok(steamAcc);
+assert.strictEqual(steamAcc.category, 'steam');
+assert.strictEqual(steamAcc.price_cents, 400);
+assert.strictEqual(db.listActiveProductsByCategory('steam').length, 1);
 
 const idAntigo = db.addProduct({
   name: 'Sp00fer 1 Click Semanal',
@@ -313,6 +329,15 @@ assert(vpsPainel.includes('VPN IP VANISH NFA'));
 assert(vpsPainel.includes(`${bot.EMOJI_PACK} 5 Dias`));
 assert(vpsPainel.includes(`${bot.EMOJI_BOLINHA} 1x Ip Vanish 1 Mês`));
 assert(vpsPainel.includes('NFA'));
+
+const steamPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('steam'), 'steam').payload);
+assert(steamPainel.includes('attachment://banner-steam.png'));
+assert(steamPainel.includes('C0nta Steam'));
+assert(steamPainel.includes('C0nt4s Steam'));
+assert(steamPainel.includes('Full Acesso'));
+assert(steamPainel.includes('C0nt4s nova e só sua'));
+assert(steamPainel.includes('Assim que receber, troque tudo imediatamente'));
+assert(steamPainel.includes(`:${bot.EMOJI_PONTO_NOME}:`));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');

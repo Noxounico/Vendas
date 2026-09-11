@@ -248,9 +248,13 @@ const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
 const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
 const BANNER_BOX_FILE = path.join(__dirname, 'assets', 'banner-box.png');
 const BANNER_VPS_FILE = path.join(__dirname, 'assets', 'banner-vps.png');
+const BANNER_STEAM_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548019062116720760/image.png?ex=6aa58899&is=6aa43719&hm=55194d805ec76b46b6a2195ad9ca32bac825855b8af32f9582b8a00e9c260b6b&=&format=webp&quality=lossless&width=1519&height=855';
+const BANNER_STEAM_FILE = path.join(__dirname, 'assets', 'banner-steam.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
+const EMOJI_PONTO_NOME = 'b_pontobranco_voltz';
 const STATUS_BOT = '⏳ processando pagamento...';
 // <a:1192548293067165838:1453368332622495775>
 const STATUS_BOT_EMOJI = {
@@ -524,6 +528,9 @@ const PRODUTOS_SEED = [
   // --- Canal VPN / VPS ---
   { nome: 'Ip Vanish 5 Dias', preco: eur(3), categoria: 'vps' },
   { nome: 'Ip Vanish 1 Mês', preco: eur(10), categoria: 'vps' },
+
+  // --- Canal C0nta Steam ---
+  { nome: 'C0nta Steam', preco: eur(4), categoria: 'steam' },
 ];
 
 // Cria produtos em falta, atualiza preço/categoria e renomeia os antigos.
@@ -605,6 +612,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-lifetime': 'lifetime',
   'loja-box': 'box',
   'loja-vps': 'vps',
+  'loja-steam': 'steam',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1220,6 +1228,22 @@ const PAINEL_TEXTOS = {
     cor: 0x2b2d31,
     imagem: BANNER_VPS_URL,
     imagemFile: BANNER_VPS_FILE,
+  },
+  steam: {
+    titulo: 'C0nta Steam',
+    get descricao() {
+      const ponto = emojiPonto();
+      return (
+        `${ponto} C0nt4s Steam\n` +
+        `${ponto} Full Acesso\n` +
+        `${ponto} C0nt4s nova e só sua\n` +
+        `${ponto} Assim que receber, troque tudo imediatamente`
+      );
+    },
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_STEAM_URL,
+    imagemFile: BANNER_STEAM_FILE,
   },
 };
 
@@ -2928,6 +2952,22 @@ function emojiDoStatus() {
   return { ...STATUS_BOT_EMOJI };
 }
 
+function emojiPorNome(nome) {
+  if (client?.guilds?.cache) {
+    for (const guild of client.guilds.cache.values()) {
+      const emoji = guild.emojis.cache.find((e) => e.name === nome);
+      if (emoji) {
+        return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+      }
+    }
+  }
+  return `:${nome}:`;
+}
+
+function emojiPonto() {
+  return emojiPorNome(EMOJI_PONTO_NOME);
+}
+
 function montarPresencaStatus() {
   const emoji = emojiDoStatus();
   return {
@@ -3058,6 +3098,8 @@ module.exports = {
   EMOJI_PACK,
   EMOJI_BOLINHA,
   EMOJI_TREVO,
+  EMOJI_PONTO_NOME,
+  emojiPonto,
   STATUS_BOT,
   STATUS_BOT_EMOJI,
   STATUS_BOT_EMOJI_ID,

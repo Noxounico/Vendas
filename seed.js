@@ -194,6 +194,10 @@ const CATALOG = [
       { name: 'Ip Vanish 1 Mês', priceCents: cents(10) },
     ],
   },
+  {
+    category: 'steam',
+    products: [{ name: 'C0nta Steam', priceCents: cents(4) }],
+  },
 ];
 
 function seed() {
