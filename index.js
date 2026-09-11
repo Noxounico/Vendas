@@ -266,6 +266,15 @@ const BANNER_ASSINATURAS_FILE = path.join(__dirname, 'assets', 'banner-assinatur
 const BANNER_GTA_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1548078546772041899/image.png?ex=6aa5bfff&is=6aa46e7f&hm=474fca38d05a009d2a038ec2bb57df12ce7fe51010109eace9e8fa132463e7ff&=&format=webp&quality=lossless&width=1520&height=856';
 const BANNER_GTA_FILE = path.join(__dirname, 'assets', 'banner-gta.png');
+const BANNER_FORTNITE_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548088500417462382/image.png?ex=6aa5c944&is=6aa477c4&hm=8d9052ee7ed4872e4b9af1498873455c2670901265b50b9477524dcb656647ed&=&format=webp&quality=lossless&width=1519&height=855';
+const BANNER_FORTNITE_FILE = path.join(__dirname, 'assets', 'banner-fortnite.png');
+const BANNER_ROBLOX_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548088522152607754/image.png?ex=6aa5c949&is=6aa477c9&hm=e41ef4a937b987285c19cbdd3e3d9106959c63aa8527993f30821d9042b7b5b1&=&format=webp&quality=lossless&width=1518&height=855';
+const BANNER_ROBLOX_FILE = path.join(__dirname, 'assets', 'banner-roblox.png');
+const BANNER_SPOTIFY_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548088562035990628/image.png?ex=6aa5c953&is=6aa477d3&hm=892e1d599194337d24daf490a13d5d9b9d5fbab22f4cc9326e90d22e3d861050&=&format=webp&quality=lossless&width=1519&height=855';
+const BANNER_SPOTIFY_FILE = path.join(__dirname, 'assets', 'banner-spotify.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -1156,14 +1165,19 @@ const PAINEL_TEXTOS = {
     'Melhor qualidade.',
     'Mais confiança e histórico.',
   ]),
-  spotify: textoPainel('Spotify Premium', [
-    'Recebe uma conta Full Acesso.',
-    'Obrigatório a Troca de Dados.',
-    'Melhor qualidade.',
-    'Garantia de duração.',
-    'Troca apenas com prova.',
-    'site: clique aqui',
-  ]),
+  spotify: {
+    titulo: 'SPOTIFY PREMIUM',
+    descricao:
+      `${EMOJI_BOLINHA} Recebe uma conta Full Acesso.\n` +
+      `${EMOJI_BOLINHA} Obrigatório a Troca de Dados.\n` +
+      `${EMOJI_BOLINHA} Melhor qualidade.\n` +
+      `${EMOJI_BOLINHA} Garantia de duração.\n` +
+      `${EMOJI_BOLINHA} Troca apenas com prova.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_SPOTIFY_URL,
+    imagemFile: BANNER_SPOTIFY_FILE,
+  },
   membros: textoPainel('Membros', [
     'Membros para o teu servidor.',
     'Packs de 100 online ou 100 offline.',
@@ -1186,18 +1200,30 @@ const PAINEL_TEXTOS = {
     ],
     { entrega: '🎫 Entrega via ticket' }
   ),
-  roblox: textoPainel('ROBLOX ACC\'S', [
-    'Recebe uma conta Full Acesso.',
-    'Valor = Robux do inventário.',
-    'ALL FULL ACCESS.',
-    'Melhor qualidade.',
-  ]),
-  fortnite: textoPainel('FORTNITE ACC\'S', [
-    'Recebe uma conta Full Acesso.',
-    'OG, rare e tryhard skins.',
-    'ALL FULL ACCESS.',
-    'Melhor qualidade.',
-  ]),
+  roblox: {
+    titulo: 'ROBLOX ACCOUNTS',
+    descricao:
+      `${EMOJI_BOLINHA} Recebe uma conta Full Acesso.\n` +
+      `${EMOJI_BOLINHA} Valor = Robux do inventário.\n` +
+      `${EMOJI_BOLINHA} ALL FULL ACCESS.\n` +
+      `${EMOJI_BOLINHA} Melhor qualidade.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_ROBLOX_URL,
+    imagemFile: BANNER_ROBLOX_FILE,
+  },
+  fortnite: {
+    titulo: 'FORTNITE ACCOUNTS',
+    descricao:
+      `${EMOJI_BOLINHA} Recebe uma conta Full Acesso.\n` +
+      `${EMOJI_BOLINHA} OG, rare e tryhard skins.\n` +
+      `${EMOJI_BOLINHA} ALL FULL ACCESS.\n` +
+      `${EMOJI_BOLINHA} Melhor qualidade.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_FORTNITE_URL,
+    imagemFile: BANNER_FORTNITE_FILE,
+  },
   rockstar: textoPainel('ROCKSTAR ACC\'S', [
     'Recebe uma conta Full Acesso.',
     'ALL FULL ACCESS.',

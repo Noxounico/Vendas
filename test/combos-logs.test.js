@@ -96,6 +96,23 @@ assert(bot.PAINEL_TEXTOS.cs2.imagemFile.endsWith('banner-cs2.png'));
 assert(bot.PAINEL_TEXTOS.nfa.imagemFile.endsWith('banner-nfa.png'));
 assert(bot.PAINEL_TEXTOS.assinaturas.imagemFile.endsWith('banner-assinaturas.png'));
 assert(bot.PAINEL_TEXTOS.gta.imagemFile.endsWith('banner-gta.png'));
+assert(bot.PAINEL_TEXTOS.fortnite.imagemFile.endsWith('banner-fortnite.png'));
+assert(bot.PAINEL_TEXTOS.roblox.imagemFile.endsWith('banner-roblox.png'));
+assert(bot.PAINEL_TEXTOS.spotify.imagemFile.endsWith('banner-spotify.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.fortnite.titulo, 'FORTNITE ACCOUNTS');
+assert(bot.PAINEL_TEXTOS.fortnite.descricao.includes(`${bot.EMOJI_BOLINHA} Recebe uma conta Full Acesso.`));
+assert(bot.PAINEL_TEXTOS.fortnite.descricao.includes(`${bot.EMOJI_BOLINHA} OG, rare e tryhard skins.`));
+assert(bot.PAINEL_TEXTOS.fortnite.descricao.includes(`${bot.EMOJI_BOLINHA} ALL FULL ACCESS.`));
+assert(!bot.PAINEL_TEXTOS.fortnite.descricao.includes('€'));
+assert.strictEqual(bot.PAINEL_TEXTOS.roblox.titulo, 'ROBLOX ACCOUNTS');
+assert(bot.PAINEL_TEXTOS.roblox.descricao.includes(`${bot.EMOJI_BOLINHA} Valor = Robux do inventário.`));
+assert(bot.PAINEL_TEXTOS.roblox.descricao.includes(`${bot.EMOJI_BOLINHA} ALL FULL ACCESS.`));
+assert(!bot.PAINEL_TEXTOS.roblox.descricao.includes('€'));
+assert.strictEqual(bot.PAINEL_TEXTOS.spotify.titulo, 'SPOTIFY PREMIUM');
+assert(bot.PAINEL_TEXTOS.spotify.descricao.includes(`${bot.EMOJI_BOLINHA} Obrigatório a Troca de Dados.`));
+assert(bot.PAINEL_TEXTOS.spotify.descricao.includes(`${bot.EMOJI_BOLINHA} Troca apenas com prova.`));
+assert(!bot.PAINEL_TEXTOS.spotify.descricao.includes('€'));
+assert(!bot.PAINEL_TEXTOS.spotify.descricao.includes('site: clique aqui'));
 assert.strictEqual(bot.PAINEL_TEXTOS.nfa.titulo, 'NFA ACCOUNTS');
 assert(bot.PAINEL_TEXTOS.nfa.descricao.includes(`${bot.EMOJI_BOLINHA} Conta sem banimentos - pronta para jogar!`));
 assert(bot.PAINEL_TEXTOS.nfa.descricao.includes(`${bot.EMOJI_BOLINHA} NFA (No Full Access)`));
@@ -497,6 +514,24 @@ assert(gtaPainel.includes('Gta V Instalavel'));
 assert(gtaPainel.includes('Conta steam NFA (No Full Acess)'));
 assert(gtaPainel.includes('Não compre mais de uma vez.'));
 assert(!gtaPainel.includes('Gta V Instalável'));
+
+const fortnitePainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('fortnite'), 'fortnite').payload);
+assert(fortnitePainel.includes('attachment://banner-fortnite.png'));
+assert(fortnitePainel.includes('FORTNITE ACCOUNTS'));
+assert(fortnitePainel.includes('OG, rare e tryhard skins.'));
+assert(!fortnitePainel.includes('100-150 Skins'));
+
+const robloxPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('roblox'), 'roblox').payload);
+assert(robloxPainel.includes('attachment://banner-roblox.png'));
+assert(robloxPainel.includes('ROBLOX ACCOUNTS'));
+assert(robloxPainel.includes('Valor = Robux do inventário.'));
+assert(!robloxPainel.includes('1000-2500 robux acc'));
+
+const spotifyPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('spotify'), 'spotify').payload);
+assert(spotifyPainel.includes('attachment://banner-spotify.png'));
+assert(spotifyPainel.includes('SPOTIFY PREMIUM'));
+assert(spotifyPainel.includes('Obrigatório a Troca de Dados.'));
+assert(!spotifyPainel.includes('Conta Spotify Premium'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
