@@ -257,6 +257,15 @@ const BANNER_KEYS_FILE = path.join(__dirname, 'assets', 'banner-keys.png');
 const BANNER_CS2_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1548055752751714424/image.png?ex=6aa5aac4&is=6aa45944&hm=c8e0a5b63dc63bc9310e6049dafa3991bed852153780be4192360466363ef35e&=&format=webp&quality=lossless&width=960&height=960';
 const BANNER_CS2_FILE = path.join(__dirname, 'assets', 'banner-cs2.png');
+const BANNER_NFA_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548073801462587402/image.png?ex=6aa5bb94&is=6aa46a14&hm=b3948650cd8d492d80d07333dfdf017d744cd5b2be0cd5d5be918a0df072f00c&=&format=webp&quality=lossless&width=1520&height=856';
+const BANNER_NFA_FILE = path.join(__dirname, 'assets', 'banner-nfa.png');
+const BANNER_ASSINATURAS_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548076562128183336/image.png?ex=6aa5be26&is=6aa46ca6&hm=4460af6ba216c4c77d13d704dbd3ba587f30810382e0ac6cd760445ef7b097b6&=&format=webp&quality=lossless&width=1521&height=856';
+const BANNER_ASSINATURAS_FILE = path.join(__dirname, 'assets', 'banner-assinaturas.png');
+const BANNER_GTA_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548078546772041899/image.png?ex=6aa5bfff&is=6aa46e7f&hm=474fca38d05a009d2a038ec2bb57df12ce7fe51010109eace9e8fa132463e7ff&=&format=webp&quality=lossless&width=1520&height=856';
+const BANNER_GTA_FILE = path.join(__dirname, 'assets', 'banner-gta.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -552,6 +561,24 @@ const PRODUTOS_SEED = [
   { nome: 'CS2 Inativa 15D+ Premier', preco: eur(13), categoria: 'cs2' },
   { nome: 'CS2 Medalhas 4+ Premier', preco: eur(12), categoria: 'cs2' },
   { nome: 'CS2 Inativa 15D+ Medalhas 4+', preco: eur(15), categoria: 'cs2' },
+
+  // --- Canal NFA ACCOUNTS ---
+  { nome: 'Rust 5+D Offline', preco: eur(10), categoria: 'nfa' },
+  { nome: 'Rust 15+D Offline', preco: eur(15), categoria: 'nfa' },
+  { nome: 'Battlefield 6 Random', preco: eur(5), categoria: 'nfa' },
+  { nome: 'DayZ Random', preco: eur(5), categoria: 'nfa' },
+  { nome: 'DayZ 15+D Offline', preco: eur(6), categoria: 'nfa' },
+  { nome: 'Arc Raiders 0-99 Hours', preco: eur(10), categoria: 'nfa' },
+
+  // --- Canal Assinaturas ---
+  { nome: 'CapCut Pro ( FA )', preco: eur(2.5), categoria: 'assinaturas' },
+  { nome: 'Youtube Premium Convite', preco: eur(2.5), categoria: 'assinaturas' },
+  { nome: 'Prime Video NFA ( tela )', preco: eur(2.5), categoria: 'assinaturas' },
+  { nome: 'Canva Pro Convite', preco: eur(2), categoria: 'assinaturas' },
+  { nome: 'Crunchyroll NFA ( tela )', preco: eur(2), categoria: 'assinaturas' },
+
+  // --- Canal Gta V Instalavel ---
+  { nome: 'Gta V Instalável', preco: eur(3.5), categoria: 'gta' },
 ];
 
 // Cria produtos em falta, atualiza preço/categoria e renomeia os antigos.
@@ -636,6 +663,9 @@ const CATEGORIA_POR_COMANDO = {
   'loja-steam': 'steam',
   'loja-keys': 'keys',
   'loja-cs2': 'cs2',
+  'loja-nfa': 'nfa',
+  'loja-assinaturas': 'assinaturas',
+  'loja-gta': 'gta',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1292,6 +1322,40 @@ const PAINEL_TEXTOS = {
     cor: 0x2b2d31,
     imagem: BANNER_CS2_URL,
     imagemFile: BANNER_CS2_FILE,
+  },
+  nfa: {
+    titulo: 'NFA ACCOUNTS',
+    descricao:
+      `${EMOJI_BOLINHA} Conta sem banimentos - pronta para jogar!\n` +
+      `${EMOJI_BOLINHA} NFA (No Full Access)\n` +
+      `${EMOJI_BOLINHA} Região: GLOBAL`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_NFA_URL,
+    imagemFile: BANNER_NFA_FILE,
+  },
+  assinaturas: {
+    titulo: 'Assinaturas',
+    descricao:
+      `${EMOJI_BOLINHA} Assista seus filmes e séries da melhor qualidade!\n` +
+      `${EMOJI_BOLINHA} Ao realizar a compra, você recebe Login e Senha e terá acesso a sua Tela exclusiva! (Conta Compartilhada)\n` +
+      `${EMOJI_BOLINHA} Garantia de 7 dia em caso de telas, nfa não tem`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_ASSINATURAS_URL,
+    imagemFile: BANNER_ASSINATURAS_FILE,
+  },
+  gta: {
+    titulo: 'Gta V Instalavel',
+    descricao:
+      `${EMOJI_BOLINHA} Conta steam NFA (No Full Acess)\n` +
+      `${EMOJI_BOLINHA} Não é full acesso, é conta compartilhada\n` +
+      `${EMOJI_BOLINHA} Não compre mais de uma vez.\n` +
+      `${EMOJI_BOLINHA} Após o download, desconecte da conta e use sua Steam e sua Rockstar para jogar fivem.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_GTA_URL,
+    imagemFile: BANNER_GTA_FILE,
   },
 };
 

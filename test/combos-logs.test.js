@@ -44,6 +44,9 @@ assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-vps'], 'vps');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-steam'], 'steam');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-keys'], 'keys');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-cs2'], 'cs2');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-nfa'], 'nfa');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-assinaturas'], 'assinaturas');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-gta'], 'gta');
 assert.strictEqual(bot.STATUS_BOT, '⏳ processando pagamento...');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
@@ -79,6 +82,28 @@ assert(bot.PAINEL_TEXTOS.vps.imagemFile.endsWith('banner-vps.png'));
 assert(bot.PAINEL_TEXTOS.steam.imagemFile.endsWith('banner-steam.png'));
 assert(bot.PAINEL_TEXTOS.keys.imagemFile.endsWith('banner-keys.png'));
 assert(bot.PAINEL_TEXTOS.cs2.imagemFile.endsWith('banner-cs2.png'));
+assert(bot.PAINEL_TEXTOS.nfa.imagemFile.endsWith('banner-nfa.png'));
+assert(bot.PAINEL_TEXTOS.assinaturas.imagemFile.endsWith('banner-assinaturas.png'));
+assert(bot.PAINEL_TEXTOS.gta.imagemFile.endsWith('banner-gta.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.nfa.titulo, 'NFA ACCOUNTS');
+assert(bot.PAINEL_TEXTOS.nfa.descricao.includes(`${bot.EMOJI_BOLINHA} Conta sem banimentos - pronta para jogar!`));
+assert(bot.PAINEL_TEXTOS.nfa.descricao.includes(`${bot.EMOJI_BOLINHA} NFA (No Full Access)`));
+assert(bot.PAINEL_TEXTOS.nfa.descricao.includes(`${bot.EMOJI_BOLINHA} Região: GLOBAL`));
+assert(!bot.PAINEL_TEXTOS.nfa.descricao.includes(`${bot.EMOJI_PACK}`));
+assert(!bot.PAINEL_TEXTOS.nfa.descricao.includes('€'));
+assert.strictEqual(bot.PAINEL_TEXTOS.assinaturas.titulo, 'Assinaturas');
+assert(bot.PAINEL_TEXTOS.assinaturas.descricao.includes(`${bot.EMOJI_BOLINHA} Assista seus filmes e séries da melhor qualidade!`));
+assert(bot.PAINEL_TEXTOS.assinaturas.descricao.includes(`${bot.EMOJI_BOLINHA} Ao realizar a compra, você recebe Login e Senha e terá acesso a sua Tela exclusiva! (Conta Compartilhada)`));
+assert(bot.PAINEL_TEXTOS.assinaturas.descricao.includes(`${bot.EMOJI_BOLINHA} Garantia de 7 dia em caso de telas, nfa não tem`));
+assert(!bot.PAINEL_TEXTOS.assinaturas.descricao.includes(`${bot.EMOJI_PACK}`));
+assert(!bot.PAINEL_TEXTOS.assinaturas.descricao.includes('€'));
+assert.strictEqual(bot.PAINEL_TEXTOS.gta.titulo, 'Gta V Instalavel');
+assert(bot.PAINEL_TEXTOS.gta.descricao.includes(`${bot.EMOJI_BOLINHA} Conta steam NFA (No Full Acess)`));
+assert(bot.PAINEL_TEXTOS.gta.descricao.includes(`${bot.EMOJI_BOLINHA} Não é full acesso, é conta compartilhada`));
+assert(bot.PAINEL_TEXTOS.gta.descricao.includes(`${bot.EMOJI_BOLINHA} Não compre mais de uma vez.`));
+assert(bot.PAINEL_TEXTOS.gta.descricao.includes(`${bot.EMOJI_BOLINHA} Após o download, desconecte da conta e use sua Steam e sua Rockstar para jogar fivem.`));
+assert(!bot.PAINEL_TEXTOS.gta.descricao.includes(`${bot.EMOJI_PACK}`));
+assert(!bot.PAINEL_TEXTOS.gta.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.cs2.titulo, 'CS2 Accounts NFA');
 assert(bot.PAINEL_TEXTOS.cs2.descricao.includes(`${bot.EMOJI_BOLINHA} Conta sem banimentos - pronta para jogar!`));
 assert(bot.PAINEL_TEXTOS.cs2.descricao.includes(`${bot.EMOJI_BOLINHA} Status: PRIME / PREMIER / MEDALHAS`));
@@ -254,6 +279,42 @@ assert.strictEqual(cs2Medal.price_cents, 1200);
 assert.strictEqual(cs2InatMedal.price_cents, 1500);
 assert.strictEqual(db.listActiveProductsByCategory('cs2').length, 7);
 
+const rust5 = db.getProductByName('Rust 5+D Offline');
+const rust15 = db.getProductByName('Rust 15+D Offline');
+const bf6 = db.getProductByName('Battlefield 6 Random');
+const dayzRand = db.getProductByName('DayZ Random');
+const dayz15 = db.getProductByName('DayZ 15+D Offline');
+const arcRaid = db.getProductByName('Arc Raiders 0-99 Hours');
+assert.ok(rust5 && rust15 && bf6 && dayzRand && dayz15 && arcRaid);
+assert.strictEqual(rust5.category, 'nfa');
+assert.strictEqual(rust5.price_cents, 1000);
+assert.strictEqual(rust15.price_cents, 1500);
+assert.strictEqual(bf6.price_cents, 500);
+assert.strictEqual(dayzRand.price_cents, 500);
+assert.strictEqual(dayz15.price_cents, 600);
+assert.strictEqual(arcRaid.price_cents, 1000);
+assert.strictEqual(db.listActiveProductsByCategory('nfa').length, 6);
+
+const capcut = db.getProductByName('CapCut Pro ( FA )');
+const youtube = db.getProductByName('Youtube Premium Convite');
+const prime = db.getProductByName('Prime Video NFA ( tela )');
+const canva = db.getProductByName('Canva Pro Convite');
+const crunchy = db.getProductByName('Crunchyroll NFA ( tela )');
+assert.ok(capcut && youtube && prime && canva && crunchy);
+assert.strictEqual(capcut.category, 'assinaturas');
+assert.strictEqual(capcut.price_cents, 250);
+assert.strictEqual(youtube.price_cents, 250);
+assert.strictEqual(prime.price_cents, 250);
+assert.strictEqual(canva.price_cents, 200);
+assert.strictEqual(crunchy.price_cents, 200);
+assert.strictEqual(db.listActiveProductsByCategory('assinaturas').length, 5);
+
+const gtaV = db.getProductByName('Gta V Instalável');
+assert.ok(gtaV);
+assert.strictEqual(gtaV.category, 'gta');
+assert.strictEqual(gtaV.price_cents, 350);
+assert.strictEqual(db.listActiveProductsByCategory('gta').length, 1);
+
 const idAntigo = db.addProduct({
   name: 'Sp00fer 1 Click Semanal',
   priceCents: 800,
@@ -404,6 +465,27 @@ assert(cs2Painel.includes('attachment://banner-cs2.png'));
 assert(cs2Painel.includes('CS2 Accounts NFA'));
 assert(cs2Painel.includes('NFA (No Full Access)'));
 assert(cs2Painel.includes('Troca somente com gravação desde o recebimento'));
+
+const nfaPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('nfa'), 'nfa').payload);
+assert(nfaPainel.includes('attachment://banner-nfa.png'));
+assert(nfaPainel.includes('NFA ACCOUNTS'));
+assert(nfaPainel.includes('Conta sem banimentos - pronta para jogar!'));
+assert(nfaPainel.includes('Região: GLOBAL'));
+assert(!nfaPainel.includes('Rust 5+D Offline'));
+
+const assPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('assinaturas'), 'assinaturas').payload);
+assert(assPainel.includes('attachment://banner-assinaturas.png'));
+assert(assPainel.includes('Assinaturas'));
+assert(assPainel.includes('Assista seus filmes e séries da melhor qualidade!'));
+assert(assPainel.includes('Garantia de 7 dia em caso de telas, nfa não tem'));
+assert(!assPainel.includes('CapCut Pro ( FA )'));
+
+const gtaPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('gta'), 'gta').payload);
+assert(gtaPainel.includes('attachment://banner-gta.png'));
+assert(gtaPainel.includes('Gta V Instalavel'));
+assert(gtaPainel.includes('Conta steam NFA (No Full Acess)'));
+assert(gtaPainel.includes('Não compre mais de uma vez.'));
+assert(!gtaPainel.includes('Gta V Instalável'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
