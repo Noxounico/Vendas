@@ -198,6 +198,16 @@ const CATALOG = [
     category: 'steam',
     products: [{ name: 'C0nta Steam', priceCents: cents(4) }],
   },
+  {
+    category: 'keys',
+    products: [
+      { name: 'Steam Key +18', priceCents: cents(1) },
+      { name: 'Steam Key Platina', priceCents: cents(2) },
+      { name: 'Steam Key Cartas', priceCents: cents(3) },
+      { name: 'Steam Key +R$100', priceCents: cents(10) },
+      { name: 'Steam Key +R$500', priceCents: cents(20) },
+    ],
+  },
 ];
 
 function seed() {

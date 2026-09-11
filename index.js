@@ -251,6 +251,9 @@ const BANNER_VPS_FILE = path.join(__dirname, 'assets', 'banner-vps.png');
 const BANNER_STEAM_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1548019062116720760/image.png?ex=6aa58899&is=6aa43719&hm=55194d805ec76b46b6a2195ad9ca32bac825855b8af32f9582b8a00e9c260b6b&=&format=webp&quality=lossless&width=1519&height=855';
 const BANNER_STEAM_FILE = path.join(__dirname, 'assets', 'banner-steam.png');
+const BANNER_KEYS_URL =
+  'https://cdn.discordapp.com/attachments/1534183602764648579/1548042637938921533/content.png?ex=6aa59e8e&is=6aa44d0e&hm=652f33a1fc7c275569f5065ca8e964432c96d0b25bec31168e016134e9e8cb10&';
+const BANNER_KEYS_FILE = path.join(__dirname, 'assets', 'banner-keys.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -530,6 +533,13 @@ const PRODUTOS_SEED = [
 
   // --- Canal C0nta Steam ---
   { nome: 'C0nta Steam', preco: eur(4), categoria: 'steam' },
+
+  // --- Canal Steam Keys ---
+  { nome: 'Steam Key +18', preco: eur(1), categoria: 'keys' },
+  { nome: 'Steam Key Platina', preco: eur(2), categoria: 'keys' },
+  { nome: 'Steam Key Cartas', preco: eur(3), categoria: 'keys' },
+  { nome: 'Steam Key +R$100', preco: eur(10), categoria: 'keys' },
+  { nome: 'Steam Key +R$500', preco: eur(20), categoria: 'keys' },
 ];
 
 // Cria produtos em falta, atualiza preço/categoria e renomeia os antigos.
@@ -612,6 +622,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-box': 'box',
   'loja-vps': 'vps',
   'loja-steam': 'steam',
+  'loja-keys': 'keys',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1239,6 +1250,38 @@ const PAINEL_TEXTOS = {
     cor: 0x2b2d31,
     imagem: BANNER_STEAM_URL,
     imagemFile: BANNER_STEAM_FILE,
+  },
+  keys: {
+    titulo: 'ST34M KEYS',
+    descricao:
+      `${EMOJI_PACK} Steam Key +18\n` +
+      `${EMOJI_BOLINHA} 1x Steam Key +18\n` +
+      '\n' +
+      `${EMOJI_PACK} Steam Key Platina\n` +
+      `${EMOJI_BOLINHA} SEM JOGOS +18 e PODE CONTER JOGOS REPETIDOS.\n` +
+      '\n' +
+      `${EMOJI_PACK} Steam Key Cartas\n` +
+      `${EMOJI_BOLINHA} 1x Steam Key Cartas\n` +
+      '\n' +
+      `${EMOJI_PACK} Steam Key +R$100\n` +
+      `${EMOJI_BOLINHA} Steam key jogo de R$ 100 ou mais.\n` +
+      '\n' +
+      `${EMOJI_PACK} Steam Key +R$500\n` +
+      `${EMOJI_BOLINHA} Steam key jogo de R$ 500 ou mais.\n` +
+      '\n' +
+      `${EMOJI_PACK} Triple A\n` +
+      `${EMOJI_BOLINHA} Jogo bem avaliado e conhecido da steam.\n` +
+      '\n' +
+      `${EMOJI_PACK} Key Deluxe\n` +
+      `${EMOJI_BOLINHA} Jogos conhecido e combiçados da STEAM\n` +
+      '\n' +
+      `${EMOJI_BOLINHA} A seleção é aleatória, e alguns jogos podem não ser tão conhecidos localmente.\n` +
+      `${EMOJI_BOLINHA} Alguns jogos podem estar em promoção, mas voltam ao valor original depois.\n` +
+      `${EMOJI_BOLINHA} Trocas somente com vídeo desde o recebimento.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_KEYS_URL,
+    imagemFile: BANNER_KEYS_FILE,
   },
 };
 
