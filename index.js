@@ -254,6 +254,9 @@ const BANNER_STEAM_FILE = path.join(__dirname, 'assets', 'banner-steam.png');
 const BANNER_KEYS_URL =
   'https://cdn.discordapp.com/attachments/1534183602764648579/1548042637938921533/content.png?ex=6aa59e8e&is=6aa44d0e&hm=652f33a1fc7c275569f5065ca8e964432c96d0b25bec31168e016134e9e8cb10&';
 const BANNER_KEYS_FILE = path.join(__dirname, 'assets', 'banner-keys.png');
+const BANNER_CS2_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548055752751714424/image.png?ex=6aa5aac4&is=6aa45944&hm=c8e0a5b63dc63bc9310e6049dafa3991bed852153780be4192360466363ef35e&=&format=webp&quality=lossless&width=960&height=960';
+const BANNER_CS2_FILE = path.join(__dirname, 'assets', 'banner-cs2.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -540,6 +543,15 @@ const PRODUTOS_SEED = [
   { nome: 'Steam Key Cartas', preco: eur(3), categoria: 'keys' },
   { nome: 'Steam Key +R$100', preco: eur(10), categoria: 'keys' },
   { nome: 'Steam Key +R$500', preco: eur(20), categoria: 'keys' },
+
+  // --- Canal CS2 Accounts NFA ---
+  { nome: 'CS2 Prime', preco: eur(5), categoria: 'cs2' },
+  { nome: 'CS2 Premier', preco: eur(8), categoria: 'cs2' },
+  { nome: 'CS2 Elo 15k-20k Premier', preco: eur(12), categoria: 'cs2' },
+  { nome: 'CS2 Inativa 15D+ Prime', preco: eur(10), categoria: 'cs2' },
+  { nome: 'CS2 Inativa 15D+ Premier', preco: eur(13), categoria: 'cs2' },
+  { nome: 'CS2 Medalhas 4+ Premier', preco: eur(12), categoria: 'cs2' },
+  { nome: 'CS2 Inativa 15D+ Medalhas 4+', preco: eur(15), categoria: 'cs2' },
 ];
 
 // Cria produtos em falta, atualiza preço/categoria e renomeia os antigos.
@@ -623,6 +635,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-vps': 'vps',
   'loja-steam': 'steam',
   'loja-keys': 'keys',
+  'loja-cs2': 'cs2',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1282,6 +1295,40 @@ const PAINEL_TEXTOS = {
     cor: 0x2b2d31,
     imagem: BANNER_KEYS_URL,
     imagemFile: BANNER_KEYS_FILE,
+  },
+  cs2: {
+    titulo: 'CS2 Accounts NFA',
+    descricao:
+      `${EMOJI_BOLINHA} Conta sem banimentos - pronta para jogar!\n` +
+      `${EMOJI_BOLINHA} Status: PRIME / PREMIER / MEDALHAS\n` +
+      `${EMOJI_BOLINHA} NFA (No Full Access)\n` +
+      `${EMOJI_BOLINHA} Região: GLOBAL\n` +
+      `${EMOJI_BOLINHA} Troca somente com gravação desde o recebimento\n` +
+      '\n' +
+      `${EMOJI_PACK} Prime\n` +
+      `${EMOJI_BOLINHA} 1x CS2 Prime\n` +
+      '\n' +
+      `${EMOJI_PACK} Premier\n` +
+      `${EMOJI_BOLINHA} 1x CS2 Premier\n` +
+      '\n' +
+      `${EMOJI_PACK} Elo 15k-20k Premier\n` +
+      `${EMOJI_BOLINHA} 1x CS2 Elo 15k-20k Premier\n` +
+      '\n' +
+      `${EMOJI_PACK} Inativa 15D+ Prime\n` +
+      `${EMOJI_BOLINHA} 1x CS2 Inativa 15D+ Prime\n` +
+      '\n' +
+      `${EMOJI_PACK} Inativa 15D+ Premier\n` +
+      `${EMOJI_BOLINHA} 1x CS2 Inativa 15D+ Premier\n` +
+      '\n' +
+      `${EMOJI_PACK} Medalhas 4+ Premier\n` +
+      `${EMOJI_BOLINHA} 1x CS2 Medalhas 4+ Premier\n` +
+      '\n' +
+      `${EMOJI_PACK} Inativa 15D+ Medalhas 4+\n` +
+      `${EMOJI_BOLINHA} 1x CS2 Inativa 15D+ Medalhas 4+`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_CS2_URL,
+    imagemFile: BANNER_CS2_FILE,
   },
 };
 
