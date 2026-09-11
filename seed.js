@@ -124,6 +124,26 @@ const CATALOG = [
       { name: '20 Rockstar Acc', priceCents: cents(15) },
     ],
   },
+  {
+    category: 'combos',
+    products: [
+      {
+        name: 'Combo Semanal (sp00fer e Rock)',
+        priceCents: cents(12),
+        description: '1x Sp00fer 1 Click Semanal + 5x conta Rockst4r Novas',
+      },
+      {
+        name: 'Combo Mensal (sp00fer e Rock)',
+        priceCents: cents(20),
+        description: '1x Sp00fer 1 Click Mensal + 10x conta Rockst4r Novas',
+      },
+      {
+        name: 'Combo Lifetime (sp00fer e Rock)',
+        priceCents: cents(50),
+        description: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
+      },
+    ],
+  },
 ];
 
 function seed() {

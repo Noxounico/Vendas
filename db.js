@@ -62,6 +62,19 @@ if (!temColuna('orders', 'quantity')) {
   db.exec(`ALTER TABLE orders ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1`);
 }
 
+db.exec(`
+CREATE TABLE IF NOT EXISTS tickets (
+  channel_id TEXT PRIMARY KEY,
+  ticket_num INTEGER UNIQUE,
+  opener_id TEXT NOT NULL,
+  claimed_by TEXT,
+  tipo TEXT,
+  created_at TEXT NOT NULL,
+  closed_at TEXT,
+  close_reason TEXT
+);
+`);
+
 // ---------- Produtos ----------
 function addProduct({ name, description, priceCents, currency, category, roleId, stockQty }) {
   const stmt = db.prepare(
@@ -235,6 +248,43 @@ function listPendingOrdersByUser(discordUserId) {
     .all(discordUserId);
 }
 
+// ---------- Tickets ----------
+function getTicket(channelId) {
+  return db.prepare(`SELECT * FROM tickets WHERE channel_id = ?`).get(channelId);
+}
+
+const saveTicketTxn = db.transaction(({ channelId, openerId, tipo, claimedBy }) => {
+  const existing = getTicket(channelId);
+  if (existing) return existing;
+  const num = db.prepare(`SELECT COALESCE(MAX(ticket_num), 0) + 1 AS n FROM tickets`).get().n;
+  db.prepare(
+    `INSERT INTO tickets (channel_id, ticket_num, opener_id, claimed_by, tipo, created_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now'))`
+  ).run(channelId, num, openerId, claimedBy || null, tipo || null);
+  return getTicket(channelId);
+});
+
+function saveTicket({ channelId, openerId, tipo, claimedBy }) {
+  return saveTicketTxn({ channelId, openerId, tipo, claimedBy });
+}
+
+function claimTicket(channelId, userId) {
+  if (!channelId || !userId) return getTicket(channelId);
+  const t = getTicket(channelId);
+  if (!t) return null;
+  if (t.claimed_by) return t;
+  db.prepare(`UPDATE tickets SET claimed_by = ? WHERE channel_id = ?`).run(userId, channelId);
+  return getTicket(channelId);
+}
+
+function closeTicketRecord(channelId, reason) {
+  if (!channelId) return null;
+  db.prepare(
+    `UPDATE tickets SET closed_at = datetime('now'), close_reason = ? WHERE channel_id = ?`
+  ).run(reason || null, channelId);
+  return getTicket(channelId);
+}
+
 module.exports = {
   addProduct,
   listActiveProducts,
@@ -258,4 +308,8 @@ module.exports = {
   markOrderDelivered,
   markOrderStatus,
   listPendingOrdersByUser,
+  getTicket,
+  saveTicket,
+  claimTicket,
+  closeTicketRecord,
 };

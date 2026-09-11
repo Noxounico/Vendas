@@ -6,7 +6,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "seed": "node seed.js"
+    "seed": "node seed.js",
+    "test": "node test/combos-logs.test.js"
   },
   "engines": {
     "node": "22.x"
