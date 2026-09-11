@@ -147,30 +147,42 @@ const CATALOG = [
   {
     category: 'spofer',
     products: [
-      { name: 'Sp00fer 1 Click Semanal', priceCents: cents(8) },
-      { name: 'Sp00fer 1 Click Mensal', priceCents: cents(15) },
+      { name: 'Sp00fer Hora', priceCents: cents(2) },
+      { name: 'Sp00fer Diário', priceCents: cents(5) },
+      { name: 'Sp00fer Semanal', priceCents: cents(12), antigoNome: 'Sp00fer 1 Click Semanal' },
+      { name: 'Sp00fer Mensal', priceCents: cents(20), antigoNome: 'Sp00fer 1 Click Mensal' },
+      { name: 'Sp00fer Lifetime', priceCents: cents(50), antigoNome: 'Sp00fer 1 Click Lifetime' },
     ],
   },
   {
     category: 'lifetime',
-    products: [{ name: 'Sp00fer 1 Click Lifetime', priceCents: cents(50) }],
+    products: [
+      { name: 'Sp00fer Permanente Diário', priceCents: cents(5) },
+      { name: 'Sp00fer Permanente Semanal', priceCents: cents(15) },
+      { name: 'Sp00fer Permanente Mensal', priceCents: cents(22) },
+      { name: 'Sp00fer Permanente Trimensal', priceCents: cents(32.99) },
+      { name: 'Sp00fer Permanente Lifetime', priceCents: cents(50) },
+    ],
   },
   {
     category: 'box',
     products: [
       {
-        name: 'Box Gold',
-        priceCents: cents(2),
+        name: 'Stopped Box Gold',
+        priceCents: cents(5),
+        antigoNome: 'Box Gold',
         description: 'Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.',
       },
       {
-        name: 'Caixa Platina',
-        priceCents: cents(5),
+        name: 'Stopped Box Platina',
+        priceCents: cents(10),
+        antigoNome: 'Caixa Platina',
         description: 'Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.',
       },
       {
-        name: 'Caixa Diamond',
-        priceCents: cents(10),
+        name: 'Stopped Box Diamante',
+        priceCents: cents(15),
+        antigoNome: 'Caixa Diamond',
         description: 'Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.',
       },
     ],
@@ -187,18 +199,20 @@ function seed() {
     console.log(`\n# Canal: ${group.category || '(avulsos)'}`);
     for (const p of group.products) {
       total += 1;
-      const existente = db.getProductByName(p.name);
+      const existente = db.getProductByName(p.name) || (p.antigoNome ? db.getProductByName(p.antigoNome) : null);
       if (existente) {
+        const mesmoNome = existente.name === p.name;
         const mesmoPreco = existente.price_cents === p.priceCents;
         const mesmaMoeda = String(existente.currency || '').toLowerCase() === currency;
         const mesmaCategoria = existente.category === group.category;
         const mesmoAtivo = Boolean(existente.active);
-        if (mesmoPreco && mesmaMoeda && mesmaCategoria && mesmoAtivo) {
+        if (mesmoNome && mesmoPreco && mesmaMoeda && mesmaCategoria && mesmoAtivo) {
           unchanged += 1;
           console.log(`  = igual: ${p.name} — ${formatPrice(p.priceCents, currency)}`);
           continue;
         }
         db.updateProduct(existente.id, {
+          name: p.name,
           priceCents: p.priceCents,
           currency,
           category: group.category,
@@ -219,6 +233,14 @@ function seed() {
       });
       created += 1;
       console.log(`  + criado #${id}: ${p.name} — ${formatPrice(p.priceCents, currency)}`);
+    }
+  }
+
+  for (const group of CATALOG) {
+    for (const p of group.products) {
+      if (!p.antigoNome) continue;
+      const velho = db.getProductByName(p.antigoNome);
+      if (velho && velho.name !== p.name) db.setProductActive(velho.id, false);
     }
   }
 
