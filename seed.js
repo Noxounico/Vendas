@@ -144,6 +144,17 @@ const CATALOG = [
       },
     ],
   },
+  {
+    category: 'spofer',
+    products: [
+      { name: 'Sp00fer 1 Click Semanal', priceCents: cents(8) },
+      { name: 'Sp00fer 1 Click Mensal', priceCents: cents(15) },
+    ],
+  },
+  {
+    category: 'lifetime',
+    products: [{ name: 'Sp00fer 1 Click Lifetime', priceCents: cents(35) }],
+  },
 ];
 
 function seed() {
