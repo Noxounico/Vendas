@@ -51,15 +51,17 @@ assert.strictEqual(presenca.activities[0].emoji.animated, true);
 
 const painel = bot.PAINEL_TEXTOS.combos.descricao;
 for (const trecho of [
-  '💠 Semanal ( sp00fer e Rock )',
-  '🔵 1x Sp00fer 1 Click Semanal',
-  '🔵 5x conta Rockst4r Novas.',
-  '💠 Mensal ( sp00fer e Rock )',
-  '🔵 1x Sp00fer 1 Click Mensal',
-  '🔵 10x conta Rockst4r Novas.',
+  `${bot.EMOJI_PACK} Semanal ( sp00fer e Rock )`,
+  `${bot.EMOJI_BOLINHA} 1x Sp00fer 1 Click Semanal`,
+  `${bot.EMOJI_BOLINHA} 5x conta Rockst4r Novas.`,
+  `${bot.EMOJI_PACK} Mensal ( sp00fer e Rock )`,
+  `${bot.EMOJI_BOLINHA} 1x Sp00fer 1 Click Mensal`,
+  `${bot.EMOJI_BOLINHA} 10x conta Rockst4r Novas.`,
 ]) {
   assert(painel.includes(trecho), `painel combos deveria incluir: ${trecho}`);
 }
+assert.strictEqual(bot.EMOJI_PACK, '<:stoppedemoji:1377737580816109809>');
+assert.strictEqual(bot.EMOJI_BOLINHA, '<:bolinha:1377885173747548252>');
 assert(!painel.includes('Lifetime'), 'painel combos não deve incluir Lifetime');
 assert(bot.PAINEL_TEXTOS.combos.imagemFile.endsWith('banner-combos.png'));
 assert(bot.PAINEL_TEXTOS.spofer.imagemFile.endsWith('banner-spofer.png'));
@@ -181,7 +183,8 @@ assert.match(byName['🕐 Open Time'], /setembro de 2026/);
 assert.match(byName['🕐 Open Time'], /às/);
 
 const aberto = formatarPainelCombos();
-assert(aberto.includes('💠 Semanal ( sp00fer e Rock )'));
+assert(aberto.includes(`${bot.EMOJI_PACK} Semanal ( sp00fer e Rock )`));
+assert(aberto.includes(`${bot.EMOJI_BOLINHA} 1x Sp00fer 1 Click Semanal`));
 assert(aberto.includes('attachment://banner-combos.png'));
 assert(aberto.includes('Preço:'));
 assert(aberto.includes('12,00'));
@@ -201,7 +204,7 @@ function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
   const painelLoja = bot.gerarPainelLoja(products, 'combos');
   const texto = JSON.stringify(painelLoja.payload);
-  if (!texto.includes('💠 Semanal ( sp00fer e Rock )')) fail('painel V2 sem o texto dos combos');
+  if (!texto.includes(`${bot.EMOJI_PACK} Semanal ( sp00fer e Rock )`)) fail('painel V2 sem o texto dos combos');
   if (!texto.includes('attachment://banner-combos.png')) fail('painel V2 sem a imagem dos combos');
   return texto;
 }
