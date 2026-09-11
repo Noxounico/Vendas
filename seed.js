@@ -187,6 +187,13 @@ const CATALOG = [
       },
     ],
   },
+  {
+    category: 'vps',
+    products: [
+      { name: 'Ip Vanish 5 Dias', priceCents: cents(3) },
+      { name: 'Ip Vanish 1 Mês', priceCents: cents(10) },
+    ],
+  },
 ];
 
 function seed() {

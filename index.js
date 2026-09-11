@@ -241,10 +241,13 @@ const BANNER_LIFETIME_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1547950463414960308/content.png?ex=6aa548b6&is=6aa3f736&hm=7c34120d21fdc8bcdd7e8fa380c412c7c18f50326a8c4d26324bad293ca893a1&=&format=webp&quality=lossless&width=1804&height=603';
 const BANNER_BOX_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1547951234336555098/content.png?ex=6aa5496d&is=6aa3f7ed&hm=8c04a4198746df91b5545122502d3f9926fa798d1ad7488175bd9c540e3e1e58&=&format=webp&quality=lossless&width=1804&height=603';
+const BANNER_VPS_URL =
+  'https://cdn.discordapp.com/attachments/1534183602764648579/1547965048285171732/content.png?ex=6aa5564b&is=6aa404cb&hm=a3746cdd49c1bad0468fb06b31636294a1d27de5f2d8a5d0423e3c17338df5ff&';
 const BANNER_COMBOS_FILE = path.join(__dirname, 'assets', 'banner-combos.png');
 const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
 const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
 const BANNER_BOX_FILE = path.join(__dirname, 'assets', 'banner-box.png');
+const BANNER_VPS_FILE = path.join(__dirname, 'assets', 'banner-vps.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -517,6 +520,10 @@ const PRODUTOS_SEED = [
     antigoNome: 'Caixa Diamond',
     descricao: 'Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.',
   },
+
+  // --- Canal VPN / VPS ---
+  { nome: 'Ip Vanish 5 Dias', preco: eur(3), categoria: 'vps' },
+  { nome: 'Ip Vanish 1 Mês', preco: eur(10), categoria: 'vps' },
 ];
 
 // Cria produtos em falta, atualiza preço/categoria e renomeia os antigos.
@@ -597,6 +604,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-spofer': 'spofer',
   'loja-lifetime': 'lifetime',
   'loja-box': 'box',
+  'loja-vps': 'vps',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1193,6 +1201,25 @@ const PAINEL_TEXTOS = {
     cor: 0x2b2d31,
     imagem: BANNER_BOX_URL,
     imagemFile: BANNER_BOX_FILE,
+  },
+  vps: {
+    titulo: 'VPN IP VANISH NFA',
+    descricao:
+      `${EMOJI_PACK} 5 Dias\n` +
+      `${EMOJI_BOLINHA} 1x Ip Vanish 5 Dias\n` +
+      '\n' +
+      `${EMOJI_PACK} 1 Mês\n` +
+      `${EMOJI_BOLINHA} 1x Ip Vanish 1 Mês\n` +
+      '\n' +
+      `${EMOJI_BOLINHA} Mais de 1 milhão de IPs brasileiros e mundiais à sua disposição.\n` +
+      `${EMOJI_BOLINHA} Tire seus ban por IPs (em cidades que permitem o uso de VPN)\n` +
+      `${EMOJI_BOLINHA} Melhor VPN\n` +
+      `${EMOJI_BOLINHA} Não compre mais de 1\n` +
+      `${EMOJI_BOLINHA} NFA`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_VPS_URL,
+    imagemFile: BANNER_VPS_FILE,
   },
 };
 

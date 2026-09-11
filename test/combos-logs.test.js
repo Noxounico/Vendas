@@ -40,6 +40,7 @@ assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-combos'], 'combos');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-spofer'], 'spofer');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-lifetime'], 'lifetime');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-box'], 'box');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-vps'], 'vps');
 assert.strictEqual(bot.STATUS_BOT, '⏳ processando pagamento...');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
@@ -71,6 +72,18 @@ assert(bot.PAINEL_TEXTOS.combos.imagemFile.endsWith('banner-combos.png'));
 assert(bot.PAINEL_TEXTOS.spofer.imagemFile.endsWith('banner-spofer.png'));
 assert(bot.PAINEL_TEXTOS.lifetime.imagemFile.endsWith('banner-lifetime.png'));
 assert(bot.PAINEL_TEXTOS.box.imagemFile.endsWith('banner-box.png'));
+assert(bot.PAINEL_TEXTOS.vps.imagemFile.endsWith('banner-vps.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.vps.titulo, 'VPN IP VANISH NFA');
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_PACK} 5 Dias`));
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} 1x Ip Vanish 5 Dias`));
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_PACK} 1 Mês`));
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} 1x Ip Vanish 1 Mês`));
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} Mais de 1 milhão de IPs brasileiros e mundiais à sua disposição.`));
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} Tire seus ban por IPs (em cidades que permitem o uso de VPN)`));
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} Melhor VPN`));
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} Não compre mais de 1`));
+assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} NFA`));
+assert(!bot.PAINEL_TEXTOS.vps.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.box.titulo, 'Stopped Box');
 assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Stopped Box Gold`));
 assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Stopped Box Platina`));
@@ -164,6 +177,15 @@ assert.strictEqual(boxGold.price_cents, 500);
 assert.strictEqual(boxPlatina.price_cents, 1000);
 assert.strictEqual(boxDiamante.price_cents, 1500);
 assert.strictEqual(db.listActiveProductsByCategory('box').length, 3);
+
+const vanish5 = db.getProductByName('Ip Vanish 5 Dias');
+const vanishMes = db.getProductByName('Ip Vanish 1 Mês');
+assert.ok(vanish5 && vanishMes);
+assert.strictEqual(vanish5.category, 'vps');
+assert.strictEqual(vanishMes.category, 'vps');
+assert.strictEqual(vanish5.price_cents, 300);
+assert.strictEqual(vanishMes.price_cents, 1000);
+assert.strictEqual(db.listActiveProductsByCategory('vps').length, 2);
 
 const idAntigo = db.addProduct({
   name: 'Sp00fer 1 Click Semanal',
@@ -284,6 +306,13 @@ assert(boxPainel.includes('Stopped Box Platina'));
 assert(boxPainel.includes('Stopped Box Diamante'));
 assert(boxPainel.includes(bot.EMOJI_TREVO));
 assert(!boxPainel.includes('🍀'));
+
+const vpsPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('vps'), 'vps').payload);
+assert(vpsPainel.includes('attachment://banner-vps.png'));
+assert(vpsPainel.includes('VPN IP VANISH NFA'));
+assert(vpsPainel.includes(`${bot.EMOJI_PACK} 5 Dias`));
+assert(vpsPainel.includes(`${bot.EMOJI_BOLINHA} 1x Ip Vanish 1 Mês`));
+assert(vpsPainel.includes('NFA'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
