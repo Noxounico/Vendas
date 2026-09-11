@@ -236,7 +236,8 @@ const TICKETS_CARGOS_STAFF_PADRAO = ['1443307566921678968', '1318653141453111368
 const TICKETS_BANNER_URL_PADRAO =
   'https://media.discordapp.net/attachments/1534183602764648579/1547711353840738425/image.png?ex=6aa46a05&is=6aa31885&hm=add46c54857977892ae15441df5b3e5ac8423cbc068029e98d4b4fdca43cabb4&=&format=webp&quality=lossless&width=1479&height=832';
 const VERIFY_ROLE_ID_PADRAO = '1178495316132110336';
-const LOGS_CANAL_ID_PADRAO = '1547721266566402200';
+const LOGS_ENTREGA_CANAL_ID_PADRAO = '1545391162305810463';
+const TICKETS_LOGS_CANAL_ID_PADRAO = '1318660945064755291';
 
 function ticketsCategoriaId() {
   return process.env.TICKETS_CATEGORIA_ID || TICKETS_CATEGORIA_ID_PADRAO;
@@ -255,10 +256,31 @@ function ticketsStaffMencoes() {
     .join(' ');
 }
 
+function idsCargosDoMembro(membro) {
+  if (!membro) return [];
+  const cache = membro.roles?.cache;
+  if (cache) {
+    if (typeof cache.keys === 'function') return [...cache.keys()].map(String);
+    if (typeof cache.has === 'function') {
+      return ticketsCargosStaffIds().filter((id) => cache.has(id));
+    }
+  }
+  if (Array.isArray(membro.roles)) return membro.roles.map(String);
+  if (Array.isArray(membro._roles)) return membro._roles.map(String);
+  return [];
+}
+
 function ehStaffTickets(membro) {
   if (!membro) return false;
-  if (membro.permissions?.has(PermissionFlagsBits.Administrator)) return true;
-  return ticketsCargosStaffIds().some((id) => membro.roles?.cache?.has(id));
+  if (membro.permissions?.has?.(PermissionFlagsBits.Administrator)) return true;
+  const cargos = idsCargosDoMembro(membro);
+  return ticketsCargosStaffIds().some((id) => cargos.includes(id));
+}
+
+function podeEntregarPedidos(interaction) {
+  if (ehStaffTickets(interaction?.member)) return true;
+  const perms = interaction?.memberPermissions ?? interaction?.member?.permissions;
+  return Boolean(perms?.has?.(PermissionFlagsBits.Administrator));
 }
 
 function ticketsBannerUrl() {
@@ -266,7 +288,15 @@ function ticketsBannerUrl() {
 }
 
 function logsCanalId() {
-  return process.env.PEDIDOS_CHANNEL_ID || process.env.LOG_CHANNEL_ID || LOGS_CANAL_ID_PADRAO;
+  return (
+    process.env.LOGS_ENTREGA_CHANNEL_ID ||
+    process.env.PEDIDOS_CHANNEL_ID ||
+    LOGS_ENTREGA_CANAL_ID_PADRAO
+  );
+}
+
+function ticketsLogsCanalId() {
+  return process.env.TICKETS_LOGS_CHANNEL_ID || TICKETS_LOGS_CANAL_ID_PADRAO;
 }
 
 function cargoVerificacaoId() {
@@ -388,6 +418,26 @@ const PRODUTOS_SEED = [
   // --- Canal Rockstar ACC'S ---
   { nome: '1 Rockstar Acc', preco: eur(4), categoria: 'rockstar' },
   { nome: '20 Rockstar Acc', preco: eur(15), categoria: 'rockstar' },
+
+  // --- Canal Combos (sp00fer e Rock) ---
+  {
+    nome: 'Combo Semanal (sp00fer e Rock)',
+    preco: eur(12),
+    categoria: 'combos',
+    descricao: '1x Sp00fer 1 Click Semanal + 5x conta Rockst4r Novas',
+  },
+  {
+    nome: 'Combo Mensal (sp00fer e Rock)',
+    preco: eur(20),
+    categoria: 'combos',
+    descricao: '1x Sp00fer 1 Click Mensal + 10x conta Rockst4r Novas',
+  },
+  {
+    nome: 'Combo Lifetime (sp00fer e Rock)',
+    preco: eur(50),
+    categoria: 'combos',
+    descricao: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
+  },
 ];
 
 // Cria produtos em falta e atualiza o preço/categoria dos que já existem.
@@ -454,6 +504,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-roblox': 'roblox',
   'loja-fortnite': 'fortnite',
   'loja-rockstar': 'rockstar',
+  'loja-combos': 'combos',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -661,6 +712,55 @@ async function logToChannel(text, extras = {}) {
   } catch (err) {
     console.error('Falha ao escrever no canal de logs:', err.message);
   }
+}
+
+function parseSqliteDate(valor) {
+  if (!valor) return new Date();
+  if (valor instanceof Date) return valor;
+  const raw = String(valor);
+  const iso = raw.includes('T') ? raw : `${raw.replace(' ', 'T')}Z`;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? new Date() : d;
+}
+
+function formatarDataPt(date) {
+  const d = date instanceof Date ? date : parseSqliteDate(date);
+  const texto = new Intl.DateTimeFormat('pt-PT', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Lisbon',
+  }).format(d);
+  return texto.replace(/,?\s+(\d{1,2}:\d{2})$/, ' às $1');
+}
+
+function mencaoOuDesconhecido(userId) {
+  return userId ? `<@${userId}>` : 'Desconhecido';
+}
+
+function montarEmbedTicketFechado({
+  ticketNum,
+  openerId,
+  closerId,
+  claimedBy,
+  openedAt,
+  reason,
+}) {
+  return new EmbedBuilder()
+    .setTitle('Ticket Closed')
+    .setColor(0x2ecc71)
+    .addFields(
+      { name: '🎫 Ticket ID', value: String(ticketNum ?? '—'), inline: true },
+      { name: '✅ Opened By', value: mencaoOuDesconhecido(openerId), inline: true },
+      { name: '❌ Closed By', value: mencaoOuDesconhecido(closerId), inline: true },
+      { name: '🕐 Open Time', value: formatarDataPt(openedAt), inline: true },
+      { name: '💜 Claimed By', value: mencaoOuDesconhecido(claimedBy || closerId), inline: true },
+      { name: 'ℹ️ Reason', value: reason || 'No reason specified', inline: false }
+    )
+    .setTimestamp();
 }
 
 // Devolve "De X a Y" (ou só X se for um único preço), no estilo da print.
@@ -931,6 +1031,21 @@ const PAINEL_TEXTOS = {
     'Melhor qualidade.',
     'Entrega automática no privado.',
   ]),
+  combos: {
+    titulo: 'Combos (sp00fer e Rock)',
+    descricao:
+      '• **Semanal** (sp00fer e Rock) — **12€**\n' +
+      '  1x Sp00fer 1 Click Semanal\n' +
+      '  5x conta Rockst4r Novas\n' +
+      '• **Mensal** (sp00fer e Rock) — **20€**\n' +
+      '  1x Sp00fer 1 Click Mensal\n' +
+      '  10x conta Rockst4r Novas\n' +
+      '• **Lifetime** (sp00fer e Rock) — **50€**\n' +
+      '  1x Sp00fer 1 Click Lifetime\n' +
+      '  50x conta Rockst4r Novas',
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+  },
 };
 
 function textosDaCategoria(categoryName) {
@@ -1240,7 +1355,14 @@ function podeGerirTicket(membro, canal) {
   return false;
 }
 
-async function fecharTicket(canal, autorTag) {
+async function fecharTicket(canal, closer, motivo) {
+  const closerId = closer?.id || null;
+  const autorTag = closerId ? `<@${closerId}>` : String(closer || 'staff');
+  try {
+    await enviarLogTicketFechado(canal, closer, motivo);
+  } catch (err) {
+    console.error('Falha ao enviar log de ticket fechado:', err.message);
+  }
   const aviso =
     `🔒 Ticket fechado por ${autorTag}. Este canal será apagado em 5 segundos.\n\n` +
     textoComandos();
@@ -1254,6 +1376,70 @@ async function fecharTicket(canal, autorTag) {
       console.error('Falha ao apagar ticket:', err.message);
     });
   }, 5000);
+}
+
+function openerDoCanalTicket(canal) {
+  const gravado = db.getTicket(canal.id);
+  if (gravado?.opener_id) return gravado.opener_id;
+  const overwrite = canal.permissionOverwrites?.cache?.find((o) => {
+    return (
+      Number(o.type) === 1 &&
+      o.id !== canal.client?.user?.id &&
+      o.allow?.has?.(PermissionFlagsBits.ViewChannel)
+    );
+  });
+  return overwrite?.id || null;
+}
+
+async function enviarLogTicketFechado(canal, closer, motivo) {
+  if (!canal?.guild) return;
+  const dest = await canal.guild.channels.fetch(ticketsLogsCanalId()).catch(() => null);
+  if (!dest?.isTextBased()) {
+    console.error(`Canal de logs de tickets não encontrado: ${ticketsLogsCanalId()}`);
+    return;
+  }
+
+  let ticket = db.getTicket(canal.id);
+  if (!ticket) {
+    ticket = db.saveTicket({
+      channelId: canal.id,
+      openerId: openerDoCanalTicket(canal) || closer?.id || '0',
+      tipo: canal.name?.startsWith('receber-produto') ? 'receber-produto' : 'suporte',
+    });
+  }
+  if (!ticket?.claimed_by && closer?.id) {
+    ticket = db.claimTicket(canal.id, closer.id) || ticket;
+  }
+
+  const embed = montarEmbedTicketFechado({
+    ticketNum: ticket?.ticket_num,
+    openerId: ticket?.opener_id || openerDoCanalTicket(canal),
+    closerId: closer?.id,
+    claimedBy: ticket?.claimed_by || closer?.id,
+    openedAt: canal.createdAt || parseSqliteDate(ticket?.created_at),
+    reason: (motivo && String(motivo).trim()) || 'No reason specified',
+  });
+  await dest.send({ embeds: [embed] });
+  db.closeTicketRecord(canal.id, motivo);
+}
+
+function gravarTicketAberto(canal, openerId, tipo) {
+  if (!canal?.id || !openerId) return null;
+  try {
+    return db.saveTicket({ channelId: canal.id, openerId, tipo });
+  } catch (err) {
+    console.error('Falha ao gravar ticket:', err.message);
+    return null;
+  }
+}
+
+function marcarTicketClaimed(canal, userId) {
+  if (!canal?.id || !userId) return;
+  try {
+    db.claimTicket(canal.id, userId);
+  } catch (err) {
+    console.error('Falha ao marcar ticket claimed:', err.message);
+  }
 }
 
 async function criarCanalTicket(guild, userId, tipoKey, nomeExtra) {
@@ -1300,12 +1486,14 @@ async function criarCanalTicket(guild, userId, tipoKey, nomeExtra) {
     .replace(/-+/g, '-')
     .slice(0, 90);
 
-  return guild.channels.create({
+  const canal = await guild.channels.create({
     name: nome,
     type: ChannelType.GuildText,
     parent: categoriaId || undefined,
     permissionOverwrites: overwrites,
   });
+  gravarTicketAberto(canal, userId, tipoKey);
+  return canal;
 }
 
 async function enviarMensagemTicket(canal, { userId, texto, extraRows = [] }) {
@@ -1396,7 +1584,10 @@ async function abrirTicketPedido(interaction, { orderId, product, quantidade }) 
         `Olá <@${interaction.user.id}>! Ticket de **Receber Produto**.\n\n` +
         `${textoPedidoCliente(orderId, product, quantidade)}\n\n` +
         ticketsStaffMencoes(),
-      extraRows: [rowPedido],
+    });
+    await canal.send({
+      content: 'Staff: confirma o pagamento e clica **Entregar**.',
+      components: [rowPedido],
     });
     return canal;
   } catch (err) {
@@ -1492,7 +1683,7 @@ async function pedirFecharTicket(interaction, channelId) {
   }
 
   await interaction.reply({ content: 'A fechar o ticket…', ephemeral: true });
-  await fecharTicket(canal, `<@${interaction.user.id}>`);
+  await fecharTicket(canal, interaction.user);
 }
 
 // "Renomear Ticket" — abre um modal a pedir o novo nome.
@@ -1609,8 +1800,8 @@ async function confirmarCompraComQuantidade(interaction, productId) {
   await notificarPedidoAdmins(interaction, orderId, product, quantidade);
 }
 
-// Publica o pedido no canal de admins (PEDIDOS_CHANNEL_ID ou LOG_CHANNEL_ID)
-// com os botões "Entregar chave" e "Cancelar".
+// Publica o pedido no canal de logs de entrega (LOGS_ENTREGA_CHANNEL_ID)
+// com os botões "Entregar" e "Cancelar".
 async function notificarPedidoAdmins(interaction, orderId, product, quantidade = 1) {
   const channelId = logsCanalId();
   if (!channelId) return;
@@ -1653,9 +1844,9 @@ async function notificarPedidoAdmins(interaction, orderId, product, quantidade =
 // ---------------------------------------------------------------------------
 
 async function entregarPorAdmin(interaction, orderId) {
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+  if (!podeEntregarPedidos(interaction)) {
     return interaction.reply({
-      content: 'Só administradores podem entregar pedidos.',
+      content: 'Só a staff pode entregar pedidos.',
       ephemeral: true,
     });
   }
@@ -1668,7 +1859,8 @@ async function entregarPorAdmin(interaction, orderId) {
     return interaction.reply({ content: `O pedido #${orderId} já foi entregue.`, ephemeral: true });
   }
 
-  await entregarPedido(orderId);
+  marcarTicketClaimed(interaction.channel, interaction.user.id);
+  await entregarPedido(orderId, { deliveredBy: interaction.user.id });
   const entregue = db.getOrder(orderId).status === 'delivered';
 
   await interaction.reply({
@@ -1688,9 +1880,9 @@ async function entregarPorAdmin(interaction, orderId) {
 }
 
 async function cancelarPedido(interaction, orderId) {
-  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+  if (!podeEntregarPedidos(interaction)) {
     return interaction.reply({
-      content: 'Só administradores podem cancelar pedidos.',
+      content: 'Só a staff pode cancelar pedidos.',
       ephemeral: true,
     });
   }
@@ -1713,7 +1905,7 @@ async function cancelarPedido(interaction, orderId) {
 // Entrega: aloca uma chave livre e envia-a por DM ao cliente.
 // ---------------------------------------------------------------------------
 
-async function entregarPedido(orderId) {
+async function entregarPedido(orderId, opts = {}) {
   const order = db.getOrder(orderId);
   if (!order || order.status === 'delivered') return; // já entregue, evita duplicar
 
@@ -1755,7 +1947,9 @@ async function entregarPedido(orderId) {
   }
 
   await logToChannel(
-    `💰 Venda concluída: **${quantidade}x ${product.name}** para <@${order.discord_user_id}> (pedido #${order.id}).`
+    `💰 Venda concluída: **${quantidade}x ${product.name}** para <@${order.discord_user_id}> (pedido #${order.id})` +
+      (opts.deliveredBy ? ` — entregue por <@${opts.deliveredBy}>` : '') +
+      '.'
   );
 }
 
@@ -2265,7 +2459,37 @@ async function aoMensagem(message) {
         await message.reply('Não tens permissão para fechar este ticket.');
         return;
       }
-      await fecharTicket(message.channel, `<@${message.author.id}>`);
+      const motivo = resto.join(' ').trim() || null;
+      await fecharTicket(message.channel, message.author, motivo);
+      return;
+    }
+
+    if (nomeComando === 'entregar') {
+      if (!ehStaffTickets(message.member)) {
+        return;
+      }
+      const pedidoId = Number(resto[0]);
+      if (!Number.isFinite(pedidoId)) {
+        await message.reply('Uso: `!entregar <pedido_id>`');
+        return;
+      }
+      const order = db.getOrder(pedidoId);
+      if (!order) {
+        await message.reply(`Não existe o pedido #${pedidoId}.`);
+        return;
+      }
+      if (order.status === 'delivered') {
+        await message.reply(`O pedido #${pedidoId} já foi entregue.`);
+        return;
+      }
+      marcarTicketClaimed(message.channel, message.author.id);
+      await entregarPedido(pedidoId, { deliveredBy: message.author.id });
+      const entregue = db.getOrder(pedidoId).status === 'delivered';
+      await message.reply(
+        entregue
+          ? `✅ Pedido #${pedidoId} marcado como entregue. Se havia chaves, foram enviadas por DM; senão a staff entrega à mão.`
+          : `⚠️ Pedido #${pedidoId}: não consegui concluir a entrega.`
+      );
       return;
     }
 
@@ -2450,31 +2674,6 @@ async function aoMensagem(message) {
       return;
     }
 
-    if (nomeComando === 'entregar') {
-      const pedidoId = Number(resto[0]);
-      if (!Number.isFinite(pedidoId)) {
-        await message.reply('Uso: `!entregar <pedido_id>`');
-        return;
-      }
-      const order = db.getOrder(pedidoId);
-      if (!order) {
-        await message.reply(`Não existe o pedido #${pedidoId}.`);
-        return;
-      }
-      if (order.status === 'delivered') {
-        await message.reply(`O pedido #${pedidoId} já foi entregue.`);
-        return;
-      }
-      await entregarPedido(pedidoId);
-      const entregue = db.getOrder(pedidoId).status === 'delivered';
-      await message.reply(
-        entregue
-          ? `✅ Pedido #${pedidoId} marcado como entregue. Se havia chaves, foram enviadas por DM; senão a staff entrega à mão.`
-          : `⚠️ Pedido #${pedidoId}: não consegui concluir a entrega.`
-      );
-      return;
-    }
-
     if (CATEGORIA_POR_COMANDO[nomeComando]) {
       await publicarLojaTexto(message, CATEGORIA_POR_COMANDO[nomeComando]);
     }
@@ -2612,4 +2811,13 @@ module.exports = {
   entregarPedido,
   seedProdutosIniciais,
   encontrarProdutoPorTexto,
+  logsCanalId,
+  ticketsLogsCanalId,
+  ehStaffTickets,
+  podeEntregarPedidos,
+  montarEmbedTicketFechado,
+  formatarDataPt,
+  CATEGORIA_POR_COMANDO,
+  PAINEL_TEXTOS,
+  PRODUTOS_SEED,
 };
