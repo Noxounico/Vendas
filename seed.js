@@ -208,6 +208,18 @@ const CATALOG = [
       { name: 'Steam Key +R$500', priceCents: cents(20) },
     ],
   },
+  {
+    category: 'cs2',
+    products: [
+      { name: 'CS2 Prime', priceCents: cents(5) },
+      { name: 'CS2 Premier', priceCents: cents(8) },
+      { name: 'CS2 Elo 15k-20k Premier', priceCents: cents(12) },
+      { name: 'CS2 Inativa 15D+ Prime', priceCents: cents(10) },
+      { name: 'CS2 Inativa 15D+ Premier', priceCents: cents(13) },
+      { name: 'CS2 Medalhas 4+ Premier', priceCents: cents(12) },
+      { name: 'CS2 Inativa 15D+ Medalhas 4+', priceCents: cents(15) },
+    ],
+  },
 ];
 
 function seed() {

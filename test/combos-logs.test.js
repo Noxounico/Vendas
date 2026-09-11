@@ -43,6 +43,7 @@ assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-box'], 'box');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-vps'], 'vps');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-steam'], 'steam');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-keys'], 'keys');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-cs2'], 'cs2');
 assert.strictEqual(bot.STATUS_BOT, '⏳ processando pagamento...');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
@@ -77,6 +78,14 @@ assert(bot.PAINEL_TEXTOS.box.imagemFile.endsWith('banner-box.png'));
 assert(bot.PAINEL_TEXTOS.vps.imagemFile.endsWith('banner-vps.png'));
 assert(bot.PAINEL_TEXTOS.steam.imagemFile.endsWith('banner-steam.png'));
 assert(bot.PAINEL_TEXTOS.keys.imagemFile.endsWith('banner-keys.png'));
+assert(bot.PAINEL_TEXTOS.cs2.imagemFile.endsWith('banner-cs2.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.cs2.titulo, 'CS2 Accounts NFA');
+assert(bot.PAINEL_TEXTOS.cs2.descricao.includes(`${bot.EMOJI_BOLINHA} Conta sem banimentos - pronta para jogar!`));
+assert(bot.PAINEL_TEXTOS.cs2.descricao.includes(`${bot.EMOJI_BOLINHA} NFA (No Full Access)`));
+assert(bot.PAINEL_TEXTOS.cs2.descricao.includes(`${bot.EMOJI_BOLINHA} Região: GLOBAL`));
+assert(bot.PAINEL_TEXTOS.cs2.descricao.includes(`${bot.EMOJI_PACK} Prime`));
+assert(bot.PAINEL_TEXTOS.cs2.descricao.includes(`${bot.EMOJI_BOLINHA} 1x CS2 Medalhas 4+ Premier`));
+assert(!bot.PAINEL_TEXTOS.cs2.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.keys.titulo, 'ST34M KEYS');
 assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_PACK} Steam Key Platina`));
 assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_BOLINHA} SEM JOGOS +18 e PODE CONTER JOGOS REPETIDOS.`));
@@ -227,6 +236,23 @@ assert.strictEqual(key100.price_cents, 1000);
 assert.strictEqual(key500.price_cents, 2000);
 assert.strictEqual(db.listActiveProductsByCategory('keys').length, 5);
 
+const cs2Prime = db.getProductByName('CS2 Prime');
+const cs2Premier = db.getProductByName('CS2 Premier');
+const cs2Elo = db.getProductByName('CS2 Elo 15k-20k Premier');
+const cs2InatPrime = db.getProductByName('CS2 Inativa 15D+ Prime');
+const cs2InatPremier = db.getProductByName('CS2 Inativa 15D+ Premier');
+const cs2Medal = db.getProductByName('CS2 Medalhas 4+ Premier');
+const cs2InatMedal = db.getProductByName('CS2 Inativa 15D+ Medalhas 4+');
+assert.ok(cs2Prime && cs2Premier && cs2Elo && cs2InatPrime && cs2InatPremier && cs2Medal && cs2InatMedal);
+assert.strictEqual(cs2Prime.price_cents, 500);
+assert.strictEqual(cs2Premier.price_cents, 800);
+assert.strictEqual(cs2Elo.price_cents, 1200);
+assert.strictEqual(cs2InatPrime.price_cents, 1000);
+assert.strictEqual(cs2InatPremier.price_cents, 1300);
+assert.strictEqual(cs2Medal.price_cents, 1200);
+assert.strictEqual(cs2InatMedal.price_cents, 1500);
+assert.strictEqual(db.listActiveProductsByCategory('cs2').length, 7);
+
 const idAntigo = db.addProduct({
   name: 'Sp00fer 1 Click Semanal',
   priceCents: 800,
@@ -369,6 +395,12 @@ assert(keysPainel.includes('ST34M KEYS'));
 assert(keysPainel.includes('Steam Key Platina'));
 assert(keysPainel.includes('Steam Key +R$500'));
 assert(keysPainel.includes('Trocas somente com vídeo desde o recebimento.'));
+
+const cs2Painel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('cs2'), 'cs2').payload);
+assert(cs2Painel.includes('attachment://banner-cs2.png'));
+assert(cs2Painel.includes('CS2 Accounts NFA'));
+assert(cs2Painel.includes('NFA (No Full Access)'));
+assert(cs2Painel.includes('CS2 Inativa 15D+ Medalhas 4+'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
