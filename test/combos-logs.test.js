@@ -40,6 +40,14 @@ assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-combos'], 'combos');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-spofer'], 'spofer');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-lifetime'], 'lifetime');
 assert.strictEqual(bot.STATUS_BOT, 'processando pagamento...');
+assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
+assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
+assert.strictEqual(bot.STATUS_BOT_EMOJI.animated, true);
+const presenca = bot.montarPresencaStatus();
+assert.strictEqual(presenca.activities[0].state, 'processando pagamento...');
+assert.strictEqual(presenca.activities[0].emoji.id, '1453368332622495775');
+assert.strictEqual(presenca.activities[0].emoji.name, '1192548293067165838');
+assert.strictEqual(presenca.activities[0].emoji.animated, true);
 
 const painel = bot.PAINEL_TEXTOS.combos.descricao;
 for (const trecho of [

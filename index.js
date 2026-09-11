@@ -243,6 +243,13 @@ const BANNER_COMBOS_FILE = path.join(__dirname, 'assets', 'banner-combos.png');
 const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
 const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
 const STATUS_BOT = 'processando pagamento...';
+// <a:1192548293067165838:1453368332622495775>
+const STATUS_BOT_EMOJI = {
+  name: '1192548293067165838',
+  id: '1453368332622495775',
+  animated: true,
+};
+const STATUS_BOT_EMOJI_ID = STATUS_BOT_EMOJI.id;
 
 // Tickets: categoria, cargos da staff e banner por defeito (env var sobrepõe).
 const TICKETS_CATEGORIA_ID_PADRAO = '1322700826912882779';
@@ -2790,18 +2797,47 @@ function anexarEventos(c) {
   });
 }
 
+function emojiDoStatus() {
+  const id = STATUS_BOT_EMOJI.id;
+  if (client.guilds?.cache) {
+    for (const guild of client.guilds.cache.values()) {
+      const emoji = guild.emojis.cache.get(id);
+      if (emoji) {
+        return { name: emoji.name, id: emoji.id, animated: Boolean(emoji.animated) };
+      }
+    }
+  }
+  return { ...STATUS_BOT_EMOJI };
+}
+
+function montarPresencaStatus() {
+  const emoji = emojiDoStatus();
+  return {
+    since: null,
+    afk: false,
+    status: 'online',
+    activities: [
+      {
+        type: ActivityType.Custom,
+        name: 'Custom Status',
+        state: STATUS_BOT,
+        ...(emoji ? { emoji } : {}),
+      },
+    ],
+  };
+}
+
 function definirStatusBot() {
   if (!client.user) return;
+  const presenca = montarPresencaStatus();
   try {
+    if (typeof client.ws?.broadcast === 'function') {
+      client.ws.broadcast({ op: 3, d: presenca });
+      return;
+    }
     client.user.setPresence({
-      status: 'online',
-      activities: [
-        {
-          type: ActivityType.Custom,
-          name: STATUS_BOT,
-          state: STATUS_BOT,
-        },
-      ],
+      status: presenca.status,
+      activities: [{ type: ActivityType.Custom, name: STATUS_BOT, state: STATUS_BOT }],
     });
   } catch (err) {
     console.error('Falha ao definir o status do bot:', err.message);
@@ -2902,5 +2938,8 @@ module.exports = {
   PAINEL_TEXTOS,
   PRODUTOS_SEED,
   STATUS_BOT,
+  STATUS_BOT_EMOJI,
+  STATUS_BOT_EMOJI_ID,
+  montarPresencaStatus,
   definirStatusBot,
 };
