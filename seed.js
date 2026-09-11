@@ -155,6 +155,26 @@ const CATALOG = [
     category: 'lifetime',
     products: [{ name: 'Sp00fer 1 Click Lifetime', priceCents: cents(50) }],
   },
+  {
+    category: 'box',
+    products: [
+      {
+        name: 'Box Gold',
+        priceCents: cents(2),
+        description: 'Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.',
+      },
+      {
+        name: 'Caixa Platina',
+        priceCents: cents(5),
+        description: 'Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.',
+      },
+      {
+        name: 'Caixa Diamond',
+        priceCents: cents(10),
+        description: 'Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.',
+      },
+    ],
+  },
 ];
 
 function seed() {

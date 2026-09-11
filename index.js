@@ -239,9 +239,12 @@ const BANNER_SPOFER_URL =
   'https://cdn.discordapp.com/attachments/1534183602764648579/1547950195021586452/content.png?ex=6aa54876&is=6aa3f6f6&hm=2c899811f264a2347c1041590138c8cad71fa01575ee99a9a4bc979b61318275&';
 const BANNER_LIFETIME_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1547950463414960308/content.png?ex=6aa548b6&is=6aa3f736&hm=7c34120d21fdc8bcdd7e8fa380c412c7c18f50326a8c4d26324bad293ca893a1&=&format=webp&quality=lossless&width=1804&height=603';
+const BANNER_BOX_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1547951234336555098/content.png?ex=6aa5496d&is=6aa3f7ed&hm=8c04a4198746df91b5545122502d3f9926fa798d1ad7488175bd9c540e3e1e58&=&format=webp&quality=lossless&width=1804&height=603';
 const BANNER_COMBOS_FILE = path.join(__dirname, 'assets', 'banner-combos.png');
 const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
 const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
+const BANNER_BOX_FILE = path.join(__dirname, 'assets', 'banner-box.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const STATUS_BOT = '⏳ processando pagamento...';
@@ -468,6 +471,26 @@ const PRODUTOS_SEED = [
 
   // --- Canal Sp00fer Permanente ---
   { nome: 'Sp00fer 1 Click Lifetime', preco: eur(50), categoria: 'lifetime' },
+
+  // --- Canal Stopped Box ---
+  {
+    nome: 'Box Gold',
+    preco: eur(2),
+    categoria: 'box',
+    descricao: 'Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.',
+  },
+  {
+    nome: 'Caixa Platina',
+    preco: eur(5),
+    categoria: 'box',
+    descricao: 'Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.',
+  },
+  {
+    nome: 'Caixa Diamond',
+    preco: eur(10),
+    categoria: 'box',
+    descricao: 'Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.',
+  },
 ];
 
 // Cria produtos em falta e atualiza o preço/categoria dos que já existem.
@@ -539,6 +562,7 @@ const CATEGORIA_POR_COMANDO = {
   'loja-combos': 'combos',
   'loja-spofer': 'spofer',
   'loja-lifetime': 'lifetime',
+  'loja-box': 'box',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1106,6 +1130,31 @@ const PAINEL_TEXTOS = {
     cor: 0x2b2d31,
     imagem: BANNER_LIFETIME_URL,
     imagemFile: BANNER_LIFETIME_FILE,
+  },
+  box: {
+    titulo: 'Stopped Box',
+    descricao:
+      '• Ganhe produtos da nossa loja!\n' +
+      '• Teste sua sorte agora e receba recompensas exclusivas!\n' +
+      '• Você tem até 10 minutos para resgatar seu prêmio\n' +
+      '• Leia os Termos antes de comprar.\n' +
+      '\n' +
+      '📦 Tipos de Box:\n' +
+      '\n' +
+      '🎁 Box Gold\n' +
+      '*Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.*\n' +
+      '\n' +
+      '🎁 Caixa Platina\n' +
+      '*Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.*\n' +
+      '\n' +
+      '🎁 Caixa Diamond\n' +
+      '*Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.*\n' +
+      '\n' +
+      '🍀 Box mais caras oferecem maiores chances de obter produtos melhores, com mais quantidade e maior tempo!',
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_BOX_URL,
+    imagemFile: BANNER_BOX_FILE,
   },
 };
 
