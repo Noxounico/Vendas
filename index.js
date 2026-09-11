@@ -275,6 +275,9 @@ const BANNER_ROBLOX_FILE = path.join(__dirname, 'assets', 'banner-roblox.png');
 const BANNER_SPOTIFY_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1548088562035990628/image.png?ex=6aa5c953&is=6aa477d3&hm=892e1d599194337d24daf490a13d5d9b9d5fbab22f4cc9326e90d22e3d861050&=&format=webp&quality=lossless&width=1519&height=855';
 const BANNER_SPOTIFY_FILE = path.join(__dirname, 'assets', 'banner-spotify.png');
+const BANNER_TRAMPO_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548091945471971408/image.png?ex=6aa5cc79&is=6aa47af9&hm=fa7580e1c465baf3ca34fb71194926d71121707a34ba3b0340af5e98b1126a51&=&format=webp&quality=lossless&width=1519&height=855';
+const BANNER_TRAMPO_FILE = path.join(__dirname, 'assets', 'banner-trampo.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -1184,12 +1187,18 @@ const PAINEL_TEXTOS = {
     'Melhor qualidade.',
     'Entrega automática.',
   ]),
-  trampo: textoPainel('Trampo', [
-    'Recebe o trampo pronto a usar.',
-    'Melhor qualidade.',
-    'Pronto pra começar.',
-    'Suporte após a compra.',
-  ]),
+  trampo: {
+    titulo: 'Trampo',
+    descricao:
+      `${EMOJI_BOLINHA} Recebe o trampo pronto a usar.\n` +
+      `${EMOJI_BOLINHA} Melhor qualidade.\n` +
+      `${EMOJI_BOLINHA} Pronto pra começar.\n` +
+      `${EMOJI_BOLINHA} Suporte após a compra.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_TRAMPO_URL,
+    imagemFile: BANNER_TRAMPO_FILE,
+  },
   cloner: textoPainel(
     'Clonar Site',
     [
