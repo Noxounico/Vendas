@@ -247,6 +247,7 @@ const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png
 const BANNER_BOX_FILE = path.join(__dirname, 'assets', 'banner-box.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
+const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
 const STATUS_BOT = '⏳ processando pagamento...';
 // <a:1192548293067165838:1453368332622495775>
 const STATUS_BOT_EMOJI = {
@@ -466,39 +467,64 @@ const PRODUTOS_SEED = [
   },
 
   // --- Canal Sp00fer 1 Click ---
-  { nome: 'Sp00fer 1 Click Semanal', preco: eur(8), categoria: 'spofer' },
-  { nome: 'Sp00fer 1 Click Mensal', preco: eur(15), categoria: 'spofer' },
+  { nome: 'Sp00fer Hora', preco: eur(2), categoria: 'spofer' },
+  { nome: 'Sp00fer Diário', preco: eur(5), categoria: 'spofer' },
+  {
+    nome: 'Sp00fer Semanal',
+    preco: eur(12),
+    categoria: 'spofer',
+    antigoNome: 'Sp00fer 1 Click Semanal',
+  },
+  {
+    nome: 'Sp00fer Mensal',
+    preco: eur(20),
+    categoria: 'spofer',
+    antigoNome: 'Sp00fer 1 Click Mensal',
+  },
+  {
+    nome: 'Sp00fer Lifetime',
+    preco: eur(50),
+    categoria: 'spofer',
+    antigoNome: 'Sp00fer 1 Click Lifetime',
+  },
 
   // --- Canal Sp00fer Permanente ---
-  { nome: 'Sp00fer 1 Click Lifetime', preco: eur(50), categoria: 'lifetime' },
+  { nome: 'Sp00fer Permanente Diário', preco: eur(5), categoria: 'lifetime' },
+  { nome: 'Sp00fer Permanente Semanal', preco: eur(15), categoria: 'lifetime' },
+  { nome: 'Sp00fer Permanente Mensal', preco: eur(22), categoria: 'lifetime' },
+  { nome: 'Sp00fer Permanente Trimensal', preco: eur(32.99), categoria: 'lifetime' },
+  { nome: 'Sp00fer Permanente Lifetime', preco: eur(50), categoria: 'lifetime' },
 
   // --- Canal Stopped Box ---
   {
-    nome: 'Box Gold',
-    preco: eur(2),
+    nome: 'Stopped Box Gold',
+    preco: eur(5),
     categoria: 'box',
+    antigoNome: 'Box Gold',
     descricao: 'Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.',
   },
   {
-    nome: 'Caixa Platina',
-    preco: eur(5),
+    nome: 'Stopped Box Platina',
+    preco: eur(10),
     categoria: 'box',
+    antigoNome: 'Caixa Platina',
     descricao: 'Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.',
   },
   {
-    nome: 'Caixa Diamond',
-    preco: eur(10),
+    nome: 'Stopped Box Diamante',
+    preco: eur(15),
     categoria: 'box',
+    antigoNome: 'Caixa Diamond',
     descricao: 'Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.',
   },
 ];
 
-// Cria produtos em falta e atualiza o preço/categoria dos que já existem.
+// Cria produtos em falta, atualiza preço/categoria e renomeia os antigos.
 function seedProdutosIniciais() {
   let criados = 0;
   let atualizados = 0;
   for (const p of PRODUTOS_SEED) {
-    const existente = db.getProductByName(p.nome);
+    const existente = db.getProductByName(p.nome) || (p.antigoNome ? db.getProductByName(p.antigoNome) : null);
     if (!existente) {
       const id = db.addProduct({
         name: p.nome,
@@ -513,13 +539,15 @@ function seedProdutosIniciais() {
       continue;
     }
 
+    const mesmoNome = existente.name === p.nome;
     const mesmoPreco = existente.price_cents === p.preco;
     const mesmaMoeda = String(existente.currency || '').toLowerCase() === 'eur';
     const mesmaCategoria = existente.category === p.categoria;
     const mesmoAtivo = Boolean(existente.active);
-    if (mesmoPreco && mesmaMoeda && mesmaCategoria && mesmoAtivo) continue;
+    if (mesmoNome && mesmoPreco && mesmaMoeda && mesmaCategoria && mesmoAtivo) continue;
 
     db.updateProduct(existente.id, {
+      name: p.nome,
       priceCents: p.preco,
       currency: 'eur',
       category: p.categoria,
@@ -529,6 +557,12 @@ function seedProdutosIniciais() {
       `~ preço atualizado #${existente.id}: ${p.nome} — ${formatPrice(p.preco, 'eur')}`
     );
     atualizados++;
+  }
+
+  for (const p of PRODUTOS_SEED) {
+    if (!p.antigoNome) continue;
+    const velho = db.getProductByName(p.antigoNome);
+    if (velho && velho.name !== p.nome) db.setProductActive(velho.id, false);
   }
 
   if (criados > 0) {
@@ -1111,11 +1145,20 @@ const PAINEL_TEXTOS = {
   spofer: {
     titulo: 'SPOOFER ONE CLICK',
     descricao:
+      `${EMOJI_PACK} Hora\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer Hora\n` +
+      '\n' +
+      `${EMOJI_PACK} Diário\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer Diário\n` +
+      '\n' +
       `${EMOJI_PACK} Semanal\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Semanal\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer Semanal\n` +
       '\n' +
       `${EMOJI_PACK} Mensal\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Mensal`,
+      `${EMOJI_BOLINHA} 1x Sp00fer Mensal\n` +
+      '\n' +
+      `${EMOJI_PACK} Lifetime\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer Lifetime`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_SPOFER_URL,
@@ -1124,8 +1167,20 @@ const PAINEL_TEXTOS = {
   lifetime: {
     titulo: 'SPOOFER PERMANENTE',
     descricao:
+      `${EMOJI_PACK} Diário\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Diário\n` +
+      '\n' +
+      `${EMOJI_PACK} Semanal\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Semanal\n` +
+      '\n' +
+      `${EMOJI_PACK} Mensal\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Mensal\n` +
+      '\n' +
+      `${EMOJI_PACK} Trimensal\n` +
+      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Trimensal\n` +
+      '\n' +
       `${EMOJI_PACK} Lifetime\n` +
-      `${EMOJI_BOLINHA} 1x Sp00fer 1 Click Lifetime`,
+      `${EMOJI_BOLINHA} 1x Sp00fer Permanente Lifetime`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_LIFETIME_URL,
@@ -1139,18 +1194,18 @@ const PAINEL_TEXTOS = {
       '• Você tem até 10 minutos para resgatar seu prêmio\n' +
       '• Leia os Termos antes de comprar.\n' +
       '\n' +
-      '📦 Tipos de Box:\n' +
+      `${EMOJI_PACK} Tipos de Box:\n` +
       '\n' +
-      '🎁 Box Gold\n' +
-      '*Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.*\n' +
+      `${EMOJI_PACK} Stopped Box Gold\n` +
+      `${EMOJI_BOLINHA} Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.\n` +
       '\n' +
-      '🎁 Caixa Platina\n' +
-      '*Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.*\n' +
+      `${EMOJI_PACK} Stopped Box Platina\n` +
+      `${EMOJI_BOLINHA} Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.\n` +
       '\n' +
-      '🎁 Caixa Diamond\n' +
-      '*Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.*\n' +
+      `${EMOJI_PACK} Stopped Box Diamante\n` +
+      `${EMOJI_BOLINHA} Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.\n` +
       '\n' +
-      '🍀 Box mais caras oferecem maiores chances de obter produtos melhores, com mais quantidade e maior tempo!',
+      `${EMOJI_TREVO} Box mais caras oferecem maiores chances de obter produtos melhores, com mais quantidade e maior tempo!`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_BOX_URL,
@@ -2992,6 +3047,7 @@ module.exports = {
   PRODUTOS_SEED,
   EMOJI_PACK,
   EMOJI_BOLINHA,
+  EMOJI_TREVO,
   STATUS_BOT,
   STATUS_BOT_EMOJI,
   STATUS_BOT_EMOJI_ID,

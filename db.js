@@ -120,12 +120,13 @@ function getProductByName(name) {
   return db.prepare(`SELECT * FROM products WHERE lower(name) = lower(?)`).get(name);
 }
 
-function updateProduct(id, { priceCents, currency, category, active }) {
+function updateProduct(id, { name, priceCents, currency, category, active }) {
   const product = getProduct(id);
   if (!product) return false;
   db.prepare(
-    `UPDATE products SET price_cents = ?, currency = ?, category = ?, active = ? WHERE id = ?`
+    `UPDATE products SET name = ?, price_cents = ?, currency = ?, category = ?, active = ? WHERE id = ?`
   ).run(
+    name ?? product.name,
     priceCents ?? product.price_cents,
     currency ?? product.currency,
     category !== undefined ? category : product.category,
