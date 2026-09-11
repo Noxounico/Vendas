@@ -254,7 +254,6 @@ const BANNER_STEAM_FILE = path.join(__dirname, 'assets', 'banner-steam.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
-const EMOJI_PONTO_NOME = 'b_pontobranco_voltz';
 const STATUS_BOT = '⏳ processando pagamento...';
 // <a:1192548293067165838:1453368332622495775>
 const STATUS_BOT_EMOJI = {
@@ -1231,15 +1230,11 @@ const PAINEL_TEXTOS = {
   },
   steam: {
     titulo: 'C0nta Steam',
-    get descricao() {
-      const ponto = emojiPonto();
-      return (
-        `${ponto} C0nt4s Steam\n` +
-        `${ponto} Full Acesso\n` +
-        `${ponto} C0nt4s nova e só sua\n` +
-        `${ponto} Assim que receber, troque tudo imediatamente`
-      );
-    },
+    descricao:
+      `${EMOJI_BOLINHA} C0nt4s Steam\n` +
+      `${EMOJI_BOLINHA} Full Acesso\n` +
+      `${EMOJI_BOLINHA} C0nt4s nova e só sua\n` +
+      `${EMOJI_BOLINHA} Assim que receber, troque tudo imediatamente`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_STEAM_URL,
@@ -2952,22 +2947,6 @@ function emojiDoStatus() {
   return { ...STATUS_BOT_EMOJI };
 }
 
-function emojiPorNome(nome) {
-  if (client?.guilds?.cache) {
-    for (const guild of client.guilds.cache.values()) {
-      const emoji = guild.emojis.cache.find((e) => e.name === nome);
-      if (emoji) {
-        return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
-      }
-    }
-  }
-  return `:${nome}:`;
-}
-
-function emojiPonto() {
-  return emojiPorNome(EMOJI_PONTO_NOME);
-}
-
 function montarPresencaStatus() {
   const emoji = emojiDoStatus();
   return {
@@ -3098,8 +3077,6 @@ module.exports = {
   EMOJI_PACK,
   EMOJI_BOLINHA,
   EMOJI_TREVO,
-  EMOJI_PONTO_NOME,
-  emojiPonto,
   STATUS_BOT,
   STATUS_BOT_EMOJI,
   STATUS_BOT_EMOJI_ID,

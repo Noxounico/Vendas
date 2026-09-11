@@ -76,12 +76,10 @@ assert(bot.PAINEL_TEXTOS.box.imagemFile.endsWith('banner-box.png'));
 assert(bot.PAINEL_TEXTOS.vps.imagemFile.endsWith('banner-vps.png'));
 assert(bot.PAINEL_TEXTOS.steam.imagemFile.endsWith('banner-steam.png'));
 assert.strictEqual(bot.PAINEL_TEXTOS.steam.titulo, 'C0nta Steam');
-assert.strictEqual(bot.EMOJI_PONTO_NOME, 'b_pontobranco_voltz');
-assert.strictEqual(bot.emojiPonto(), ':b_pontobranco_voltz:');
-assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.emojiPonto()} C0nt4s Steam`));
-assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.emojiPonto()} Full Acesso`));
-assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.emojiPonto()} C0nt4s nova e só sua`));
-assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.emojiPonto()} Assim que receber, troque tudo imediatamente`));
+assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.EMOJI_BOLINHA} C0nt4s Steam`));
+assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.EMOJI_BOLINHA} Full Acesso`));
+assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.EMOJI_BOLINHA} C0nt4s nova e só sua`));
+assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.EMOJI_BOLINHA} Assim que receber, troque tudo imediatamente`));
 assert(!bot.PAINEL_TEXTOS.steam.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.vps.titulo, 'VPN IP VANISH NFA');
 assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_PACK} 5 Dias`));
@@ -337,7 +335,7 @@ assert(steamPainel.includes('C0nt4s Steam'));
 assert(steamPainel.includes('Full Acesso'));
 assert(steamPainel.includes('C0nt4s nova e só sua'));
 assert(steamPainel.includes('Assim que receber, troque tudo imediatamente'));
-assert(steamPainel.includes(`:${bot.EMOJI_PONTO_NOME}:`));
+assert(steamPainel.includes(bot.EMOJI_BOLINHA));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
