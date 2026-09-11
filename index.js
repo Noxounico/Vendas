@@ -234,11 +234,11 @@ const LOJA_BANNER_URL_PADRAO =
   'https://media.discordapp.net/attachments/1545383446208315422/1545780646473891962/banner-loja.jpg?ex=6aa3fb69&is=6aa2a9e9&hm=f77d4ddcfd49941ea186279776ed50c55ae6aa81d83dc49780ab3ed45926712e&=&format=webp';
 
 const BANNER_COMBOS_URL =
-  'https://media.discordapp.net/attachments/1534183602764648579/1547900221550370927/content.png?ex=6aa519eb&is=6aa3c86b&hm=c94c3ce5bceea8fd0625330507a0ff96e1f8da233654bed276b97115e76801f0&=&format=webp&quality=lossless&width=1804&height=603';
+  'https://cdn.discordapp.com/attachments/1534183602764648579/1547949937151578182/content.png?ex=6aa54838&is=6aa3f6b8&hm=20bd72596ffcca5e54cb0ed3510e99a9d9a67baf05708616021fb405ed471ff4&';
 const BANNER_SPOFER_URL =
-  'https://media.discordapp.net/attachments/1534183602764648579/1547900821142900766/content.png?ex=6aa51a7a&is=6aa3c8fa&hm=16e513988ec187e77faaef635a66f3b2012cf670fc2d332ca980faeb91a7babe&=&format=webp&quality=lossless&width=1804&height=603';
+  'https://cdn.discordapp.com/attachments/1534183602764648579/1547950195021586452/content.png?ex=6aa54876&is=6aa3f6f6&hm=2c899811f264a2347c1041590138c8cad71fa01575ee99a9a4bc979b61318275&';
 const BANNER_LIFETIME_URL =
-  'https://cdn.discordapp.com/attachments/1534183602764648579/1547917394750742599/content.png?ex=6aa529e9&is=6aa3d869&hm=235a118a7a37e1289ed8b13d3b0c8de40ed4ca5f687043b25029594023d62482&';
+  'https://media.discordapp.net/attachments/1534183602764648579/1547950463414960308/content.png?ex=6aa548b6&is=6aa3f736&hm=7c34120d21fdc8bcdd7e8fa380c412c7c18f50326a8c4d26324bad293ca893a1&=&format=webp&quality=lossless&width=1804&height=603';
 const BANNER_COMBOS_FILE = path.join(__dirname, 'assets', 'banner-combos.png');
 const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
 const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
@@ -453,19 +453,13 @@ const PRODUTOS_SEED = [
     categoria: 'combos',
     descricao: '1x Sp00fer 1 Click Mensal + 10x conta Rockst4r Novas',
   },
-  {
-    nome: 'Combo Lifetime (sp00fer e Rock)',
-    preco: eur(50),
-    categoria: 'combos',
-    descricao: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
-  },
 
   // --- Canal Sp00fer 1 Click ---
   { nome: 'Sp00fer 1 Click Semanal', preco: eur(8), categoria: 'spofer' },
   { nome: 'Sp00fer 1 Click Mensal', preco: eur(15), categoria: 'spofer' },
 
   // --- Canal Sp00fer Permanente ---
-  { nome: 'Sp00fer 1 Click Lifetime', preco: eur(35), categoria: 'lifetime' },
+  { nome: 'Sp00fer 1 Click Lifetime', preco: eur(50), categoria: 'lifetime' },
 ];
 
 // Cria produtos em falta e atualiza o preço/categoria dos que já existem.
@@ -502,6 +496,12 @@ function seedProdutosIniciais() {
       `~ preço atualizado #${existente.id}: ${p.nome} — ${formatPrice(p.preco, 'eur')}`
     );
     atualizados++;
+  }
+
+  const comboLifetime = db.getProductByName('Combo Lifetime (sp00fer e Rock)');
+  if (comboLifetime?.active) {
+    db.setProductActive(comboLifetime.id, false);
+    console.log('~ Combo Lifetime desativado (saiu do painel de combos).');
   }
 
   if (criados > 0) {
@@ -1070,11 +1070,7 @@ const PAINEL_TEXTOS = {
       '\n' +
       '💠 Mensal ( sp00fer e Rock )\n' +
       '🔵 1x Sp00fer 1 Click Mensal\n' +
-      '🔵 10x conta Rockst4r Novas.\n' +
-      '\n' +
-      '💠 Lifetime ( sp00fer e Rock )\n' +
-      '🔵 1x Sp00fer 1 Click Lifetime\n' +
-      '🔵 50x conta Rockst4r Novas.',
+      '🔵 10x conta Rockst4r Novas.',
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_COMBOS_URL,
@@ -1096,7 +1092,7 @@ const PAINEL_TEXTOS = {
   lifetime: {
     titulo: 'SPOOFER PERMANENTE',
     descricao:
-      '💠 Lifetime\n' +
+      '💠 Lifetime — **50€**\n' +
       '🔵 1x Sp00fer 1 Click Lifetime',
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
