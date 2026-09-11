@@ -242,7 +242,7 @@ const BANNER_LIFETIME_URL =
 const BANNER_COMBOS_FILE = path.join(__dirname, 'assets', 'banner-combos.png');
 const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
 const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
-const STATUS_BOT = 'processando pagamento...';
+const STATUS_BOT = '⏳ processando pagamento...';
 // <a:1192548293067165838:1453368332622495775>
 const STATUS_BOT_EMOJI = {
   name: '1192548293067165838',
