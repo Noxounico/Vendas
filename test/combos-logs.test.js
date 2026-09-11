@@ -42,6 +42,7 @@ assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-lifetime'], 'lifetime');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-box'], 'box');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-vps'], 'vps');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-steam'], 'steam');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-keys'], 'keys');
 assert.strictEqual(bot.STATUS_BOT, '⏳ processando pagamento...');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
@@ -75,6 +76,18 @@ assert(bot.PAINEL_TEXTOS.lifetime.imagemFile.endsWith('banner-lifetime.png'));
 assert(bot.PAINEL_TEXTOS.box.imagemFile.endsWith('banner-box.png'));
 assert(bot.PAINEL_TEXTOS.vps.imagemFile.endsWith('banner-vps.png'));
 assert(bot.PAINEL_TEXTOS.steam.imagemFile.endsWith('banner-steam.png'));
+assert(bot.PAINEL_TEXTOS.keys.imagemFile.endsWith('banner-keys.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.keys.titulo, 'ST34M KEYS');
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_PACK} Steam Key Platina`));
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_BOLINHA} SEM JOGOS +18 e PODE CONTER JOGOS REPETIDOS.`));
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_PACK} Steam Key +R$100`));
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_BOLINHA} Steam key jogo de R$ 100 ou mais.`));
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_PACK} Steam Key +R$500`));
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_BOLINHA} Steam key jogo de R$ 500 ou mais.`));
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_PACK} Triple A`));
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes(`${bot.EMOJI_PACK} Key Deluxe`));
+assert(bot.PAINEL_TEXTOS.keys.descricao.includes('Trocas somente com vídeo desde o recebimento.'));
+assert(!bot.PAINEL_TEXTOS.keys.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.steam.titulo, 'C0nta Steam');
 assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.EMOJI_BOLINHA} C0nt4s Steam`));
 assert(bot.PAINEL_TEXTOS.steam.descricao.includes(`${bot.EMOJI_BOLINHA} Full Acesso`));
@@ -200,6 +213,19 @@ assert.ok(steamAcc);
 assert.strictEqual(steamAcc.category, 'steam');
 assert.strictEqual(steamAcc.price_cents, 400);
 assert.strictEqual(db.listActiveProductsByCategory('steam').length, 1);
+
+const key18 = db.getProductByName('Steam Key +18');
+const keyPlatina = db.getProductByName('Steam Key Platina');
+const keyCartas = db.getProductByName('Steam Key Cartas');
+const key100 = db.getProductByName('Steam Key +R$100');
+const key500 = db.getProductByName('Steam Key +R$500');
+assert.ok(key18 && keyPlatina && keyCartas && key100 && key500);
+assert.strictEqual(key18.price_cents, 100);
+assert.strictEqual(keyPlatina.price_cents, 200);
+assert.strictEqual(keyCartas.price_cents, 300);
+assert.strictEqual(key100.price_cents, 1000);
+assert.strictEqual(key500.price_cents, 2000);
+assert.strictEqual(db.listActiveProductsByCategory('keys').length, 5);
 
 const idAntigo = db.addProduct({
   name: 'Sp00fer 1 Click Semanal',
@@ -336,6 +362,13 @@ assert(steamPainel.includes('Full Acesso'));
 assert(steamPainel.includes('C0nt4s nova e só sua'));
 assert(steamPainel.includes('Assim que receber, troque tudo imediatamente'));
 assert(steamPainel.includes(bot.EMOJI_BOLINHA));
+
+const keysPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('keys'), 'keys').payload);
+assert(keysPainel.includes('attachment://banner-keys.png'));
+assert(keysPainel.includes('ST34M KEYS'));
+assert(keysPainel.includes('Steam Key Platina'));
+assert(keysPainel.includes('Steam Key +R$500'));
+assert(keysPainel.includes('Trocas somente com vídeo desde o recebimento.'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
