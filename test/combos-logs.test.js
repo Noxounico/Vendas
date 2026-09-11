@@ -37,21 +37,29 @@ assert.strictEqual(bot.logsCanalId(), '111');
 delete process.env.LOGS_ENTREGA_CHANNEL_ID;
 
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-combos'], 'combos');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-spofer'], 'spofer');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-lifetime'], 'lifetime');
+assert.strictEqual(bot.STATUS_BOT, 'processando pagamento...');
 
 const painel = bot.PAINEL_TEXTOS.combos.descricao;
 for (const trecho of [
-  '12€',
-  '20€',
-  '50€',
-  '1x Sp00fer 1 Click Semanal',
-  '5x conta Rockst4r Novas',
-  '1x Sp00fer 1 Click Mensal',
-  '10x conta Rockst4r Novas',
-  '1x Sp00fer 1 Click Lifetime',
-  '50x conta Rockst4r Novas',
+  '💠 Semanal ( sp00fer e Rock )',
+  '🔵 1x Sp00fer 1 Click Semanal',
+  '🔵 5x conta Rockst4r Novas.',
+  '💠 Mensal ( sp00fer e Rock )',
+  '🔵 1x Sp00fer 1 Click Mensal',
+  '🔵 10x conta Rockst4r Novas.',
+  '💠 Lifetime ( sp00fer e Rock )',
+  '🔵 1x Sp00fer 1 Click Lifetime',
+  '🔵 50x conta Rockst4r Novas.',
 ]) {
   assert(painel.includes(trecho), `painel combos deveria incluir: ${trecho}`);
 }
+assert(bot.PAINEL_TEXTOS.combos.imagemFile.endsWith('banner-combos.png'));
+assert(bot.PAINEL_TEXTOS.spofer.imagemFile.endsWith('banner-spofer.png'));
+assert(bot.PAINEL_TEXTOS.lifetime.imagemFile.endsWith('banner-lifetime.png'));
+assert(bot.PAINEL_TEXTOS.spofer.descricao.includes('Sp00fer 1 Click Semanal'));
+assert(bot.PAINEL_TEXTOS.lifetime.descricao.includes('Sp00fer 1 Click Lifetime'));
 
 const combosSeed = bot.PRODUTOS_SEED.filter((p) => p.categoria === 'combos');
 assert.strictEqual(combosSeed.length, 3);
@@ -73,6 +81,17 @@ assert.strictEqual(semanal.price_cents, 1200);
 assert.strictEqual(mensal.price_cents, 2000);
 assert.strictEqual(lifetime.price_cents, 5000);
 assert.strictEqual(semanal.category, 'combos');
+
+const spoferSem = db.getProductByName('Sp00fer 1 Click Semanal');
+const spoferMen = db.getProductByName('Sp00fer 1 Click Mensal');
+const spoferLife = db.getProductByName('Sp00fer 1 Click Lifetime');
+assert.ok(spoferSem && spoferMen && spoferLife);
+assert.strictEqual(spoferSem.category, 'spofer');
+assert.strictEqual(spoferMen.category, 'spofer');
+assert.strictEqual(spoferLife.category, 'lifetime');
+assert.strictEqual(spoferSem.price_cents, 800);
+assert.strictEqual(spoferMen.price_cents, 1500);
+assert.strictEqual(spoferLife.price_cents, 3500);
 
 const staffCache = {
   permissions: { has: () => false },
@@ -151,14 +170,25 @@ assert.match(byName['🕐 Open Time'], /setembro de 2026/);
 assert.match(byName['🕐 Open Time'], /às/);
 
 const aberto = formatarPainelCombos();
-assert(aberto.includes('12€') && aberto.includes('Preço:'));
+assert(aberto.includes('💠 Semanal ( sp00fer e Rock )'));
+assert(aberto.includes('attachment://banner-combos.png'));
+assert(aberto.includes('Preço:'));
+assert(aberto.includes('12,00'));
+
+const spoferPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('spofer'), 'spofer').payload);
+assert(spoferPainel.includes('attachment://banner-spofer.png'));
+assert(spoferPainel.includes('SPOOFER ONE CLICK'));
+
+const lifePainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('lifetime'), 'lifetime').payload);
+assert(lifePainel.includes('attachment://banner-lifetime.png'));
+assert(lifePainel.includes('SPOOFER PERMANENTE'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
   const painelLoja = bot.gerarPainelLoja(products, 'combos');
   const texto = JSON.stringify(painelLoja.payload);
-  if (!texto.includes('12€')) fail('painel V2 sem 12€');
-  if (!texto.includes('Combo Semanal') && !texto.includes('12€')) fail('painel V2 incompleto');
+  if (!texto.includes('💠 Semanal ( sp00fer e Rock )')) fail('painel V2 sem o texto dos combos');
+  if (!texto.includes('attachment://banner-combos.png')) fail('painel V2 sem a imagem dos combos');
   return texto;
 }
 

@@ -5,6 +5,8 @@
 // pagamento (botão "Entregar" ou !entregar) e a chave é enviada por DM.
 
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const {
   Client,
   GatewayIntentBits,
@@ -30,6 +32,7 @@ const {
   SectionBuilder,
   Events,
   Partials,
+  ActivityType,
 } = require('discord.js');
 // Canvas é opcional (só se algum painel antigo ainda gerar imagem).
 // Se o pacote falhar no servidor, o bot continua a ligar na mesma.
@@ -229,6 +232,17 @@ async function gerarImagemPainel({ imagemUrl, titulo, bullets, entrega, precoTex
 const LOJA_BANNER_URL_PADRAO =
   process.env.LOJA_BANNER_URL ||
   'https://media.discordapp.net/attachments/1545383446208315422/1545780646473891962/banner-loja.jpg?ex=6aa3fb69&is=6aa2a9e9&hm=f77d4ddcfd49941ea186279776ed50c55ae6aa81d83dc49780ab3ed45926712e&=&format=webp';
+
+const BANNER_COMBOS_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1547900221550370927/content.png?ex=6aa519eb&is=6aa3c86b&hm=c94c3ce5bceea8fd0625330507a0ff96e1f8da233654bed276b97115e76801f0&=&format=webp&quality=lossless&width=1804&height=603';
+const BANNER_SPOFER_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1547900821142900766/content.png?ex=6aa51a7a&is=6aa3c8fa&hm=16e513988ec187e77faaef635a66f3b2012cf670fc2d332ca980faeb91a7babe&=&format=webp&quality=lossless&width=1804&height=603';
+const BANNER_LIFETIME_URL =
+  'https://cdn.discordapp.com/attachments/1534183602764648579/1547917394750742599/content.png?ex=6aa529e9&is=6aa3d869&hm=235a118a7a37e1289ed8b13d3b0c8de40ed4ca5f687043b25029594023d62482&';
+const BANNER_COMBOS_FILE = path.join(__dirname, 'assets', 'banner-combos.png');
+const BANNER_SPOFER_FILE = path.join(__dirname, 'assets', 'banner-spofer.png');
+const BANNER_LIFETIME_FILE = path.join(__dirname, 'assets', 'banner-lifetime.png');
+const STATUS_BOT = 'processando pagamento...';
 
 // Tickets: categoria, cargos da staff e banner por defeito (env var sobrepõe).
 const TICKETS_CATEGORIA_ID_PADRAO = '1322700826912882779';
@@ -438,6 +452,13 @@ const PRODUTOS_SEED = [
     categoria: 'combos',
     descricao: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
   },
+
+  // --- Canal Sp00fer 1 Click ---
+  { nome: 'Sp00fer 1 Click Semanal', preco: eur(8), categoria: 'spofer' },
+  { nome: 'Sp00fer 1 Click Mensal', preco: eur(15), categoria: 'spofer' },
+
+  // --- Canal Sp00fer Permanente ---
+  { nome: 'Sp00fer 1 Click Lifetime', preco: eur(35), categoria: 'lifetime' },
 ];
 
 // Cria produtos em falta e atualiza o preço/categoria dos que já existem.
@@ -505,6 +526,8 @@ const CATEGORIA_POR_COMANDO = {
   'loja-fortnite': 'fortnite',
   'loja-rockstar': 'rockstar',
   'loja-combos': 'combos',
+  'loja-spofer': 'spofer',
+  'loja-lifetime': 'lifetime',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1032,19 +1055,46 @@ const PAINEL_TEXTOS = {
     'Entrega automática no privado.',
   ]),
   combos: {
-    titulo: 'Combos (sp00fer e Rock)',
+    titulo: 'COMBOS',
     descricao:
-      '• **Semanal** (sp00fer e Rock) — **12€**\n' +
-      '  1x Sp00fer 1 Click Semanal\n' +
-      '  5x conta Rockst4r Novas\n' +
-      '• **Mensal** (sp00fer e Rock) — **20€**\n' +
-      '  1x Sp00fer 1 Click Mensal\n' +
-      '  10x conta Rockst4r Novas\n' +
-      '• **Lifetime** (sp00fer e Rock) — **50€**\n' +
-      '  1x Sp00fer 1 Click Lifetime\n' +
-      '  50x conta Rockst4r Novas',
+      '💠 Semanal ( sp00fer e Rock )\n' +
+      '🔵 1x Sp00fer 1 Click Semanal\n' +
+      '🔵 5x conta Rockst4r Novas.\n' +
+      '\n' +
+      '💠 Mensal ( sp00fer e Rock )\n' +
+      '🔵 1x Sp00fer 1 Click Mensal\n' +
+      '🔵 10x conta Rockst4r Novas.\n' +
+      '\n' +
+      '💠 Lifetime ( sp00fer e Rock )\n' +
+      '🔵 1x Sp00fer 1 Click Lifetime\n' +
+      '🔵 50x conta Rockst4r Novas.',
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
+    imagem: BANNER_COMBOS_URL,
+    imagemFile: BANNER_COMBOS_FILE,
+  },
+  spofer: {
+    titulo: 'SPOOFER ONE CLICK',
+    descricao:
+      '💠 Semanal\n' +
+      '🔵 1x Sp00fer 1 Click Semanal\n' +
+      '\n' +
+      '💠 Mensal\n' +
+      '🔵 1x Sp00fer 1 Click Mensal',
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_SPOFER_URL,
+    imagemFile: BANNER_SPOFER_FILE,
+  },
+  lifetime: {
+    titulo: 'SPOOFER PERMANENTE',
+    descricao:
+      '💠 Lifetime\n' +
+      '🔵 1x Sp00fer 1 Click Lifetime',
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_LIFETIME_URL,
+    imagemFile: BANNER_LIFETIME_FILE,
   },
 };
 
@@ -1066,6 +1116,7 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
 
   const tituloFinal = titulo || defaults.titulo || (categoryName ? capitalizar(categoryName) : 'Loja');
   const faixa = faixaPrecos(products);
+  const imagemFile = imagem ? null : defaults.imagemFile || null;
   const imagemFinal = imagem || defaults.imagem || LOJA_BANNER_URL_PADRAO;
   const corFinal = corParaHex(cor) ?? defaults.cor ?? 0x2b2d31;
   const bulletsTexto =
@@ -1080,9 +1131,10 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
 
   return {
     tituloFinal,
-    bulletsLinhas: bulletsTexto.split('\n').filter(Boolean),
+    bulletsLinhas: bulletsTexto.replace(/\n+$/, '').split('\n'),
     entregaFinal,
     imagemFinal,
+    imagemFile,
     corFinal,
     faixa,
     botaoEmojiFinal,
@@ -1092,10 +1144,17 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
 
 // Cartão V2 igual à print: banner no topo, texto, caixa verde, rodapé + botão
 // à direita (ou menu em baixo, no caso dos tickets).
-function montarPainelV2({ imagemUrl, accentColor, texto, rodape, accessory, extraRows = [] }) {
+function montarPainelV2({ imagemUrl, imagemPath, accentColor, texto, rodape, accessory, extraRows = [] }) {
   const container = new ContainerBuilder().setAccentColor(accentColor ?? 0x2b2d31);
+  const files = [];
 
-  if (imagemUrl && /^https?:\/\//i.test(imagemUrl)) {
+  if (imagemPath && fs.existsSync(imagemPath)) {
+    const nome = path.basename(imagemPath);
+    files.push({ attachment: imagemPath, name: nome });
+    container.addMediaGalleryComponents(
+      new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(`attachment://${nome}`))
+    );
+  } else if (imagemUrl && /^https?:\/\//i.test(imagemUrl)) {
     container.addMediaGalleryComponents(
       new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(imagemUrl))
     );
@@ -1121,6 +1180,7 @@ function montarPainelV2({ imagemUrl, accentColor, texto, rodape, accessory, extr
     payload: {
       flags: MessageFlags.IsComponentsV2,
       components: [container],
+      ...(files.length ? { files } : {}),
     },
   };
 }
@@ -1145,6 +1205,7 @@ function gerarPainelLoja(products, categoryName, opts = {}) {
 
   return montarPainelV2({
     imagemUrl: t.imagemFinal,
+    imagemPath: t.imagemFile,
     accentColor: t.corFinal,
     texto,
     rodape,
@@ -2686,6 +2747,7 @@ async function aoReady() {
   ultimoOk = Date.now();
   falhasSeguidas = 0;
   console.log(`Bot ligado como ${client.user.tag}`);
+  definirStatusBot();
   if (jaArrancou) return;
   jaArrancou = true;
   try {
@@ -2715,6 +2777,7 @@ function anexarEventos(c) {
   });
   c.on(Events.ShardResume, (id) => {
     ultimoOk = Date.now();
+    definirStatusBot();
     console.log(`Shard ${id} reconectado.`);
   });
   c.on(Events.ShardDisconnect, (event, id) => {
@@ -2725,6 +2788,24 @@ function anexarEventos(c) {
     }
     setTimeout(() => ligarBot({ forcar: true }), 5000);
   });
+}
+
+function definirStatusBot() {
+  if (!client.user) return;
+  try {
+    client.user.setPresence({
+      status: 'online',
+      activities: [
+        {
+          type: ActivityType.Custom,
+          name: STATUS_BOT,
+          state: STATUS_BOT,
+        },
+      ],
+    });
+  } catch (err) {
+    console.error('Falha ao definir o status do bot:', err.message);
+  }
 }
 
 anexarEventos(client);
@@ -2820,4 +2901,6 @@ module.exports = {
   CATEGORIA_POR_COMANDO,
   PAINEL_TEXTOS,
   PRODUTOS_SEED,
+  STATUS_BOT,
+  definirStatusBot,
 };
