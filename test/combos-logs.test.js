@@ -99,6 +99,12 @@ assert(bot.PAINEL_TEXTOS.gta.imagemFile.endsWith('banner-gta.png'));
 assert(bot.PAINEL_TEXTOS.fortnite.imagemFile.endsWith('banner-fortnite.png'));
 assert(bot.PAINEL_TEXTOS.roblox.imagemFile.endsWith('banner-roblox.png'));
 assert(bot.PAINEL_TEXTOS.spotify.imagemFile.endsWith('banner-spotify.png'));
+assert(bot.PAINEL_TEXTOS.trampo.imagemFile.endsWith('banner-trampo.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.trampo.titulo, 'Trampo');
+assert(bot.PAINEL_TEXTOS.trampo.descricao.includes(`${bot.EMOJI_BOLINHA} Recebe o trampo pronto a usar.`));
+assert(bot.PAINEL_TEXTOS.trampo.descricao.includes(`${bot.EMOJI_BOLINHA} Pronto pra começar.`));
+assert(bot.PAINEL_TEXTOS.trampo.descricao.includes(`${bot.EMOJI_BOLINHA} Suporte após a compra.`));
+assert(!bot.PAINEL_TEXTOS.trampo.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.fortnite.titulo, 'FORTNITE ACCOUNTS');
 assert(bot.PAINEL_TEXTOS.fortnite.descricao.includes(`${bot.EMOJI_BOLINHA} Recebe uma conta Full Acesso.`));
 assert(bot.PAINEL_TEXTOS.fortnite.descricao.includes(`${bot.EMOJI_BOLINHA} OG, rare e tryhard skins.`));
@@ -532,6 +538,13 @@ assert(spotifyPainel.includes('attachment://banner-spotify.png'));
 assert(spotifyPainel.includes('SPOTIFY PREMIUM'));
 assert(spotifyPainel.includes('Obrigatório a Troca de Dados.'));
 assert(!spotifyPainel.includes('Conta Spotify Premium'));
+
+const trampoPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('trampo'), 'trampo').payload);
+assert(trampoPainel.includes('attachment://banner-trampo.png'));
+assert(trampoPainel.includes('Trampo'));
+assert(trampoPainel.includes('Recebe o trampo pronto a usar.'));
+assert(trampoPainel.includes('Suporte após a compra.'));
+assert(!trampoPainel.includes('Trampo fazendo dinheiro'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
