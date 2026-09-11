@@ -168,21 +168,21 @@ const CATALOG = [
     category: 'box',
     products: [
       {
-        name: 'Stopped Box Gold',
+        name: 'Denver Box Gold',
         priceCents: cents(5),
-        antigoNome: 'Box Gold',
+        antigoNome: 'Stopped Box Gold',
         description: 'Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.',
       },
       {
-        name: 'Stopped Box Platina',
+        name: 'Denver Box Platina',
         priceCents: cents(10),
-        antigoNome: 'Caixa Platina',
+        antigoNome: 'Stopped Box Platina',
         description: 'Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.',
       },
       {
-        name: 'Stopped Box Diamante',
+        name: 'Denver Box Diamante',
         priceCents: cents(15),
-        antigoNome: 'Caixa Diamond',
+        antigoNome: 'Stopped Box Diamante',
         description: 'Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.',
       },
     ],

@@ -85,9 +85,9 @@ assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} Não compr
 assert(bot.PAINEL_TEXTOS.vps.descricao.includes(`${bot.EMOJI_BOLINHA} NFA`));
 assert(!bot.PAINEL_TEXTOS.vps.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.box.titulo, 'Denver Box');
-assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Stopped Box Gold`));
-assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Stopped Box Platina`));
-assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Stopped Box Diamante`));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Denver Box Gold`));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Denver Box Platina`));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_PACK} Denver Box Diamante`));
 assert(bot.PAINEL_TEXTOS.box.descricao.includes(`${bot.EMOJI_BOLINHA} Pode vir com diversos produtos, incluindo chaves diárias`));
 assert(bot.PAINEL_TEXTOS.box.descricao.includes('chaves de 3 a 7 dias'));
 assert(bot.PAINEL_TEXTOS.box.descricao.includes('chaves de 7 a 31 dias'));
@@ -166,9 +166,9 @@ assert.strictEqual(permTri.price_cents, 3299);
 assert.strictEqual(permLife.price_cents, 5000);
 assert.strictEqual(db.listActiveProductsByCategory('lifetime').length, 5);
 
-const boxGold = db.getProductByName('Stopped Box Gold');
-const boxPlatina = db.getProductByName('Stopped Box Platina');
-const boxDiamante = db.getProductByName('Stopped Box Diamante');
+const boxGold = db.getProductByName('Denver Box Gold');
+const boxPlatina = db.getProductByName('Denver Box Platina');
+const boxDiamante = db.getProductByName('Denver Box Diamante');
 assert.ok(boxGold && boxPlatina && boxDiamante);
 assert.strictEqual(boxGold.category, 'box');
 assert.strictEqual(boxPlatina.category, 'box');
@@ -301,9 +301,9 @@ assert(aberto.includes(`${bot.EMOJI_BOLINHA} 50x conta Rockst4r Novas.`));
 const boxPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('box'), 'box').payload);
 assert(boxPainel.includes('attachment://banner-box.png'));
 assert(boxPainel.includes('Denver Box'));
-assert(boxPainel.includes('Stopped Box Gold'));
-assert(boxPainel.includes('Stopped Box Platina'));
-assert(boxPainel.includes('Stopped Box Diamante'));
+assert(boxPainel.includes('Denver Box Gold'));
+assert(boxPainel.includes('Denver Box Platina'));
+assert(boxPainel.includes('Denver Box Diamante'));
 assert(boxPainel.includes(bot.EMOJI_TREVO));
 assert(!boxPainel.includes('🍀'));
 

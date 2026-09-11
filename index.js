@@ -498,26 +498,26 @@ const PRODUTOS_SEED = [
   { nome: 'Sp00fer Permanente Trimensal', preco: eur(32.99), categoria: 'lifetime' },
   { nome: 'Sp00fer Permanente Lifetime', preco: eur(50), categoria: 'lifetime' },
 
-  // --- Canal Stopped Box ---
+  // --- Canal Denver Box ---
   {
-    nome: 'Stopped Box Gold',
+    nome: 'Denver Box Gold',
     preco: eur(5),
     categoria: 'box',
-    antigoNome: 'Box Gold',
+    antigoNome: 'Stopped Box Gold',
     descricao: 'Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.',
   },
   {
-    nome: 'Stopped Box Platina',
+    nome: 'Denver Box Platina',
     preco: eur(10),
     categoria: 'box',
-    antigoNome: 'Caixa Platina',
+    antigoNome: 'Stopped Box Platina',
     descricao: 'Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.',
   },
   {
-    nome: 'Stopped Box Diamante',
+    nome: 'Denver Box Diamante',
     preco: eur(15),
     categoria: 'box',
-    antigoNome: 'Caixa Diamond',
+    antigoNome: 'Stopped Box Diamante',
     descricao: 'Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.',
   },
 
@@ -1187,13 +1187,13 @@ const PAINEL_TEXTOS = {
       '\n' +
       `${EMOJI_PACK} Tipos de Box:\n` +
       '\n' +
-      `${EMOJI_PACK} Stopped Box Gold\n` +
+      `${EMOJI_PACK} Denver Box Gold\n` +
       `${EMOJI_BOLINHA} Pode vir com diversos produtos, incluindo chaves diárias dos nossos softwares.\n` +
       '\n' +
-      `${EMOJI_PACK} Stopped Box Platina\n` +
+      `${EMOJI_PACK} Denver Box Platina\n` +
       `${EMOJI_BOLINHA} Pode vir com diversos produtos, incluindo chaves de 3 a 7 dias dos nossos softwares.\n` +
       '\n' +
-      `${EMOJI_PACK} Stopped Box Diamante\n` +
+      `${EMOJI_PACK} Denver Box Diamante\n` +
       `${EMOJI_BOLINHA} Pode vir com diversos produtos, incluindo chaves de 7 a 31 dias dos nossos softwares.\n` +
       '\n' +
       `${EMOJI_TREVO} Box mais caras oferecem maiores chances de obter produtos melhores, com mais quantidade e maior tempo!`,
