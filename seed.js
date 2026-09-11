@@ -137,11 +137,6 @@ const CATALOG = [
         priceCents: cents(20),
         description: '1x Sp00fer 1 Click Mensal + 10x conta Rockst4r Novas',
       },
-      {
-        name: 'Combo Lifetime (sp00fer e Rock)',
-        priceCents: cents(50),
-        description: '1x Sp00fer 1 Click Lifetime + 50x conta Rockst4r Novas',
-      },
     ],
   },
   {
@@ -153,7 +148,7 @@ const CATALOG = [
   },
   {
     category: 'lifetime',
-    products: [{ name: 'Sp00fer 1 Click Lifetime', priceCents: cents(35) }],
+    products: [{ name: 'Sp00fer 1 Click Lifetime', priceCents: cents(50) }],
   },
 ];
 
@@ -198,6 +193,12 @@ function seed() {
       created += 1;
       console.log(`  + criado #${id}: ${p.name} — ${formatPrice(p.priceCents, currency)}`);
     }
+  }
+
+  const comboLifetime = db.getProductByName('Combo Lifetime (sp00fer e Rock)');
+  if (comboLifetime?.active) {
+    db.setProductActive(comboLifetime.id, false);
+    console.log('  ~ desativado: Combo Lifetime (sp00fer e Rock) — saiu do painel de combos');
   }
 
   const nitradas = CATALOG.find((g) => g.category === 'Nitradas').products;

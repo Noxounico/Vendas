@@ -120,18 +120,24 @@ function getProductByName(name) {
   return db.prepare(`SELECT * FROM products WHERE lower(name) = lower(?)`).get(name);
 }
 
-function updateProduct(id, { priceCents, currency, category }) {
+function updateProduct(id, { priceCents, currency, category, active }) {
   const product = getProduct(id);
   if (!product) return false;
   db.prepare(
-    `UPDATE products SET price_cents = ?, currency = ?, category = ? WHERE id = ?`
+    `UPDATE products SET price_cents = ?, currency = ?, category = ?, active = ? WHERE id = ?`
   ).run(
     priceCents ?? product.price_cents,
     currency ?? product.currency,
     category !== undefined ? category : product.category,
+    active == null ? product.active : active ? 1 : 0,
     id
   );
   return true;
+}
+
+function setProductActive(id, active) {
+  const info = db.prepare(`UPDATE products SET active = ? WHERE id = ?`).run(active ? 1 : 0, id);
+  return info.changes > 0;
 }
 
 function countAvailableKeys(productId) {
@@ -293,6 +299,7 @@ module.exports = {
   getProduct,
   getProductByName,
   updateProduct,
+  setProductActive,
   countAvailableKeys,
   getStock,
   setStock,
