@@ -1267,27 +1267,11 @@ const PAINEL_TEXTOS = {
   keys: {
     titulo: 'ST34M KEYS',
     descricao:
-      `${EMOJI_PACK} Steam Key +18\n` +
-      `${EMOJI_BOLINHA} 1x Steam Key +18\n` +
-      '\n' +
-      `${EMOJI_PACK} Steam Key Platina\n` +
-      `${EMOJI_BOLINHA} SEM JOGOS +18 e PODE CONTER JOGOS REPETIDOS.\n` +
-      '\n' +
-      `${EMOJI_PACK} Steam Key Cartas\n` +
-      `${EMOJI_BOLINHA} 1x Steam Key Cartas\n` +
-      '\n' +
-      `${EMOJI_PACK} Steam Key +R$100\n` +
-      `${EMOJI_BOLINHA} Steam key jogo de R$ 100 ou mais.\n` +
-      '\n' +
-      `${EMOJI_PACK} Steam Key +R$500\n` +
-      `${EMOJI_BOLINHA} Steam key jogo de R$ 500 ou mais.\n` +
-      '\n' +
-      `${EMOJI_PACK} Triple A\n` +
-      `${EMOJI_BOLINHA} Jogo bem avaliado e conhecido da steam.\n` +
-      '\n' +
-      `${EMOJI_PACK} Key Deluxe\n` +
-      `${EMOJI_BOLINHA} Jogos conhecido e combiçados da STEAM\n` +
-      '\n' +
+      `${EMOJI_BOLINHA} Platina: SEM JOGOS +18 e PODE CONTER JOGOS REPETIDOS.\n` +
+      `${EMOJI_BOLINHA} Steam Key +R$100: Steam key jogo de R$ 100 ou mais.\n` +
+      `${EMOJI_BOLINHA} Steam Key +R$500: Steam key jogo de R$ 500 ou mais.\n` +
+      `${EMOJI_BOLINHA} Triple A: Jogo bem avaliado e conhecido da steam.\n` +
+      `${EMOJI_BOLINHA} Key Deluxe: Jogos conhecido e combiçados da STEAM\n` +
       `${EMOJI_BOLINHA} A seleção é aleatória, e alguns jogos podem não ser tão conhecidos localmente.\n` +
       `${EMOJI_BOLINHA} Alguns jogos podem estar em promoção, mas voltam ao valor original depois.\n` +
       `${EMOJI_BOLINHA} Trocas somente com vídeo desde o recebimento.`,
@@ -1303,28 +1287,7 @@ const PAINEL_TEXTOS = {
       `${EMOJI_BOLINHA} Status: PRIME / PREMIER / MEDALHAS\n` +
       `${EMOJI_BOLINHA} NFA (No Full Access)\n` +
       `${EMOJI_BOLINHA} Região: GLOBAL\n` +
-      `${EMOJI_BOLINHA} Troca somente com gravação desde o recebimento\n` +
-      '\n' +
-      `${EMOJI_PACK} Prime\n` +
-      `${EMOJI_BOLINHA} 1x CS2 Prime\n` +
-      '\n' +
-      `${EMOJI_PACK} Premier\n` +
-      `${EMOJI_BOLINHA} 1x CS2 Premier\n` +
-      '\n' +
-      `${EMOJI_PACK} Elo 15k-20k Premier\n` +
-      `${EMOJI_BOLINHA} 1x CS2 Elo 15k-20k Premier\n` +
-      '\n' +
-      `${EMOJI_PACK} Inativa 15D+ Prime\n` +
-      `${EMOJI_BOLINHA} 1x CS2 Inativa 15D+ Prime\n` +
-      '\n' +
-      `${EMOJI_PACK} Inativa 15D+ Premier\n` +
-      `${EMOJI_BOLINHA} 1x CS2 Inativa 15D+ Premier\n` +
-      '\n' +
-      `${EMOJI_PACK} Medalhas 4+ Premier\n` +
-      `${EMOJI_BOLINHA} 1x CS2 Medalhas 4+ Premier\n` +
-      '\n' +
-      `${EMOJI_PACK} Inativa 15D+ Medalhas 4+\n` +
-      `${EMOJI_BOLINHA} 1x CS2 Inativa 15D+ Medalhas 4+`,
+      `${EMOJI_BOLINHA} Troca somente com gravação desde o recebimento`,
     entrega: '⚡ Entrega Automática!',
     cor: 0x2b2d31,
     imagem: BANNER_CS2_URL,
