@@ -39,6 +39,7 @@ delete process.env.LOGS_ENTREGA_CHANNEL_ID;
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-combos'], 'combos');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-spofer'], 'spofer');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-lifetime'], 'lifetime');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-box'], 'box');
 assert.strictEqual(bot.STATUS_BOT, '⏳ processando pagamento...');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
@@ -68,6 +69,15 @@ assert(painel.includes(`${bot.EMOJI_BOLINHA} 50x conta Rockst4r Novas.`));
 assert(bot.PAINEL_TEXTOS.combos.imagemFile.endsWith('banner-combos.png'));
 assert(bot.PAINEL_TEXTOS.spofer.imagemFile.endsWith('banner-spofer.png'));
 assert(bot.PAINEL_TEXTOS.lifetime.imagemFile.endsWith('banner-lifetime.png'));
+assert(bot.PAINEL_TEXTOS.box.imagemFile.endsWith('banner-box.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.box.titulo, 'Stopped Box');
+assert(bot.PAINEL_TEXTOS.box.descricao.includes('🎁 Box Gold'));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes('🎁 Caixa Platina'));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes('🎁 Caixa Diamond'));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes('chaves diárias'));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes('chaves de 3 a 7 dias'));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes('chaves de 7 a 31 dias'));
+assert(bot.PAINEL_TEXTOS.box.descricao.includes('Box mais caras oferecem maiores chances'));
 assert(bot.PAINEL_TEXTOS.spofer.descricao.includes('Sp00fer 1 Click Semanal'));
 assert.strictEqual(bot.PAINEL_TEXTOS.lifetime.descricao.includes('Sp00fer 1 Click Lifetime'), true);
 assert(!bot.PAINEL_TEXTOS.lifetime.descricao.includes('Lifetime ( sp00fer e Rock )'));
@@ -108,6 +118,18 @@ assert.strictEqual(spoferMen.price_cents, 1500);
 assert.strictEqual(spoferLife.price_cents, 5000);
 assert.strictEqual(comboLife.price_cents, 5000);
 assert.strictEqual(db.listActiveProductsByCategory('lifetime').length, 1);
+
+const boxGold = db.getProductByName('Box Gold');
+const boxPlatina = db.getProductByName('Caixa Platina');
+const boxDiamond = db.getProductByName('Caixa Diamond');
+assert.ok(boxGold && boxPlatina && boxDiamond);
+assert.strictEqual(boxGold.category, 'box');
+assert.strictEqual(boxPlatina.category, 'box');
+assert.strictEqual(boxDiamond.category, 'box');
+assert.strictEqual(boxGold.price_cents, 200);
+assert.strictEqual(boxPlatina.price_cents, 500);
+assert.strictEqual(boxDiamond.price_cents, 1000);
+assert.strictEqual(db.listActiveProductsByCategory('box').length, 3);
 
 const staffCache = {
   permissions: { has: () => false },
@@ -204,6 +226,13 @@ assert(lifePainel.includes(`${bot.EMOJI_PACK} Lifetime`));
 assert(!lifePainel.includes('Lifetime ( sp00fer e Rock )'));
 assert(aberto.includes(`${bot.EMOJI_PACK} Lifetime ( sp00fer e Rock )`));
 assert(aberto.includes(`${bot.EMOJI_BOLINHA} 50x conta Rockst4r Novas.`));
+
+const boxPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('box'), 'box').payload);
+assert(boxPainel.includes('attachment://banner-box.png'));
+assert(boxPainel.includes('Stopped Box'));
+assert(boxPainel.includes('Box Gold'));
+assert(boxPainel.includes('Caixa Platina'));
+assert(boxPainel.includes('Caixa Diamond'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
