@@ -110,6 +110,11 @@ assert(bot.PAINEL_TEXTOS.bypass.imagemFile.endsWith('banner-bypass.png'));
 assert(bot.PAINEL_TEXTOS.internal.imagemFile.endsWith('banner-internal.png'));
 assert(bot.PAINEL_TEXTOS.external.imagemFile.endsWith('banner-external.png'));
 assert(bot.PAINEL_TEXTOS.cs2external.imagemFile.endsWith('banner-cs2external.png'));
+assert(bot.PAINEL_TEXTOS.rockstar.imagemFile.endsWith('banner-rockstar.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.rockstar.titulo, 'ROCKSTAR ACC\'S');
+assert(bot.PAINEL_TEXTOS.rockstar.descricao.includes(`${bot.EMOJI_BOLINHA} Recebe uma conta Full Acesso.`));
+assert(bot.PAINEL_TEXTOS.rockstar.descricao.includes(`${bot.EMOJI_BOLINHA} ALL FULL ACCESS.`));
+assert(!bot.PAINEL_TEXTOS.rockstar.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.external.titulo, 'FiveM External');
 assert(bot.PAINEL_TEXTOS.external.descricao.includes('🇧🇷 O CHEAT MAIS AVANÇADO DO MERCADO!'));
 assert(bot.PAINEL_TEXTOS.external.descricao.includes(`${bot.EMOJI_PACK} Características:`));
@@ -633,6 +638,14 @@ assert(spotifyPainel.includes('attachment://banner-spotify.png'));
 assert(spotifyPainel.includes('SPOTIFY PREMIUM'));
 assert(spotifyPainel.includes('Obrigatório a Troca de Dados.'));
 assert(!spotifyPainel.includes('Conta Spotify Premium'));
+
+const rockstarPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('rockstar'), 'rockstar').payload);
+assert(rockstarPainel.includes('attachment://banner-rockstar.png'));
+assert(rockstarPainel.includes('ROCKSTAR ACC\'S'));
+assert(rockstarPainel.includes('ALL FULL ACCESS.'));
+assert(rockstarPainel.includes(bot.EMOJI_BOLINHA));
+assert(!rockstarPainel.includes('1 Rockstar Acc'));
+assert(!rockstarPainel.includes('20 Rockstar Acc'));
 
 const trampoPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('trampo'), 'trampo').payload);
 assert(trampoPainel.includes('attachment://banner-trampo.png'));

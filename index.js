@@ -290,6 +290,9 @@ const BANNER_EXTERNAL_FILE = path.join(__dirname, 'assets', 'banner-external.png
 const BANNER_CS2EXTERNAL_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1548285877980237896/image.png?ex=6aa68117&is=6aa52f97&hm=4c0f7af09f01a8bf28543b8122ff83446d54ebe592ddba0c35a027163382b730&=&format=webp&quality=lossless&width=1521&height=856';
 const BANNER_CS2EXTERNAL_FILE = path.join(__dirname, 'assets', 'banner-cs2external.png');
+const BANNER_ROCKSTAR_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548294136258363402/image.png?ex=6aa688c7&is=6aa53747&hm=6cb393edf3a8c2ec085e18a56458dcecb016aa7aa45d5fcba820f36d5b1aec58&=&format=webp&quality=lossless';
+const BANNER_ROCKSTAR_FILE = path.join(__dirname, 'assets', 'banner-rockstar.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -1281,12 +1284,18 @@ const PAINEL_TEXTOS = {
     imagem: BANNER_FORTNITE_URL,
     imagemFile: BANNER_FORTNITE_FILE,
   },
-  rockstar: textoPainel('ROCKSTAR ACC\'S', [
-    'Recebe uma conta Full Acesso.',
-    'ALL FULL ACCESS.',
-    'Melhor qualidade.',
-    'Entrega automática no privado.',
-  ]),
+  rockstar: {
+    titulo: 'ROCKSTAR ACC\'S',
+    descricao:
+      `${EMOJI_BOLINHA} Recebe uma conta Full Acesso.\n` +
+      `${EMOJI_BOLINHA} ALL FULL ACCESS.\n` +
+      `${EMOJI_BOLINHA} Melhor qualidade.\n` +
+      `${EMOJI_BOLINHA} Entrega automática no privado.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_ROCKSTAR_URL,
+    imagemFile: BANNER_ROCKSTAR_FILE,
+  },
   combos: {
     titulo: 'Combos',
     descricao:
