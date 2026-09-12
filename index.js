@@ -293,6 +293,11 @@ const BANNER_CS2EXTERNAL_FILE = path.join(__dirname, 'assets', 'banner-cs2extern
 const BANNER_ROCKSTAR_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1548294136258363402/image.png?ex=6aa688c7&is=6aa53747&hm=6cb393edf3a8c2ec085e18a56458dcecb016aa7aa45d5fcba820f36d5b1aec58&=&format=webp&quality=lossless';
 const BANNER_ROCKSTAR_FILE = path.join(__dirname, 'assets', 'banner-rockstar.png');
+const BANNER_PAINEIS_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548294918164844564/image.png?ex=6aa68982&is=6aa53802&hm=4829bc3f18bfae690c3d977ef4451e3ff45d35b174a6576c32e465bd044c6462&=&format=webp&quality=lossless&width=1521&height=856';
+const BANNER_PAINEIS_FILE = path.join(__dirname, 'assets', 'banner-paineis.png');
+const BANNER_CLONER_URL = BANNER_PAINEIS_URL;
+const BANNER_CLONER_FILE = path.join(__dirname, 'assets', 'banner-cloner.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -1177,12 +1182,18 @@ function textoPainel(titulo, bullets, extras = {}) {
 }
 
 const PAINEL_TEXTOS = {
-  'Painéis & Métodos': textoPainel('Painéis & Métodos', [
-    'Recebe o painel ou método pronto a usar.',
-    'SMS, Ifood, internet e outros métodos.',
-    'Melhor qualidade.',
-    'Entrega automática no privado.',
-  ]),
+  'Painéis & Métodos': {
+    titulo: 'Painéis & Métodos',
+    descricao:
+      `${EMOJI_BOLINHA} Recebe o painel ou método pronto a usar.\n` +
+      `${EMOJI_BOLINHA} SMS, Ifood, internet e outros métodos.\n` +
+      `${EMOJI_BOLINHA} Melhor qualidade.\n` +
+      `${EMOJI_BOLINHA} Entrega automática no privado.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_PAINEIS_URL,
+    imagemFile: BANNER_PAINEIS_FILE,
+  },
   Impulsos: textoPainel('Impulsos', [
     'Impulso para o teu servidor Discord.',
     'Ativação rápida.',
@@ -1250,16 +1261,18 @@ const PAINEL_TEXTOS = {
     imagem: BANNER_TRAMPO_URL,
     imagemFile: BANNER_TRAMPO_FILE,
   },
-  cloner: textoPainel(
-    'Clonar Site',
-    [
-      'Clonagem de site sob pedido.',
-      'Layout igual ao original.',
-      'Melhor qualidade.',
-      'Entrega combinada no ticket.',
-    ],
-    { entrega: '🎫 Entrega via ticket' }
-  ),
+  cloner: {
+    titulo: 'Clonar Site',
+    descricao:
+      `${EMOJI_BOLINHA} Clonagem de site sob pedido.\n` +
+      `${EMOJI_BOLINHA} Layout igual ao original.\n` +
+      `${EMOJI_BOLINHA} Melhor qualidade.\n` +
+      `${EMOJI_BOLINHA} Entrega combinada no ticket.`,
+    entrega: '🎫 Entrega via ticket',
+    cor: 0x2b2d31,
+    imagem: BANNER_CLONER_URL,
+    imagemFile: BANNER_CLONER_FILE,
+  },
   roblox: {
     titulo: 'ROBLOX ACCOUNTS',
     descricao:
