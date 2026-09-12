@@ -115,6 +115,15 @@ assert.strictEqual(bot.PAINEL_TEXTOS.rockstar.titulo, 'ROCKSTAR ACC\'S');
 assert(bot.PAINEL_TEXTOS.rockstar.descricao.includes(`${bot.EMOJI_BOLINHA} Recebe uma conta Full Acesso.`));
 assert(bot.PAINEL_TEXTOS.rockstar.descricao.includes(`${bot.EMOJI_BOLINHA} ALL FULL ACCESS.`));
 assert(!bot.PAINEL_TEXTOS.rockstar.descricao.includes('€'));
+assert(bot.PAINEL_TEXTOS['Painéis & Métodos'].imagemFile.endsWith('banner-paineis.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS['Painéis & Métodos'].titulo, 'Painéis & Métodos');
+assert(bot.PAINEL_TEXTOS['Painéis & Métodos'].descricao.includes(`${bot.EMOJI_BOLINHA} SMS, Ifood, internet e outros métodos.`));
+assert(!bot.PAINEL_TEXTOS['Painéis & Métodos'].descricao.includes('€'));
+assert(bot.PAINEL_TEXTOS.cloner.imagemFile.endsWith('banner-cloner.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.cloner.titulo, 'Clonar Site');
+assert(bot.PAINEL_TEXTOS.cloner.descricao.includes(`${bot.EMOJI_BOLINHA} Clonagem de site sob pedido.`));
+assert.strictEqual(bot.PAINEL_TEXTOS.cloner.entrega, '🎫 Entrega via ticket');
+assert(!bot.PAINEL_TEXTOS.cloner.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.external.titulo, 'FiveM External');
 assert(bot.PAINEL_TEXTOS.external.descricao.includes('🇧🇷 O CHEAT MAIS AVANÇADO DO MERCADO!'));
 assert(bot.PAINEL_TEXTOS.external.descricao.includes(`${bot.EMOJI_PACK} Características:`));
@@ -646,6 +655,22 @@ assert(rockstarPainel.includes('ALL FULL ACCESS.'));
 assert(rockstarPainel.includes(bot.EMOJI_BOLINHA));
 assert(!rockstarPainel.includes('1 Rockstar Acc'));
 assert(!rockstarPainel.includes('20 Rockstar Acc'));
+
+const paineisPainel = JSON.stringify(
+  bot.gerarPainelLoja(db.listActiveProductsByCategory('Painéis & Métodos'), 'Painéis & Métodos').payload
+);
+assert(paineisPainel.includes('attachment://banner-paineis.png'));
+assert(paineisPainel.includes('Painéis & Métodos'));
+assert(paineisPainel.includes('SMS, Ifood, internet e outros métodos.'));
+assert(!paineisPainel.includes('Painel SMS'));
+assert(!paineisPainel.includes('Modelo loja'));
+
+const clonerPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('cloner'), 'cloner').payload);
+assert(clonerPainel.includes('attachment://banner-cloner.png'));
+assert(clonerPainel.includes('Clonar Site'));
+assert(clonerPainel.includes('Entrega combinada no ticket.'));
+assert(clonerPainel.includes('🎫 Entrega via ticket'));
+assert(!clonerPainel.includes('Clonar site'));
 
 const trampoPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('trampo'), 'trampo').payload);
 assert(trampoPainel.includes('attachment://banner-trampo.png'));
