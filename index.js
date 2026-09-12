@@ -278,6 +278,12 @@ const BANNER_SPOTIFY_FILE = path.join(__dirname, 'assets', 'banner-spotify.png')
 const BANNER_TRAMPO_URL =
   'https://media.discordapp.net/attachments/1534183602764648579/1548091945471971408/image.png?ex=6aa5cc79&is=6aa47af9&hm=fa7580e1c465baf3ca34fb71194926d71121707a34ba3b0340af5e98b1126a51&=&format=webp&quality=lossless&width=1519&height=855';
 const BANNER_TRAMPO_FILE = path.join(__dirname, 'assets', 'banner-trampo.png');
+const BANNER_BYPASS_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548255162366173254/image.png?ex=6aa6647b&is=6aa512fb&hm=0c5cb337a26df136bf56bc1eedf7f7863768593e183744c643f960501dea98e2&=&format=webp&quality=lossless&width=1521&height=856';
+const BANNER_BYPASS_FILE = path.join(__dirname, 'assets', 'banner-bypass.png');
+const BANNER_INTERNAL_URL =
+  'https://cdn.discordapp.com/attachments/1534183602764648579/1548262725099069501/image.png?ex=6aa66b86&is=6aa51a06&hm=9936cad4c6b0b94af19dfdc250e641b39697f6257d87527b201b85f333e34445&';
+const BANNER_INTERNAL_FILE = path.join(__dirname, 'assets', 'banner-internal.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
@@ -596,6 +602,20 @@ const PRODUTOS_SEED = [
 
   // --- Canal Gta V Instalavel ---
   { nome: 'Gta V Instalável', preco: eur(3.5), categoria: 'gta' },
+
+  // --- Canal FiveM Byp4ss ---
+  { nome: 'Byp4ss Second', preco: eur(80), categoria: 'bypass' },
+  { nome: 'Third Byp4ss', preco: eur(100), categoria: 'bypass' },
+  { nome: 'Fivem Byp4ss Private', preco: eur(180), categoria: 'bypass' },
+
+  // --- Canal Denver Internal ---
+  { nome: 'FiveM Internal Basic Semanal', preco: eur(16.99), categoria: 'internal' },
+  { nome: 'FiveM Internal Basic Mensal', preco: eur(25.99), categoria: 'internal' },
+  { nome: 'FiveM Internal Basic 3 Meses', preco: eur(54.99), categoria: 'internal' },
+  { nome: 'FiveM Internal Advanced Semanal', preco: eur(18.99), categoria: 'internal' },
+  { nome: 'FiveM Internal Advanced Mensal', preco: eur(30), categoria: 'internal' },
+  { nome: 'FiveM Internal Advanced 3 Meses', preco: eur(60), categoria: 'internal' },
+  { nome: 'FiveM Internal Private', preco: eur(200), categoria: 'internal' },
 ];
 
 // Cria produtos em falta, atualiza preço/categoria e renomeia os antigos.
@@ -683,6 +703,8 @@ const CATEGORIA_POR_COMANDO = {
   'loja-nfa': 'nfa',
   'loja-assinaturas': 'assinaturas',
   'loja-gta': 'gta',
+  'loja-bypass': 'bypass',
+  'loja-internal': 'internal',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1403,6 +1425,48 @@ const PAINEL_TEXTOS = {
     cor: 0x2b2d31,
     imagem: BANNER_GTA_URL,
     imagemFile: BANNER_GTA_FILE,
+  },
+  bypass: {
+    titulo: 'FiveM Byp4ss',
+    descricao:
+      '🇧🇷 O MÉTODO DE BYP4SS MAIS COMPLETO DO MERCADO!\n' +
+      'Oferecemos a solução definitiva para burlar todos os tipos de checagens e scanners, com total segurança e estabilidade. 100% compatível com todos os cheats e jogos, incluindo FIVEM, REDM, MTA, DAYZ, PUBG e muito mais. Confira nossas opções e aproveite a entrega rápida e suporte dedicado!\n' +
+      '\n' +
+      '🇺🇸 THE MOST COMPLETE BYP4SS METHOD ON THE MARKET!\n' +
+      'We offer the ultimate solution to bypass all types of checks and scanners, with full security and stability. 100% compatible with all cheats and games, including FIVEM, REDM, MTA, DAYZ, PUBG, and more. Check out our options and enjoy fast delivery and dedicated support!\n' +
+      '\n' +
+      `${EMOJI_PACK} Features:\n` +
+      `${EMOJI_BOLINHA} Byp4ss All PC Checkers\n` +
+      `${EMOJI_BOLINHA} Byp4ss All Scanners\n` +
+      `${EMOJI_BOLINHA} For All Che4ts\n` +
+      `${EMOJI_BOLINHA} For All Games ( FIVEM, REDM, MTA, DAYZ, PUBG...)\n` +
+      `${EMOJI_BOLINHA} Full compatibility with Windows 10 and 11`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_BYPASS_URL,
+    imagemFile: BANNER_BYPASS_FILE,
+  },
+  internal: {
+    titulo: 'Denver Internal',
+    descricao:
+      '🇧🇷 O CHE4T INTERNO MAIS COMPLETO DO MERCADO\n' +
+      'Domine o FiveM com recursos avançados e zero riscos. Totalmente indetectável e otimizado para uma experiência de jogo superior, seja no modo rage ou legit.\n' +
+      '\n' +
+      '🇺🇸 THE MOST COMPLETE INTERNAL CHE4T ON THE MARKET\n' +
+      'Dominate FiveM with advanced features and zero risks. Fully undetectable and optimized for a superior gaming experience, whether in rage or legit mode.\n' +
+      '\n' +
+      `${EMOJI_PACK} CARACTERÍSTICAS:\n` +
+      `${EMOJI_BOLINHA} Indetectável.\n` +
+      `${EMOJI_BOLINHA} Byp4ss em todos os scanners.\n` +
+      `${EMOJI_BOLINHA} Byp4ss em telagem manual.\n` +
+      `${EMOJI_BOLINHA} Extremamente fácil de usar.\n` +
+      `${EMOJI_BOLINHA} Instalação rápida e descomplicada.\n` +
+      `${EMOJI_BOLINHA} Entrega Automática.\n` +
+      `${EMOJI_BOLINHA} Compatibilidade Total no Windows 10 e 11.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_INTERNAL_URL,
+    imagemFile: BANNER_INTERNAL_FILE,
   },
 };
 
