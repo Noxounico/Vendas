@@ -58,6 +58,8 @@ assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-cs2'], 'cs2');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-nfa'], 'nfa');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-assinaturas'], 'assinaturas');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-gta'], 'gta');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-bypass'], 'bypass');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-internal'], 'internal');
 assert.strictEqual(bot.STATUS_BOT, '⏳ processando pagamento...');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
@@ -100,6 +102,26 @@ assert(bot.PAINEL_TEXTOS.fortnite.imagemFile.endsWith('banner-fortnite.png'));
 assert(bot.PAINEL_TEXTOS.roblox.imagemFile.endsWith('banner-roblox.png'));
 assert(bot.PAINEL_TEXTOS.spotify.imagemFile.endsWith('banner-spotify.png'));
 assert(bot.PAINEL_TEXTOS.trampo.imagemFile.endsWith('banner-trampo.png'));
+assert(bot.PAINEL_TEXTOS.bypass.imagemFile.endsWith('banner-bypass.png'));
+assert(bot.PAINEL_TEXTOS.internal.imagemFile.endsWith('banner-internal.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.bypass.titulo, 'FiveM Byp4ss');
+assert(bot.PAINEL_TEXTOS.bypass.descricao.includes('🇧🇷 O MÉTODO DE BYP4SS MAIS COMPLETO DO MERCADO!'));
+assert(bot.PAINEL_TEXTOS.bypass.descricao.includes('🇺🇸 THE MOST COMPLETE BYP4SS METHOD ON THE MARKET!'));
+assert(bot.PAINEL_TEXTOS.bypass.descricao.includes(`${bot.EMOJI_PACK} Features:`));
+assert(bot.PAINEL_TEXTOS.bypass.descricao.includes(`${bot.EMOJI_BOLINHA} Byp4ss All PC Checkers`));
+assert(bot.PAINEL_TEXTOS.bypass.descricao.includes(`${bot.EMOJI_BOLINHA} For All Games ( FIVEM, REDM, MTA, DAYZ, PUBG...)`));
+assert(bot.PAINEL_TEXTOS.bypass.descricao.includes(`${bot.EMOJI_BOLINHA} Full compatibility with Windows 10 and 11`));
+assert(!bot.PAINEL_TEXTOS.bypass.descricao.includes('€'));
+assert(!bot.PAINEL_TEXTOS.bypass.descricao.includes('Stopped'));
+assert.strictEqual(bot.PAINEL_TEXTOS.internal.titulo, 'Denver Internal');
+assert(bot.PAINEL_TEXTOS.internal.descricao.includes('🇧🇷 O CHE4T INTERNO MAIS COMPLETO DO MERCADO'));
+assert(bot.PAINEL_TEXTOS.internal.descricao.includes('🇺🇸 THE MOST COMPLETE INTERNAL CHE4T ON THE MARKET'));
+assert(bot.PAINEL_TEXTOS.internal.descricao.includes(`${bot.EMOJI_PACK} CARACTERÍSTICAS:`));
+assert(bot.PAINEL_TEXTOS.internal.descricao.includes(`${bot.EMOJI_BOLINHA} Byp4ss em telagem manual.`));
+assert(bot.PAINEL_TEXTOS.internal.descricao.includes(`${bot.EMOJI_BOLINHA} Compatibilidade Total no Windows 10 e 11.`));
+assert(!bot.PAINEL_TEXTOS.internal.descricao.includes('€'));
+assert(!bot.PAINEL_TEXTOS.internal.descricao.includes('Stopped'));
+assert(!bot.PAINEL_TEXTOS.internal.titulo.includes('Stopped'));
 assert.strictEqual(bot.PAINEL_TEXTOS.trampo.titulo, 'Trampo');
 assert(bot.PAINEL_TEXTOS.trampo.descricao.includes(`${bot.EMOJI_BOLINHA} Recebe o trampo pronto a usar.`));
 assert(bot.PAINEL_TEXTOS.trampo.descricao.includes(`${bot.EMOJI_BOLINHA} Pronto pra começar.`));
@@ -349,6 +371,35 @@ assert.strictEqual(gtaV.category, 'gta');
 assert.strictEqual(gtaV.price_cents, 350);
 assert.strictEqual(db.listActiveProductsByCategory('gta').length, 1);
 
+const bypassSecond = db.getProductByName('Byp4ss Second');
+const bypassThird = db.getProductByName('Third Byp4ss');
+const bypassPriv = db.getProductByName('Fivem Byp4ss Private');
+assert.ok(bypassSecond && bypassThird && bypassPriv);
+assert.strictEqual(bypassSecond.category, 'bypass');
+assert.strictEqual(bypassSecond.price_cents, 8000);
+assert.strictEqual(bypassThird.price_cents, 10000);
+assert.strictEqual(bypassPriv.price_cents, 18000);
+assert.strictEqual(db.listActiveProductsByCategory('bypass').length, 3);
+
+const intBasicSem = db.getProductByName('FiveM Internal Basic Semanal');
+const intBasicMen = db.getProductByName('FiveM Internal Basic Mensal');
+const intBasicTri = db.getProductByName('FiveM Internal Basic 3 Meses');
+const intAdvSem = db.getProductByName('FiveM Internal Advanced Semanal');
+const intAdvMen = db.getProductByName('FiveM Internal Advanced Mensal');
+const intAdvTri = db.getProductByName('FiveM Internal Advanced 3 Meses');
+const intPriv = db.getProductByName('FiveM Internal Private');
+assert.ok(intBasicSem && intBasicMen && intBasicTri && intAdvSem && intAdvMen && intAdvTri && intPriv);
+assert.strictEqual(intBasicSem.category, 'internal');
+assert.strictEqual(intBasicSem.price_cents, 1699);
+assert.strictEqual(intBasicMen.price_cents, 2599);
+assert.strictEqual(intBasicTri.price_cents, 5499);
+assert.strictEqual(intAdvSem.price_cents, 1899);
+assert.strictEqual(intAdvMen.price_cents, 3000);
+assert.strictEqual(intAdvTri.price_cents, 6000);
+assert.strictEqual(intPriv.price_cents, 20000);
+assert.strictEqual(db.listActiveProductsByCategory('internal').length, 7);
+assert.ok(!db.getProductByName('Stopped Internal'));
+
 const idAntigo = db.addProduct({
   name: 'Sp00fer 1 Click Semanal',
   priceCents: 800,
@@ -545,6 +596,22 @@ assert(trampoPainel.includes('Trampo'));
 assert(trampoPainel.includes('Recebe o trampo pronto a usar.'));
 assert(trampoPainel.includes('Suporte após a compra.'));
 assert(!trampoPainel.includes('Trampo fazendo dinheiro'));
+
+const bypassPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('bypass'), 'bypass').payload);
+assert(bypassPainel.includes('attachment://banner-bypass.png'));
+assert(bypassPainel.includes('FiveM Byp4ss'));
+assert(bypassPainel.includes('Byp4ss All PC Checkers'));
+assert(bypassPainel.includes('Full compatibility with Windows 10 and 11'));
+assert(!bypassPainel.includes('Byp4ss Second'));
+assert(!bypassPainel.includes('Stopped'));
+
+const internalPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('internal'), 'internal').payload);
+assert(internalPainel.includes('attachment://banner-internal.png'));
+assert(internalPainel.includes('Denver Internal'));
+assert(internalPainel.includes('Byp4ss em telagem manual.'));
+assert(internalPainel.includes('Compatibilidade Total no Windows 10 e 11.'));
+assert(!internalPainel.includes('FiveM Internal Basic Semanal'));
+assert(!internalPainel.includes('Stopped'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
