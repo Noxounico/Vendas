@@ -60,6 +60,10 @@ assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-assinaturas'], 'assinaturas')
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-gta'], 'gta');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-bypass'], 'bypass');
 assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-internal'], 'internal');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-external'], 'external');
+assert.strictEqual(bot.CATEGORIA_POR_COMANDO['loja-cs2external'], 'cs2external');
+assert.strictEqual(bot.EMOJI_BOTAO.id, '1548287127286972487');
+assert.strictEqual(bot.EMOJI_BOTAO.name, 'e917013545f4460e811ffbba24f57eba');
 assert.strictEqual(bot.STATUS_BOT, '⏳ processando pagamento...');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.id, '1453368332622495775');
 assert.strictEqual(bot.STATUS_BOT_EMOJI.name, '1192548293067165838');
@@ -104,6 +108,18 @@ assert(bot.PAINEL_TEXTOS.spotify.imagemFile.endsWith('banner-spotify.png'));
 assert(bot.PAINEL_TEXTOS.trampo.imagemFile.endsWith('banner-trampo.png'));
 assert(bot.PAINEL_TEXTOS.bypass.imagemFile.endsWith('banner-bypass.png'));
 assert(bot.PAINEL_TEXTOS.internal.imagemFile.endsWith('banner-internal.png'));
+assert(bot.PAINEL_TEXTOS.external.imagemFile.endsWith('banner-external.png'));
+assert(bot.PAINEL_TEXTOS.cs2external.imagemFile.endsWith('banner-cs2external.png'));
+assert.strictEqual(bot.PAINEL_TEXTOS.external.titulo, 'FiveM External');
+assert(bot.PAINEL_TEXTOS.external.descricao.includes('🇧🇷 O CHEAT MAIS AVANÇADO DO MERCADO!'));
+assert(bot.PAINEL_TEXTOS.external.descricao.includes(`${bot.EMOJI_PACK} Características:`));
+assert(bot.PAINEL_TEXTOS.external.descricao.includes(`${bot.EMOJI_BOLINHA} Byp4ss em telagem manual.`));
+assert(bot.PAINEL_TEXTOS.external.descricao.includes(`${bot.EMOJI_BOLINHA} Compatibilidade Total no Windows 10 e 11.`));
+assert(!bot.PAINEL_TEXTOS.external.descricao.includes('€'));
+assert.strictEqual(bot.PAINEL_TEXTOS.cs2external.titulo, 'CS2 External');
+assert(bot.PAINEL_TEXTOS.cs2external.descricao.includes(`${bot.EMOJI_BOLINHA} Sem Risco de Vac`));
+assert(bot.PAINEL_TEXTOS.cs2external.descricao.includes(`${bot.EMOJI_BOLINHA} Entrega Automática.`));
+assert(!bot.PAINEL_TEXTOS.cs2external.descricao.includes('€'));
 assert.strictEqual(bot.PAINEL_TEXTOS.bypass.titulo, 'FiveM Byp4ss');
 assert(bot.PAINEL_TEXTOS.bypass.descricao.includes('🇧🇷 O MÉTODO DE BYP4SS MAIS COMPLETO DO MERCADO!'));
 assert(bot.PAINEL_TEXTOS.bypass.descricao.includes('🇺🇸 THE MOST COMPLETE BYP4SS METHOD ON THE MARKET!'));
@@ -400,6 +416,34 @@ assert.strictEqual(intPriv.price_cents, 20000);
 assert.strictEqual(db.listActiveProductsByCategory('internal').length, 7);
 assert.ok(!db.getProductByName('Stopped Internal'));
 
+const extBasicSem = db.getProductByName('FiveM Basic Semanal');
+const extBasicMen = db.getProductByName('FiveM Basic Mensal');
+const extBasicTri = db.getProductByName('FiveM Basic 3 Meses');
+const extAdvSem = db.getProductByName('FiveM Advanced Semanal');
+const extAdvMen = db.getProductByName('FiveM Advanced Mensal');
+const extAdvTri = db.getProductByName('FiveM Advanced 3 Meses');
+const extPriv = db.getProductByName('FiveM External Private');
+assert.ok(extBasicSem && extBasicMen && extBasicTri && extAdvSem && extAdvMen && extAdvTri && extPriv);
+assert.strictEqual(extBasicSem.category, 'external');
+assert.strictEqual(extBasicSem.price_cents, 1500);
+assert.strictEqual(extBasicMen.price_cents, 2199);
+assert.strictEqual(extBasicTri.price_cents, 4299);
+assert.strictEqual(extAdvSem.price_cents, 1899);
+assert.strictEqual(extAdvMen.price_cents, 3000);
+assert.strictEqual(extAdvTri.price_cents, 5000);
+assert.strictEqual(extPriv.price_cents, 20000);
+assert.strictEqual(db.listActiveProductsByCategory('external').length, 7);
+
+const cs2ExtSem = db.getProductByName('CS2 External Semanal');
+const cs2ExtMen = db.getProductByName('CS2 External Mensal');
+const cs2ExtTri = db.getProductByName('CS2 External 3 Meses');
+assert.ok(cs2ExtSem && cs2ExtMen && cs2ExtTri);
+assert.strictEqual(cs2ExtSem.category, 'cs2external');
+assert.strictEqual(cs2ExtSem.price_cents, 1099);
+assert.strictEqual(cs2ExtMen.price_cents, 1899);
+assert.strictEqual(cs2ExtTri.price_cents, 4000);
+assert.strictEqual(db.listActiveProductsByCategory('cs2external').length, 3);
+
 const idAntigo = db.addProduct({
   name: 'Sp00fer 1 Click Semanal',
   priceCents: 800,
@@ -612,6 +656,30 @@ assert(internalPainel.includes('Byp4ss em telagem manual.'));
 assert(internalPainel.includes('Compatibilidade Total no Windows 10 e 11.'));
 assert(!internalPainel.includes('FiveM Internal Basic Semanal'));
 assert(!internalPainel.includes('Stopped'));
+assert(internalPainel.includes(bot.EMOJI_BOTAO.id));
+assert(!internalPainel.includes('⭐'));
+
+const extPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('external'), 'external').payload);
+assert(extPainel.includes('attachment://banner-external.png'));
+assert(extPainel.includes('FiveM External'));
+assert(extPainel.includes('controle de veículos'));
+assert(extPainel.includes(bot.EMOJI_BOTAO.id));
+assert(!extPainel.includes('FiveM Basic Semanal'));
+assert(!extPainel.includes('⭐'));
+
+const cs2ExtPainel = JSON.stringify(bot.gerarPainelLoja(db.listActiveProductsByCategory('cs2external'), 'cs2external').payload);
+assert(cs2ExtPainel.includes('attachment://banner-cs2external.png'));
+assert(cs2ExtPainel.includes('CS2 External'));
+assert(cs2ExtPainel.includes('Sem Risco de Vac'));
+assert(cs2ExtPainel.includes(bot.EMOJI_BOTAO.id));
+assert(!cs2ExtPainel.includes('CS2 External Semanal'));
+assert(!cs2ExtPainel.includes('⭐'));
+
+const selectRow = bot.buildSelectRow(db.listActiveProductsByCategory('external'));
+const selectJson = JSON.stringify(selectRow);
+assert(selectJson.includes(bot.EMOJI_BOTAO.id));
+assert(selectJson.includes(bot.EMOJI_BOTAO.name));
+assert(!selectJson.includes('⭐'));
 
 function formatarPainelCombos() {
   const products = db.listActiveProductsByCategory('combos');
