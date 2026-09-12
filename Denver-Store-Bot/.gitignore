@@ -1,0 +1,10 @@
+node_modules/
+
+# Local SQLite database (created automatically at runtime)
+loja.db
+loja.db-wal
+loja.db-shm
+
+# Secrets
+.env
+.env.local

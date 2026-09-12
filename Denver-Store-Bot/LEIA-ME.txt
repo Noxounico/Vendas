@@ -1,0 +1,26 @@
+Denver Store — bot da loja (Discord)
+
+Ficheiros
+  index.js          bot
+  db.js             base de dados SQLite
+  seed.js           preços / produtos
+  currency.js       euros
+  package.json      dependências
+
+Como ligar
+  1. Instala Node 22
+  2. Copia .env.example para .env
+  3. Mete DISCORD_TOKEN, CLIENT_ID e GUILD_ID
+  4. No Developer Portal: Message Content Intent + Server Members se precisares
+  5. npm install
+  6. npm start
+
+Comandos
+  !loja-impulsos  !loja-nitradas  !loja-links  !loja-trial
+  !loja-virgem    !loja-aged      !loja-spotify  !loja-membros
+  !loja-trampo    !loja-roblox    !loja-fortnite !loja-rockstar
+  !tickets        !verificacao    !comandos
+  !stock          !stock adicionar 2x impulso 4
+  !fechar         (dentro do ticket)
+
+O loja.db é criado automaticamente na primeira vez.
