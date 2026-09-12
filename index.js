@@ -617,6 +617,9 @@ const PRODUTOS_SEED = [
   { nome: 'Prime Video NFA ( tela )', preco: eur(2.5), categoria: 'assinaturas' },
   { nome: 'Canva Pro Convite', preco: eur(2), categoria: 'assinaturas' },
   { nome: 'Crunchyroll NFA ( tela )', preco: eur(2), categoria: 'assinaturas' },
+  { nome: 'Netflix AutoLogin', preco: eur(2), categoria: 'assinaturas' },
+  { nome: 'Paramount', preco: eur(1.5), categoria: 'assinaturas' },
+  { nome: 'Microsoft', preco: eur(1), categoria: 'assinaturas' },
 
   // --- Canal Gta V Instalavel ---
   { nome: 'Gta V Instalável', preco: eur(3.5), categoria: 'gta' },
