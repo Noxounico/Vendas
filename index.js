@@ -284,9 +284,19 @@ const BANNER_BYPASS_FILE = path.join(__dirname, 'assets', 'banner-bypass.png');
 const BANNER_INTERNAL_URL =
   'https://cdn.discordapp.com/attachments/1534183602764648579/1548262725099069501/image.png?ex=6aa66b86&is=6aa51a06&hm=9936cad4c6b0b94af19dfdc250e641b39697f6257d87527b201b85f333e34445&';
 const BANNER_INTERNAL_FILE = path.join(__dirname, 'assets', 'banner-internal.png');
+const BANNER_EXTERNAL_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548284971213660192/image.png?ex=6aa6803e&is=6aa52ebe&hm=32908a8bd5986603d4c8fdbb7201f01af76bb837761b3ed02733a41b8d87db16&=&format=webp&quality=lossless&width=1521&height=856';
+const BANNER_EXTERNAL_FILE = path.join(__dirname, 'assets', 'banner-external.png');
+const BANNER_CS2EXTERNAL_URL =
+  'https://media.discordapp.net/attachments/1534183602764648579/1548285877980237896/image.png?ex=6aa68117&is=6aa52f97&hm=4c0f7af09f01a8bf28543b8122ff83446d54ebe592ddba0c35a027163382b730&=&format=webp&quality=lossless&width=1521&height=856';
+const BANNER_CS2EXTERNAL_FILE = path.join(__dirname, 'assets', 'banner-cs2external.png');
 const EMOJI_PACK = '<:1437199989053853806:1547957248498737263>';
 const EMOJI_BOLINHA = '<:1377885173747548252:1547957223890624522>';
 const EMOJI_TREVO = '<a:1263270455482122352:1453366951438061598>';
+const EMOJI_BOTAO = {
+  name: '1266350282833399870',
+  id: '1453366763080257587',
+};
 const STATUS_BOT = '⏳ processando pagamento...';
 // <a:1192548293067165838:1453368332622495775>
 const STATUS_BOT_EMOJI = {
@@ -616,6 +626,20 @@ const PRODUTOS_SEED = [
   { nome: 'FiveM Internal Advanced Mensal', preco: eur(30), categoria: 'internal' },
   { nome: 'FiveM Internal Advanced 3 Meses', preco: eur(60), categoria: 'internal' },
   { nome: 'FiveM Internal Private', preco: eur(200), categoria: 'internal' },
+
+  // --- Canal FiveM External ---
+  { nome: 'FiveM Basic Semanal', preco: eur(15), categoria: 'external' },
+  { nome: 'FiveM Basic Mensal', preco: eur(21.99), categoria: 'external' },
+  { nome: 'FiveM Basic 3 Meses', preco: eur(42.99), categoria: 'external' },
+  { nome: 'FiveM Advanced Semanal', preco: eur(18.99), categoria: 'external' },
+  { nome: 'FiveM Advanced Mensal', preco: eur(30), categoria: 'external' },
+  { nome: 'FiveM Advanced 3 Meses', preco: eur(50), categoria: 'external' },
+  { nome: 'FiveM External Private', preco: eur(200), categoria: 'external' },
+
+  // --- Canal CS2 External ---
+  { nome: 'CS2 External Semanal', preco: eur(10.99), categoria: 'cs2external' },
+  { nome: 'CS2 External Mensal', preco: eur(18.99), categoria: 'cs2external' },
+  { nome: 'CS2 External 3 Meses', preco: eur(40), categoria: 'cs2external' },
 ];
 
 // Cria produtos em falta, atualiza preço/categoria e renomeia os antigos.
@@ -705,6 +729,8 @@ const CATEGORIA_POR_COMANDO = {
   'loja-gta': 'gta',
   'loja-bypass': 'bypass',
   'loja-internal': 'internal',
+  'loja-external': 'external',
+  'loja-cs2external': 'cs2external',
 };
 
 // Acrescenta as opções comuns de personalização do painel a um comando
@@ -1116,7 +1142,7 @@ function buildSelectRow(products) {
       label: p.name,
       description: `Valor: ${formatPrice(p.price_cents, p.currency)} · 📦 Estoque: ${textoStock(stock)}`,
       value: String(p.id),
-      emoji: '⭐',
+      emoji: EMOJI_BOTAO,
     };
   });
 
@@ -1468,6 +1494,44 @@ const PAINEL_TEXTOS = {
     imagem: BANNER_INTERNAL_URL,
     imagemFile: BANNER_INTERNAL_FILE,
   },
+  external: {
+    titulo: 'FiveM External',
+    descricao:
+      '🇧🇷 O CHEAT MAIS AVANÇADO DO MERCADO! Software externo com desempenho máximo, oferecendo mira precisa, visuais aprimorados, controle de veículos e muito mais. Totalmente otimizado e 100% indetectável contra todos os anticheats!\n' +
+      '\n' +
+      '🇺🇸 THE MOST ADVANCED CHEAT ON THE MARKET! External software with maximum performance, offering precise aim, enhanced visuals, vehicle control and much more. Fully optimized and 100% undetectable against all anti-cheats!\n' +
+      '\n' +
+      `${EMOJI_PACK} Características:\n` +
+      `${EMOJI_BOLINHA} Indetectável\n` +
+      `${EMOJI_BOLINHA} Byp4ss em todos os scanners.\n` +
+      `${EMOJI_BOLINHA} Byp4ss em telagem manual.\n` +
+      `${EMOJI_BOLINHA} Extremamente fácil de usar.\n` +
+      `${EMOJI_BOLINHA} Instalação rápida e descomplicada.\n` +
+      `${EMOJI_BOLINHA} Entrega Automática.\n` +
+      `${EMOJI_BOLINHA} Compatibilidade Total no Windows 10 e 11.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_EXTERNAL_URL,
+    imagemFile: BANNER_EXTERNAL_FILE,
+  },
+  cs2external: {
+    titulo: 'CS2 External',
+    descricao:
+      '🇧🇷 O CHEAT MAIS AVANÇADO DO MERCADO! Software externo com desempenho máximo, oferecendo mira precisa, visuais aprimorados. Totalmente otimizado e 100% indetectável contra todos os anticheats!\n' +
+      '\n' +
+      '🇺🇸 THE MOST ADVANCED CHEAT ON THE MARKET! External software with maximum performance, offering precise aim, enhanced visuals. Fully optimized and 100% undetectable against all anti-cheats!\n' +
+      '\n' +
+      `${EMOJI_PACK} Características:\n` +
+      `${EMOJI_BOLINHA} Indetectável\n` +
+      `${EMOJI_BOLINHA} Sem Risco de Vac\n` +
+      `${EMOJI_BOLINHA} Instalação rápida e descomplicada.\n` +
+      `${EMOJI_BOLINHA} Entrega Automática.\n` +
+      `${EMOJI_BOLINHA} Compatibilidade Total no Windows 10 e 11.`,
+    entrega: '⚡ Entrega Automática!',
+    cor: 0x2b2d31,
+    imagem: BANNER_CS2EXTERNAL_URL,
+    imagemFile: BANNER_CS2EXTERNAL_FILE,
+  },
 };
 
 function textosDaCategoria(categoryName) {
@@ -1498,7 +1562,7 @@ function resolverTextosLoja(products, categoryName, opts = {}) {
       '• Preços justos, sempre pensados para o teu bolso.\n' +
       '• Compra rápida, simples e segura — só um clique.';
   const entregaFinal = entrega || defaults.entrega || '⚡ Entrega Automática!';
-  const botaoEmojiFinal = botaoEmoji || defaults.botaoEmoji || '🛒';
+  const botaoEmojiFinal = botaoEmoji || defaults.botaoEmoji || EMOJI_BOTAO;
   const botaoTextoFinal = botaoTexto || defaults.botaoTexto || 'Comprar';
 
   return {
@@ -2705,7 +2769,7 @@ async function aoInteracao(interaction) {
       await resolverCaptchaVerificacao(interaction, roleId, codigo);
     }
 
-    // Botão "⭐ Comprar" do painel — abre (ephemeral) o menu com os produtos
+    // Botão Comprar do painel — abre (ephemeral) o menu com os produtos
     // dessa categoria para o cliente escolher qual quer comprar.
     if (interaction.isButton() && interaction.customId.startsWith('abrir_')) {
       const categoria = decodeURIComponent(interaction.customId.slice('abrir_'.length)) || null;
@@ -3312,6 +3376,8 @@ module.exports = {
   EMOJI_PACK,
   EMOJI_BOLINHA,
   EMOJI_TREVO,
+  EMOJI_BOTAO,
+  buildSelectRow,
   STATUS_BOT,
   STATUS_BOT_EMOJI,
   STATUS_BOT_EMOJI_ID,
